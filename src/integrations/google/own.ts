@@ -130,3 +130,31 @@ export async function updateVideo(channelId: string, videoId: string, change: (l
 }
 
 export const UPDATE_COST = WRITE_COST + 1;
+
+/**
+ * Generic authorized call for the signed-in channel (playlists, comments, thumbnails, status...).
+ * `units` is the documented quota cost (Inferred values in docs/INTEGRATIONS.md); it is checked against the
+ * local daily cap and counted before the request is sent.
+ */
+export async function ownRequest<T = Obj>(
+  channelId: string,
+  opts: { method?: 'GET' | 'POST' | 'PUT' | 'DELETE'; path: string; params?: Record<string, string | number | undefined>; body?: unknown; rawBody?: Blob; contentType?: string; units: number; base?: string },
+): Promise<T> {
+  const url = new URL(opts.path.startsWith('https://') ? opts.path : `${opts.base ?? YT_BASE}/${opts.path}`);
+  for (const [k, v] of Object.entries(opts.params ?? {})) if (v !== undefined && v !== '') url.searchParams.set(k, String(v));
+  await spend(opts.units);
+  const init: RequestInit = { method: opts.method ?? 'GET' };
+  if (opts.rawBody) {
+    init.body = opts.rawBody;
+    init.headers = { 'Content-Type': opts.contentType ?? opts.rawBody.type };
+  } else if (opts.body !== undefined) {
+    init.body = JSON.stringify(opts.body);
+    init.headers = { 'Content-Type': 'application/json' };
+  }
+  return (await authed(channelId, url.toString(), init)) as T;
+}
+
+/** Cached authorized GET (1 unit for Data API resources, free for Analytics). */
+export function ownRead<T = Obj>(channelId: string, resource: string, params: Record<string, string | number | undefined>, ttlMs = 10 * 60_000, fresh = false): Promise<T> {
+  return ownGet<T>(channelId, resource, params, ttlMs, fresh);
+}

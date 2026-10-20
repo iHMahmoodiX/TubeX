@@ -1,6 +1,23 @@
 import { browser } from 'wxt/browser';
 
-export type WorkspaceRoute = 'ideas' | 'drafts' | 'mychannel' | 'research' | 'competitors' | 'bulk' | 'comments' | 'templates' | 'channels' | 'settings';
+export type WorkspaceRoute =
+  | 'mychannel'
+  | 'ideas'
+  | 'drafts'
+  | 'templates'
+  | 'research'
+  | 'ranks'
+  | 'competitors'
+  | 'reports'
+  | 'bulk'
+  | 'playlists'
+  | 'schedule'
+  | 'thumbs'
+  | 'shorts'
+  | 'comments'
+  | 'alerts'
+  | 'channels'
+  | 'settings';
 
 /** Opens the full-page workspace at a section in a new tab. */
 export async function openWorkspace(route: WorkspaceRoute = 'ideas', id?: string): Promise<void> {

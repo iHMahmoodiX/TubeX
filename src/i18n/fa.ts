@@ -1,7 +1,9 @@
 // Persian UI catalog. Uses ZWNJ (نیم‌فاصله) where Persian orthography requires it.
 import type { MessageKey } from './en';
+import { partsFa } from './parts';
 
 export const fa: Record<MessageKey, string> = {
+  ...partsFa,
   'nav.ideas': 'ایده‌ها',
   'nav.drafts': 'پیش‌نویس‌ها',
   'nav.templates': 'قالب‌ها',

@@ -9,7 +9,7 @@ TubeX is a personal, local-first Chrome/Edge MV3 extension for a Persian-speakin
 
 ## Scope and authority
 - Work only in the milestone the owner authorized (see `docs/NEXT.md`). Small end-to-end slices; no unrelated refactors, formatting sweeps or dependency upgrades.
-- Never: paid services, store publication, live YouTube writes, posting/messaging outside the repo, force-push, committing personal data or secrets. Ask once when a material decision depends on the owner.
+- Never: paid services, store publication, live YouTube writes without preview + explicit confirmation + undo where the API allows (owner authorized writes, D-015), posting/messaging outside the repo, force-push, committing personal data or secrets. Ask once when a material decision depends on the owner.
 - The repo is public. Run `git diff --cached` and a secret check before every commit.
 
 ## Truthfulness
@@ -21,8 +21,8 @@ TubeX is a personal, local-first Chrome/Edge MV3 extension for a Persian-speakin
 ## Code rules
 - Pure rules in `src/domain/` (no browser APIs). Persisted records: `src/storage/db.ts` is the only owner; record shapes and validation in `src/domain/records.ts`. Preferences: `src/storage/prefs.ts`.
 - All UI text through `src/i18n` (`en.ts` keys; `fa.ts` must match, test enforces it). Logical CSS properties only; `dir="auto"`/`<bdi>` for user text.
-- Content scripts are read-only, inject no UI unless a milestone asks for it, and validate sender + message type. Page DOM is untrusted.
-- Minimal permissions: currently `storage`, `sidePanel`, hosts `www.youtube.com`, `studio.youtube.com`. Adding any permission needs a decision record.
+- Content scripts validate sender + message type; page DOM is untrusted. In-page UI (owner request, D-016) lives in shadow-root islands (`src/inpage`), adds to YouTube/Studio without hiding or restyling it, and changes Studio form fields only on an explicit click (Studio's Save stays the user's). Content scripts reach APIs, the database and AI only through background RPC (`src/platform/rpc.ts`, methods in `src/background/methods/*`).
+- Minimal permissions: currently `storage`, `sidePanel`, `identity`, `alarms`, `notifications`, hosts `www.youtube.com`, `studio.youtube.com` (+ optional API hosts at runtime). Adding any permission needs a decision record.
 - No `eval`, remote code, or HTML injection from data.
 - Local edits: no modal; reversible actions get Undo. Destructive/bulk/public actions: inline confirmation stating the consequence.
 

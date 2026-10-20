@@ -1,34 +1,26 @@
 # Design
 
-Mode: **Operate**. Familiar controls, fast scanning, clear consequences, restrained visuals. Palette and type are **proposed** until the owner reviews real screens (screenshots: run `npm run e2e`, see `tests/e2e/artifacts/`).
+Owner-chosen design language (2026-10-20): the Spotify-inspired brief he uploaded. TubeX adapts it to a creator tool: **content-first darkness** where video thumbnails and channel art are the only decorative colour, one functional green accent, pill and circle geometry, heavy elevation, compact bold/regular type.
 
-## Surfaces (M1)
-- **Side panel** (`entrypoints/sidepanel`): current page card → idea capture → current draft (editor, checks, package, collapsible preview) → recent ideas. Header: active channel, "not connected" badge, open workspace.
-- **Workspace** (`entrypoints/workspace`, full tab): Ideas, Drafts, Templates, Channels, Settings. Hash routes (`#drafts/<id>`). Focus moves to the section heading on route change.
-- **Popup**: save current page as idea, open panel, open workspace, connection status. Nothing else.
-- No UI is injected into YouTube pages in M1.
+## Rules
+- **Dark by default** (`#121212` page, `#181818`/`#1f1f1f` surfaces, black frame between workspace panels). Light theme is an achromatic variant for those who choose it.
+- **Green `#1ed760` is functional only**: primary action, active state, positive change, score fill. Never decoration, never a background wash. No other brand colours. Semantic: red `#f3727f` errors/negative, orange `#ffa42b` warnings, blue `#539df5` info.
+- **Colour comes from content**: the workspace hero tint is taken from the active channel's avatar (`useArtColor`); lists show thumbnails (`Thumb`) and avatars (`Avatar`).
+- **Pills and circles**: every button is a pill (`Button`), icon controls are circles (`IconButton`), the main action of a page may be the round green `.play-btn`. Search inputs are pills (`SearchInput`). Cards 8 px radius, no borders; depth comes from shade (`--surface` → `--surface-2` → `--surface-3`) and heavy shadows for floating things.
+- **Type**: Figtree (Latin, Circular-like geometric) and Estedad (Persian), bundled. Bold (700/800) vs regular (400) contrast instead of many sizes; 12–16 px for UI, big 28–48 px page titles in `PageHeader`. English buttons are uppercase with wide tracking; **Persian never gets letter-spacing or uppercase** (it breaks Arabic-script joining).
+- **Dense, scannable lists**: videos, keywords, comments and alerts use the track-list pattern (`.tracks`/`.track`: index, thumbnail + title + subtitle, right-aligned numbers) like a Spotify playlist, not boxed cards.
+- **Pages**: `PageHeader` (kicker, big title, one-line description, optional art) → action bar (primary green pill first) → `Tabs` (pills) → content. One primary action per view.
+- **Never show missing data as zero**: use `—`, `Score value={null}`, or a sentence saying why it is missing.
+- **Words**: plain verbs, sentence case, the button says what happens ("Schedule update", not "Submit"); errors say what happened and what to do.
 
-Job-based navigation (Research / Prepare / Improve / Library) is the target; M1 uses object sections because Research and Improve need YouTube data (M2+). Revisit when those land rather than show empty sections.
+## Tokens and components
+`src/styles/base.css` (tokens on `:root` and `.tx-root`, all sizes in px so in-page UI is unaffected by YouTube's 10 px root font). Components in `src/components/ui.tsx`: `Button`, `IconButton`, `Field`, `Notice`, `Empty` (icon, title, action), `ConfirmButton`, `PageHeader`, `Card`, `Tabs`, `Stat`, `Score`, `Meter`, `Skeleton`, `SearchInput`, `Switch`, `Avatar`, `Thumb`, `BarChart`, `LineChart`. Icons: `src/components/icons.tsx` (`<Icon name="…" />`, own 24 px stroke set; add paths there). Live lists of work stores: `useWork('alerts' | 'jobs' | 'trackers' | 'snapshots')`.
 
-## Tokens (`src/styles/base.css`)
-- Colour: warm neutrals (`--bg`, `--surface`, `--surface-2`, `--border*`, `--text*`), one orange action accent (`--accent` #c2410c light / #fb923c dark), status colours with soft backgrounds. Dark theme via `data-theme="dark"` on `<html>`; system follows `prefers-color-scheme`.
-- Type: Estedad (Persian) and Figtree (English), variable, bundled locally from Fontsource (OFL-1.1). Sizes `--text-s/m/l/xl`. Persian line-height 1.75.
-- Space `--space-1..5` (4–24 px); radius `--radius-s` 6 px, `--radius-m` 10 px.
+## Surfaces
+- **Workspace** (full tab): black frame, start-side nav panel (groups: Create, Research, Analyze, Manage, Engage) with "Your library" (Google channels, watched channels), main panel with top bar (back/forward, search pill, language, theme, alerts bell, channel avatar). Routes in `entrypoints/workspace/App.tsx`.
+- **Side panel**: the same language at 320–400 px; sticky header; page-aware tools first.
+- **Popup**: quick actions only.
+- **In-page (YouTube and Studio)**: islands in shadow roots (`src/inpage/mount.tsx`), following YouTube's own dark/light theme and font, with the green TubeX mark. Never restyle or hide YouTube's UI; add, don't replace. Studio form fields are filled only on an explicit click and saved by Studio's own Save.
 
-## Components (`src/components/ui.tsx`)
-`Button` (default/primary/ghost/danger, `s` size), `Field` (label + counter + help, wires `aria-describedby`), `Notice` (info/warning/error/success; error is `role=alert`), `Empty`, `ConfirmButton` (inline two-step confirmation, no modal), toasts with optional Undo (`role=status`, polite).
-
-## RTL and mixed text
-- `<html lang dir>` follows UI language instantly across all open pages (storage change event).
-- Logical CSS properties only. User text fields and previews use `dir="auto"`/`unicode-bidi: plaintext`; names, handles and URLs in `<bdi>`; handles are LTR inputs.
-- Search matching normalizes ي/ك variants, ZWNJ, diacritics and Persian/Arabic digits; saved text is never rewritten.
-- Numbers in Persian UI use Persian digits; dates use the Persian calendar (`fa-IR-u-ca-persian`).
-
-## States
-Loading, empty, no match, unsupported page, unreadable page, saving/saved/unsaved/failed (with retry), edit conflict (keep mine / load other), corrupt records hidden with notice, storage open failure with retry, import errors, connection-not-available explanations. Not yet: offline/quota/auth states (arrive with M2).
-
-## Confirmation policy
-Local reversible edits: no dialog, Undo toast. Replace-all import and delete-all data: inline confirmation stating the consequence. Public writes (M4+): preview with exact video IDs and fields.
-
-## Checked (2026-10-20, Chromium 141 headless, fixtures)
-Persian/English, light/dark, side panel at 320 px and workspace at 320 px and 1280 px without horizontal overflow; keyboard reaches nav first; focus moves to heading on route change. Not yet checked: screen-reader run, 200% zoom, Edge, contrast measurement with a tool (token pairs were chosen for ≥4.5:1 but not measured).
+## Quality floor
+Keyboard reachable with visible focus (white ring on dark), `aria-current` on nav, tabs are `role=tablist` with arrow keys, 320 px without horizontal scroll, reduced motion respected, logical CSS properties only, `dir="auto"` / `<bdi>` for user and YouTube text. Review real screens with `node tests/e2e/shots.mjs <outDir> <route…>` (env `LANG_UI`, `THEME`, `WIDTH`, `PAGE`).

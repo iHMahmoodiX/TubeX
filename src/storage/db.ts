@@ -6,7 +6,7 @@ import type { CollectionName, Collections } from '../domain/models';
 import { sanitizeRecord } from '../domain/records';
 
 export const DB_NAME = 'tubex';
-export const DB_VERSION = 2;
+export const DB_VERSION = 3;
 const META = 'meta';
 const SNAPSHOT_KEY = 'preImportSnapshot';
 export const CACHE = 'cache';
@@ -31,6 +31,14 @@ const MIGRATIONS: Record<number, (db: Db) => void> = {
     // Cache of API/AI responses. Not part of backups; entries expire (see src/storage/cache.ts).
     db.createObjectStore(CACHE, { keyPath: 'key' }).createIndex('expiresAt', 'expiresAt');
   },
+  3: (db) => {
+    // Working stores for scheduled jobs, trackers, time-series snapshots and alerts (see src/storage/stores.ts).
+    // Not part of backups: they hold derived data and pending YouTube actions, not the owner's writing.
+    db.createObjectStore('jobs', { keyPath: 'id' }).createIndex('runAt', 'runAt');
+    db.createObjectStore('trackers', { keyPath: 'id' }).createIndex('kind', 'kind');
+    db.createObjectStore('snapshots', { keyPath: 'id' }).createIndex('ref', 'ref');
+    db.createObjectStore('alerts', { keyPath: 'id' }).createIndex('at', 'at');
+  },
 };
 
 export function openDb(name = DB_NAME): Promise<Db> {
@@ -41,6 +49,11 @@ export function openDb(name = DB_NAME): Promise<Db> {
       },
       blocked() {
         console.warn('[TubeX] database upgrade blocked by another open TubeX page');
+      },
+      blocking() {
+        // A newer TubeX build wants to upgrade: let it, and reopen on next use.
+        void dbPromise?.then((db) => db.close());
+        dbPromise = null;
       },
     }).catch((err) => {
       dbPromise = null; // allow a retry from the recovery UI
@@ -218,8 +231,13 @@ export async function deleteAllData(): Promise<void> {
   for (const name of [...COLLECTIONS, META]) await tx.objectStore(name).clear();
   await db.clear(CACHE);
   await tx.done;
+  for (const name of WORK_STORES) await db.clear(name);
   COLLECTIONS.forEach(notify);
 }
+
+/** Version-3 working stores (jobs, trackers, snapshots, alerts). Access them through src/storage/stores.ts. */
+export const WORK_STORES = ['jobs', 'trackers', 'snapshots', 'alerts'] as const;
+export type WorkStore = (typeof WORK_STORES)[number];
 
 // ---- undo log for changes written to YouTube ----
 const LIVE_UNDO_KEY = 'liveUndo';

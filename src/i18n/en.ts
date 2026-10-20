@@ -1,5 +1,8 @@
 // English UI catalog. Keys are the source of truth; fa.ts must provide every key.
+import { partsEn } from './parts';
+
 export const en = {
+  ...partsEn,
   'nav.ideas': 'Ideas',
   'nav.drafts': 'Drafts',
   'nav.templates': 'Templates',

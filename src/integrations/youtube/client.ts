@@ -4,6 +4,7 @@
 import { addUsage, loadIntegrations, loadUsage } from '../../storage/integrations';
 import { cacheGet, cacheSet, hashKey } from '../../storage/cache';
 import { hasOrigin } from '../../platform/permissions';
+import { getToken, loadGoogleState } from '../google/auth';
 
 export const YT_BASE = 'https://www.googleapis.com/youtube/v3';
 export const COST = { search: 100, videos: 1, channels: 1, playlistItems: 1, videoCategories: 1, commentThreads: 1 } as const;
@@ -46,7 +47,9 @@ export async function ytGet<T>(
   opts: { fresh?: boolean; fetcher?: typeof fetch } = {},
 ): Promise<YtResult<T>> {
   const { youtube } = await loadIntegrations();
-  if (!youtube.apiKey) throw new YtError('no-key');
+  // Without an API key, public reads go through the signed-in channel's OAuth token (same quota project).
+  const signedIn = youtube.apiKey ? undefined : (await loadGoogleState()).activeChannelId;
+  if (!youtube.apiKey && !signedIn) throw new YtError('no-key');
   if (!(await hasOrigin(YT_BASE))) throw new YtError('permission');
 
   const clean: Record<string, string> = {};
@@ -64,12 +67,13 @@ export async function ytGet<T>(
 
   const url = new URL(`${YT_BASE}/${resource}`);
   for (const [k, v] of Object.entries(clean)) url.searchParams.set(k, v);
-  url.searchParams.set('key', youtube.apiKey);
+  if (youtube.apiKey) url.searchParams.set('key', youtube.apiKey);
+  const headers: Record<string, string> = signedIn ? { Authorization: `Bearer ${await getToken(signedIn)}` } : {};
 
   await addUsage({ ytUnits: cost });
   let res: Response;
   try {
-    res = await (opts.fetcher ?? fetch)(url, { signal: AbortSignal.timeout(20_000) });
+    res = await (opts.fetcher ?? fetch)(url, { headers, signal: AbortSignal.timeout(20_000) });
   } catch (e) {
     throw new YtError('unreachable', e instanceof Error ? e.message : String(e));
   }

@@ -1,15 +1,18 @@
 import { browser } from 'wxt/browser';
 import { defineContentScript } from 'wxt/utils/define-content-script';
-import { parsePageUrl } from '../src/domain/pageContext';
-import { isPageContextRequest, type PageContextResponse } from '../src/platform/messages';
-import { ADAPTER_VERSION, readWatchDom } from '../src/platform/youtubeDom';
-import { loadPrefs } from '../src/storage/prefs';
+import { parsePageUrl } from '../../src/domain/pageContext';
+import { registerYoutubeIslands } from '../../src/inpage/youtube';
+import { isPageContextRequest, type PageContextResponse } from '../../src/platform/messages';
+import { ADAPTER_VERSION, readWatchDom } from '../../src/platform/youtubeDom';
+import { loadPrefs } from '../../src/storage/prefs';
+import '../../src/inpage/inpage.css';
 
-// Read-only responder: injects no UI and observes nothing. Answers only TubeX's own extension pages.
+// 1) Read-only page-context responder for TubeX's own pages. 2) In-page tools (islands) in shadow roots.
 export default defineContentScript({
   matches: ['https://www.youtube.com/*'],
   runAt: 'document_idle',
-  main() {
+  cssInjectionMode: 'ui',
+  async main(ctx) {
     // Chrome's onMessage does not accept a returned Promise; respond via sendResponse and return true.
     browser.runtime.onMessage.addListener((msg: unknown, sender, sendResponse: (r: PageContextResponse) => void) => {
       if (sender.id !== browser.runtime.id || !isPageContextRequest(msg)) return false;
@@ -21,5 +24,7 @@ export default defineContentScript({
       })();
       return true;
     });
+    if ((await loadPrefs()).inpage?.all === false) return;
+    await registerYoutubeIslands(ctx);
   },
 });

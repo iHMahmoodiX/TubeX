@@ -5,6 +5,7 @@ import { openDb } from '../storage/db';
 import { DEFAULT_PREFS, loadPrefs, onPrefsChanged, updatePrefs, type Prefs } from '../storage/prefs';
 import { ToastProvider } from './toasts';
 import { Button, Notice } from './ui';
+import '../styles/fonts.css';
 import '../styles/base.css';
 
 interface PrefsApi {
