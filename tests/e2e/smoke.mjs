@@ -109,6 +109,8 @@ async function launch(userDir) {
     () => document.querySelector('extensions-manager').shadowRoot.querySelector('extensions-item-list').shadowRoot.querySelector('extensions-item')?.id,
   );
   assert(id, 'extension not loaded');
+  // The manifest key pins the ID; the Google OAuth redirect URI depends on it.
+  assert(id === 'cohhieggibbcifgenjclmjainpljkefh', `unexpected extension id ${id}`);
   return { ctx, id, blank: p };
 }
 

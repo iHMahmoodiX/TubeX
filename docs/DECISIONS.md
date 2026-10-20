@@ -40,3 +40,6 @@ Research, competitor and page stats need only public data, so they ship now with
 
 ### D-013 Bulk edit works on TubeX drafts and templates first — Accepted
 The owner prioritized Bulk Find & Replace. Live video edits need OAuth and explicit write authorization; local bulk edit ships with preview, per-item opt-out, rev-checked saves and undo.
+
+### D-014 Fixed extension ID via manifest `key`; OAuth with a Web application client and `launchWebAuthFlow` — Accepted
+The redirect URI `https://cohhieggibbcifgenjclmjainpljkefh.chromiumapp.org/` must stay stable across installs, so `wxt.config.ts` carries the public key (the private key was discarded; a store listing would get its own). A Web application client works in Chrome and Edge (`getAuthToken` is Chrome-only, Inferred). TubeX will use the token response (no client secret in the extension); tokens live only in memory/session storage. The owner's project stays in Testing mode (owner plus up to 100 test users, no Google verification), unlike TubeBuddy/vidIQ, which are verified and audited for public use.
