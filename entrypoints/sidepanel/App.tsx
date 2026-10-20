@@ -2,16 +2,19 @@ import { useEffect, useRef, useState } from 'react';
 import { isCapturable } from '../../src/domain/pageContext';
 import { usePrefs } from '../../src/components/AppShell';
 import { useActivePage, useCollection } from '../../src/components/hooks';
-import { Button, Empty, Field } from '../../src/components/ui';
+import { Icon } from '../../src/components/icons';
+import { Avatar, Button, Empty, IconButton } from '../../src/components/ui';
+import { useGoogle } from '../../src/features/connections/useConnections';
 import { DraftEditor } from '../../src/features/drafts/DraftEditor';
 import { CaptureForm } from '../../src/features/ideas/CaptureForm';
 import { ContextCard } from '../../src/features/ideas/ContextCard';
 import { createDraft, sourceFromContext } from '../../src/features/ideas/ideaActions';
-import { IdeaRow } from '../../src/features/ideas/IdeasView';
+import { IdeaTrack } from '../../src/features/ideas/IdeasView';
 import { PageInsights } from '../../src/features/insights/PageInsights';
 import { ProfileSelect } from '../../src/features/profiles/ProfilesView';
 import { useI18n } from '../../src/i18n';
 import { openWorkspace } from '../../src/platform/navigation';
+import '../../src/features/core/core.css';
 
 export function App() {
   const { t } = useI18n();
@@ -19,6 +22,8 @@ export function App() {
   const { ctx } = useActivePage();
   const ideas = useCollection('ideas');
   const drafts = useCollection('drafts');
+  const google = useGoogle();
+  const active = google.channels.find((c) => c.channelId === google.activeChannelId);
   const [draftId, setDraftId] = useState<string | undefined>(prefs.lastDraftId);
 
   // Drop a remembered draft that no longer exists (checked once, on first load). The panel never
@@ -41,55 +46,66 @@ export function App() {
     select(d.id);
   };
 
-  const recent = ideas.items.slice(0, 5);
+  const recent = [...ideas.items].sort((a, b) => b.createdAt.localeCompare(a.createdAt)).slice(0, 5);
 
   return (
-    <main className="panel">
-      <header className="panel-header">
+    <main className="core-panel">
+      <header className="core-panel-head">
         <span className="brand">
-          Tube<span>X</span>
+          <span className="brand-mark">
+            <Icon name="logo" />
+          </span>
+          TubeX
         </span>
-        <div className="grow" />
+        <span className="grow" />
         <ProfileSelect />
-        <Button size="s" variant="ghost" onClick={() => void openWorkspace('ideas')}>
-          {t('popup.openWorkspace')}
-        </Button>
+        {active ? (
+          <button type="button" className="icon-btn" title={active.title} aria-label={`${t('core.panel.channel')}: ${active.title}`} onClick={() => void openWorkspace('mychannel')}>
+            <Avatar src={active.thumbnail} name={active.title} />
+          </button>
+        ) : (
+          google.loaded && <IconButton icon="users" label={t('shell.signIn')} onClick={() => void openWorkspace('settings')} />
+        )}
+        <IconButton icon="external" label={t('popup.openWorkspace')} onClick={() => void openWorkspace('mychannel')} />
       </header>
 
       <ContextCard ctx={ctx} />
       <PageInsights ctx={ctx} draftId={draftId} />
       <CaptureForm ctx={ctx} />
 
-      <section className="stack" aria-labelledby="draft-h">
-        <div className="row-between">
+      <section className="card stack" aria-labelledby="draft-h">
+        <div className="core-mini-h">
           <h2 id="draft-h">{t('draft.heading')}</h2>
           <Button size="s" variant="primary" onClick={() => void newDraft()}>
+            <Icon name="plus" />
             {t('draft.new')}
           </Button>
         </div>
         {drafts.items.length > 0 && (
-          <Field label={t('draft.pick')}>
-            {({ id }) => (
-              <select id={id} className="select" value={draftId ?? ''} onChange={(e) => select(e.target.value || undefined)}>
-                <option value="">—</option>
-                {drafts.items.map((d) => (
-                  <option key={d.id} value={d.id}>
-                    {d.title.trim() || t('draft.untitled')}
-                  </option>
-                ))}
-              </select>
-            )}
-          </Field>
+          <select className="select core-select-pill" style={{ width: '100%' }} aria-label={t('draft.pick')} value={draftId ?? ''} onChange={(e) => select(e.target.value || undefined)}>
+            <option value="">{t('core.panel.pickDraft')}</option>
+            {drafts.items.map((d) => (
+              <option key={d.id} value={d.id}>
+                {d.title.trim() || t('draft.untitled')}
+              </option>
+            ))}
+          </select>
         )}
         {draftId ? (
-          <DraftEditor key={draftId} draftId={draftId} compact pageCtx={ctx} onDeleted={() => select(undefined)} />
+          <>
+            <DraftEditor key={draftId} draftId={draftId} compact pageCtx={ctx} onDeleted={() => select(undefined)} />
+            <Button size="s" variant="ghost" onClick={() => void openWorkspace('drafts', draftId)}>
+              <Icon name="external" />
+              {t('draft.openInWorkspace')}
+            </Button>
+          </>
         ) : (
-          drafts.items.length === 0 && !drafts.loading && <Empty>{t('draft.empty')}</Empty>
+          drafts.items.length === 0 && !drafts.loading && <Empty icon="edit">{t('draft.empty')}</Empty>
         )}
       </section>
 
       <section className="stack-s" aria-labelledby="recent-h">
-        <div className="row-between">
+        <div className="core-mini-h">
           <h2 id="recent-h">{t('ideas.recent')}</h2>
           {ideas.items.length > 0 && (
             <Button size="s" variant="ghost" onClick={() => void openWorkspace('ideas')}>
@@ -98,11 +114,11 @@ export function App() {
           )}
         </div>
         {recent.length === 0 ? (
-          !ideas.loading && <Empty>{t('ideas.empty')}</Empty>
+          !ideas.loading && <Empty icon="bulb">{t('ideas.empty')}</Empty>
         ) : (
-          <ul className="list">
-            {recent.map((i) => (
-              <IdeaRow key={i.id} idea={i} compact onStartDraft={select} />
+          <ul className="tracks core-mini-tracks" style={{ listStyle: 'none', margin: 0, padding: 0 }} data-testid="recent-ideas">
+            {recent.map((i, n) => (
+              <IdeaTrack key={i.id} idea={i} index={n} compact onStartDraft={select} />
             ))}
           </ul>
         )}

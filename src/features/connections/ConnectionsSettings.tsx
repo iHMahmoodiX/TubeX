@@ -1,6 +1,8 @@
-// Settings for the optional AI provider and YouTube Data API key. Keys stay in this browser profile.
-import { useEffect, useState } from 'react';
-import { Button, ConfirmButton, Field, Notice } from '../../components/ui';
+// Settings for Google sign-in, the YouTube Data API key and the optional AI provider. Keys stay in this
+// browser profile.
+import { useEffect, useState, type ReactNode } from 'react';
+import { Icon, type IconName } from '../../components/icons';
+import { Avatar, Button, Card, ConfirmButton, Field, Meter, Notice, Switch } from '../../components/ui';
 import { useToast } from '../../components/toasts';
 import { useI18n } from '../../i18n';
 import { AI_PRESETS, AiError, listModels, presetOf, type AiPreset } from '../../integrations/ai/provider';
@@ -12,16 +14,26 @@ import { saveIntegrations, type AiSettings, type YouTubeSettings } from '../../s
 import { ErrorNotice } from './ErrorNotice';
 import { useGoogle, useIntegrations, useUsage } from './useConnections';
 import { setActiveChannel, signIn, signOut } from '../../integrations/google/auth';
+import '../core/core.css';
+
+export function StatusPill({ on, children }: { on: boolean | 'warn'; children: ReactNode }) {
+  return (
+    <span className="core-status" data-on={String(on)}>
+      <span className="dot" aria-hidden="true" />
+      {children}
+    </span>
+  );
+}
 
 function SecretInput({ id, value, onChange, describedBy }: { id: string; value: string; onChange: (v: string) => void; describedBy?: string }) {
   const { t } = useI18n();
   const [show, setShow] = useState(false);
   return (
-    <div className="row" style={{ flexWrap: 'nowrap' }}>
+    <div className="core-secret">
       <input
         id={id}
         aria-describedby={describedBy}
-        className="input ltr"
+        className="input ltr mono"
         dir="ltr"
         type={show ? 'text' : 'password'}
         autoComplete="off"
@@ -30,11 +42,52 @@ function SecretInput({ id, value, onChange, describedBy }: { id: string; value: 
         onChange={(e) => onChange(e.target.value.trim())}
       />
       <Button size="s" variant="ghost" aria-pressed={show} onClick={() => setShow((v) => !v)}>
+        <Icon name="eye" />
         {show ? t('conn.hide') : t('conn.show')}
       </Button>
     </div>
   );
 }
+
+const meterTone = (pct: number) => (pct >= 95 ? 'danger' : pct >= 80 ? 'warning' : undefined);
+
+/** YouTube units today and AI requests this month, against the local caps. */
+function UsageSummary() {
+  const { t, lang } = useI18n();
+  const saved = useIntegrations();
+  const usage = useUsage();
+  const num = new Intl.NumberFormat(lang === 'fa' ? 'fa-IR' : 'en-US');
+  const ytCap = saved.youtube.dailyUnitCap;
+  const aiCap = saved.ai.monthlyRequestCap;
+  const ytPct = ytCap ? (usage.ytUnits / ytCap) * 100 : 0;
+  const aiPct = aiCap ? (usage.aiRequests / aiCap) * 100 : 0;
+  return (
+    <div className="core-usage" data-testid="usage-summary">
+      <div>
+        <span className="small muted">{t('core.conn.ytToday')}</span>
+        <span>
+          <b>{num.format(usage.ytUnits)}</b> <span className="muted small">/ {ytCap ? num.format(ytCap) : '∞'}</span>
+        </span>
+        <Meter value={ytPct} tone={ytCap ? meterTone(ytPct) : 'muted'} label={t('core.conn.ytToday')} />
+        <span className="xsmall faint">{t('core.conn.ytTodayHelp')}</span>
+      </div>
+      <div>
+        <span className="small muted">{t('core.conn.aiMonth')}</span>
+        <span>
+          <b>{num.format(usage.aiRequests)}</b> <span className="muted small">/ {aiCap ? num.format(aiCap) : '∞'}</span>
+        </span>
+        <Meter value={aiPct} tone={aiCap ? meterTone(aiPct) : 'muted'} label={t('core.conn.aiMonth')} />
+        <span className="xsmall faint">{t('core.conn.aiMonthHelp', { tin: num.format(usage.aiInputTokens), tout: num.format(usage.aiOutputTokens) })}</span>
+      </div>
+    </div>
+  );
+}
+
+const PROVIDERS: { id: AiPreset; icon: IconName }[] = [
+  { id: 'ollama', icon: 'lock' },
+  { id: 'gemini', icon: 'sparkle' },
+  { id: 'custom', icon: 'link' },
+];
 
 function AiSection() {
   const { t, lang } = useI18n();
@@ -91,58 +144,65 @@ function AiSection() {
   };
 
   const num = new Intl.NumberFormat(lang === 'fa' ? 'fa-IR' : 'en-US');
+  const status = saved.ai.enabled ? (granted === false ? 'warn' : true) : false;
   return (
-    <section className="stack" aria-labelledby="ai-h" data-testid="ai-settings">
-      <div className="row-between">
-        <h3 id="ai-h">{t('settings.ai')}</h3>
-        <span className={`badge ${saved.ai.enabled ? 'badge-accent' : ''}`}>{saved.ai.enabled ? t('conn.on') : t('conn.off')}</span>
-      </div>
+    <Card
+      data-testid="ai-settings"
+      aria-labelledby="ai-h"
+      title={
+        <span className="row" style={{ gap: 12 }}>
+          <span className="core-section-icon" aria-hidden="true">
+            <Icon name="sparkle" />
+          </span>
+          <span id="ai-h">{t('settings.ai')}</span>
+        </span>
+      }
+      actions={<StatusPill on={status}>{saved.ai.enabled ? (granted === false ? t('core.conn.needsAllow') : t('conn.on')) : t('conn.off')}</StatusPill>}
+    >
       <p className="small muted">{t('conn.aiIntro')}</p>
-      <label className="check">
-        <input type="checkbox" checked={ai.enabled} onChange={(e) => setAi({ ...ai, enabled: e.target.checked })} />
-        <span>{t('conn.aiEnable')}</span>
-      </label>
-      <Field label={t('conn.provider')}>
-        {({ id }) => (
-          <select id={id} className="select" value={preset} onChange={(e) => choosePreset(e.target.value as AiPreset)}>
-            <option value="ollama">{t('conn.preset.ollama')}</option>
-            <option value="gemini">{t('conn.preset.gemini')}</option>
-            <option value="custom">{t('conn.preset.custom')}</option>
-          </select>
-        )}
-      </Field>
+      <Switch checked={ai.enabled} onChange={(v) => setAi({ ...ai, enabled: v })} label={<strong>{t('conn.aiEnable')}</strong>} />
+      <div className="core-providers" role="radiogroup" aria-label={t('conn.provider')}>
+        {PROVIDERS.map((p) => (
+          <label key={p.id} className="core-provider" data-checked={preset === p.id}>
+            <input type="radio" name="ai-provider" value={p.id} checked={preset === p.id} onChange={() => choosePreset(p.id)} />
+            <span className="core-provider-top">
+              <span className="core-provider-icon" aria-hidden="true">
+                <Icon name={p.id === preset ? 'check' : p.icon} />
+              </span>
+              <strong className="small">{t(`conn.preset.${p.id}`)}</strong>
+            </span>
+            <span className="xsmall muted">{t(`core.conn.provider.${p.id}`)}</span>
+          </label>
+        ))}
+      </div>
       <p className="small muted">{t(`conn.presetHelp.${preset}`)}</p>
-      <div className="row">
-        <div className="grow">
-          <Field label={t('conn.baseUrl')} help={validUrl || !ai.baseUrl ? undefined : t('conn.baseUrlInvalid')}>
-            {({ id, describedBy }) => (
-              <input
-                id={id}
-                aria-describedby={describedBy}
-                className="input ltr"
-                dir="ltr"
-                spellCheck={false}
-                placeholder="https://…/v1"
-                value={ai.baseUrl}
-                onChange={(e) => setAi({ ...ai, baseUrl: e.target.value.trim().replace(/\/+$/, '') })}
-              />
-            )}
-          </Field>
-        </div>
-        <div className="grow">
-          <Field label={t('conn.model')}>
-            {({ id }) => (
-              <>
-                <input id={id} className="input ltr" dir="ltr" list={`${id}-models`} spellCheck={false} value={ai.model} onChange={(e) => setAi({ ...ai, model: e.target.value.trim() })} />
-                <datalist id={`${id}-models`}>
-                  {models.map((m) => (
-                    <option key={m} value={m} />
-                  ))}
-                </datalist>
-              </>
-            )}
-          </Field>
-        </div>
+      <div className="grid-2">
+        <Field label={t('conn.baseUrl')} help={validUrl || !ai.baseUrl ? undefined : t('conn.baseUrlInvalid')}>
+          {({ id, describedBy }) => (
+            <input
+              id={id}
+              aria-describedby={describedBy}
+              className="input ltr"
+              dir="ltr"
+              spellCheck={false}
+              placeholder="https://…/v1"
+              value={ai.baseUrl}
+              onChange={(e) => setAi({ ...ai, baseUrl: e.target.value.trim().replace(/\/+$/, '') })}
+            />
+          )}
+        </Field>
+        <Field label={t('conn.model')}>
+          {({ id }) => (
+            <>
+              <input id={id} className="input ltr" dir="ltr" list={`${id}-models`} spellCheck={false} value={ai.model} onChange={(e) => setAi({ ...ai, model: e.target.value.trim() })} />
+              <datalist id={`${id}-models`}>
+                {models.map((m) => (
+                  <option key={m} value={m} />
+                ))}
+              </datalist>
+            </>
+          )}
+        </Field>
       </div>
       <Field label={`${t('conn.apiKey')} ${preset === 'ollama' ? `(${t('common.optional')})` : ''}`} help={t('conn.keyStorage')}>
         {({ id, describedBy }) => <SecretInput id={id} describedBy={describedBy} value={ai.apiKey} onChange={(v) => setAi({ ...ai, apiKey: v })} />}
@@ -162,7 +222,7 @@ function AiSection() {
           />
         )}
       </Field>
-      <p className="small muted" data-testid="ai-usage">
+      <p className="xsmall faint" data-testid="ai-usage">
         {t('conn.aiUsage', {
           n: num.format(usage.aiRequests),
           cap: saved.ai.monthlyRequestCap ? num.format(saved.ai.monthlyRequestCap) : '∞',
@@ -176,12 +236,13 @@ function AiSection() {
           {t('conn.saveAndAllow')}
         </Button>
         <Button onClick={() => void test()} disabled={!validUrl || testing}>
+          <Icon name="pulse" />
           {testing ? t('conn.testing') : t('conn.test')}
         </Button>
       </div>
       {ok && <Notice tone="success">{ok}</Notice>}
       <ErrorNotice error={error} />
-    </section>
+    </Card>
   );
 }
 
@@ -231,17 +292,27 @@ function YouTubeSection() {
   };
 
   const num = new Intl.NumberFormat(lang === 'fa' ? 'fa-IR' : 'en-US');
+  const hasKey = !!saved.youtube.apiKey;
   return (
-    <section className="stack" aria-labelledby="yt-h" data-testid="yt-settings">
-      <div className="row-between">
-        <h3 id="yt-h">{t('conn.ytHeading')}</h3>
-        <span className={`badge ${saved.youtube.apiKey ? 'badge-accent' : ''}`}>{saved.youtube.apiKey ? t('conn.on') : t('conn.off')}</span>
-      </div>
+    <Card
+      data-testid="yt-settings"
+      aria-labelledby="yt-h"
+      title={
+        <span className="row" style={{ gap: 12 }}>
+          <span className="core-section-icon" aria-hidden="true">
+            <Icon name="key" />
+          </span>
+          <span id="yt-h">{t('conn.ytHeading')}</span>
+        </span>
+      }
+      actions={<StatusPill on={hasKey ? (granted === false ? 'warn' : true) : false}>{hasKey ? (granted === false ? t('core.conn.needsAllow') : t('conn.on')) : t('conn.off')}</StatusPill>}
+    >
       <p className="small muted">{t('conn.ytIntro')}</p>
+      <Notice>{t('core.conn.ytOptional')}</Notice>
       <Field label={t('conn.apiKey')} help={t('conn.ytKeyHelp')}>
         {({ id, describedBy }) => <SecretInput id={id} describedBy={describedBy} value={yt.apiKey} onChange={(v) => setYt({ ...yt, apiKey: v })} />}
       </Field>
-      <div className="row">
+      <div className="grid-3">
         <Field label={t('conn.region')} help={t('conn.regionHelp')}>
           {({ id, describedBy }) => (
             <input
@@ -250,7 +321,6 @@ function YouTubeSection() {
               className="input ltr"
               dir="ltr"
               maxLength={2}
-              style={{ maxWidth: 90 }}
               value={yt.region}
               onChange={(e) => setYt({ ...yt, region: e.target.value.toUpperCase().replace(/[^A-Z]/g, '') })}
             />
@@ -267,30 +337,31 @@ function YouTubeSection() {
             </select>
           )}
         </Field>
-        <Field label={t('conn.dailyCap')}>
-          {({ id }) => (
+        <Field label={t('conn.dailyCap')} help={t('core.conn.dailyCapHelp')}>
+          {({ id, describedBy }) => (
             <input
               id={id}
+              aria-describedby={describedBy}
               className="input"
               type="number"
               min={0}
               step={500}
-              style={{ maxWidth: 140 }}
               value={yt.dailyUnitCap}
               onChange={(e) => setYt({ ...yt, dailyUnitCap: Math.max(0, Math.floor(Number(e.target.value) || 0)) })}
             />
           )}
         </Field>
       </div>
-      <p className="small muted" data-testid="yt-usage">
+      <p className="xsmall faint" data-testid="yt-usage">
         {t('conn.ytUsage', { n: num.format(usage.ytUnits), cap: saved.youtube.dailyUnitCap ? num.format(saved.youtube.dailyUnitCap) : '∞' })}
       </p>
-      {granted === false && saved.youtube.apiKey && <Notice tone="warning">{t('conn.needsPermission')}</Notice>}
+      {granted === false && hasKey && <Notice tone="warning">{t('conn.needsPermission')}</Notice>}
       <div className="row">
         <Button variant="primary" onClick={() => void save()} disabled={!dirty && granted !== false}>
           {t('conn.saveAndAllow')}
         </Button>
         <Button onClick={() => void test()} disabled={!yt.apiKey || testing}>
+          <Icon name="pulse" />
           {testing ? t('conn.testing') : t('conn.test')}
         </Button>
         <Button
@@ -300,12 +371,13 @@ function YouTubeSection() {
             toast(t('conn.cacheCleared'));
           }}
         >
+          <Icon name="refresh" />
           {t('conn.clearCache')}
         </Button>
       </div>
       {ok && <Notice tone="success">{t('conn.ytOk')}</Notice>}
       <ErrorNotice error={error} />
-    </section>
+    </Card>
   );
 }
 
@@ -327,66 +399,80 @@ function GoogleSection() {
       setBusy(false);
     }
   };
+  const n = g.channels.length;
   return (
-    <section className="stack" aria-labelledby="g-h" data-testid="google-settings">
-      <div className="row-between">
-        <h3 id="g-h">{t('settings.youtube')}</h3>
-        <span className={`badge ${g.channels.length ? 'badge-accent' : ''}`}>{g.channels.length ? t('conn.on') : t('conn.off')}</span>
-      </div>
-      <p className="small muted">{t('auth.intro')}</p>
-      {g.channels.length > 0 && (
-        <ul className="list">
-          {g.channels.map((c) => (
-            <li key={c.channelId} className="list-item" data-active={c.channelId === g.activeChannelId ? 'true' : undefined}>
-              <div className="row-between">
-                <span className="row">
-                  {c.thumbnail && <img src={c.thumbnail} alt="" width={28} height={28} style={{ borderRadius: '50%' }} />}
-                  <strong dir="auto">{c.title}</strong>
-                  <span className="small muted ltr">{c.handle}</span>
-                </span>
-                <span className="row">
-                  {c.channelId !== g.activeChannelId ? (
-                    <Button size="s" onClick={() => void setActiveChannel(c.channelId)}>
-                      {t('auth.makeActive')}
-                    </Button>
-                  ) : (
-                    <span className="badge badge-accent">{t('auth.active')}</span>
-                  )}
-                  <ConfirmButton
-                    size="s"
-                    label={t('auth.signOut')}
-                    question={t('auth.signOutConfirm', { name: c.title })}
-                    confirmLabel={t('auth.signOut')}
-                    onConfirm={() => signOut(c.channelId)}
-                  />
-                </span>
+    <Card
+      data-testid="google-settings"
+      aria-labelledby="g-h"
+      title={
+        <span className="row" style={{ gap: 12 }}>
+          <span className="core-section-icon" aria-hidden="true">
+            <Icon name="users" />
+          </span>
+          <span id="g-h">{t('settings.youtube')}</span>
+        </span>
+      }
+      actions={<StatusPill on={n > 0}>{n ? t('core.conn.channelsN', { n }) : t('core.conn.signedOut')}</StatusPill>}
+    >
+      <p className="small muted">{t('core.conn.googleIntro')}</p>
+      {n > 0 && (
+        <div className="stack-s">
+          {g.channels.map((c) => {
+            const active = c.channelId === g.activeChannelId;
+            return (
+              <div key={c.channelId} className="core-account" data-active={active ? 'true' : undefined}>
+                <Avatar src={c.thumbnail} name={c.title} />
+                <div className="stack-s grow" style={{ gap: 0 }}>
+                  <strong className="truncate" dir="auto">
+                    {c.title}
+                  </strong>
+                  <span className="small muted ltr truncate">{c.handle}</span>
+                </div>
+                {active ? (
+                  <span className="badge badge-accent">{t('auth.active')}</span>
+                ) : (
+                  <Button size="s" onClick={() => void setActiveChannel(c.channelId)}>
+                    {t('auth.makeActive')}
+                  </Button>
+                )}
+                <ConfirmButton
+                  size="s"
+                  label={t('auth.signOut')}
+                  question={t('auth.signOutConfirm', { name: c.title })}
+                  confirmLabel={t('auth.signOut')}
+                  onConfirm={() => signOut(c.channelId)}
+                />
               </div>
-            </li>
-          ))}
-        </ul>
+            );
+          })}
+        </div>
       )}
       <div className="row">
         <Button variant="primary" disabled={busy} onClick={() => void connect()} data-testid="google-signin">
-          {busy ? t('auth.signingIn') : g.channels.length ? t('auth.addChannel') : t('auth.signIn')}
+          <Icon name={n ? 'plus' : 'lock'} />
+          {busy ? t('auth.signingIn') : n ? t('auth.addChannel') : t('auth.signIn')}
         </Button>
       </div>
-      <p className="small muted">{t('auth.multiHelp')}</p>
       <ErrorNotice error={error} />
-      <p className="small muted">{t('auth.writesNote')}</p>
-    </section>
+      <details className="disclosure">
+        <summary className="small">{t('core.conn.howSignIn')}</summary>
+        <div className="stack-s small muted">
+          <p>{t('auth.intro')}</p>
+          <p>{t('auth.multiHelp')}</p>
+          <p>{t('auth.writesNote')}</p>
+        </div>
+      </details>
+    </Card>
   );
 }
 
 export function ConnectionsSettings() {
-  const { t } = useI18n();
   return (
-    <div className="card stack">
-      <h2>{t('settings.connections')}</h2>
-      <AiSection />
-      <hr className="divider" />
-      <YouTubeSection />
-      <hr className="divider" />
+    <div className="stack">
+      <UsageSummary />
       <GoogleSection />
+      <YouTubeSection />
+      <AiSection />
     </div>
   );
 }

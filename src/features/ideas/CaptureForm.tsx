@@ -1,12 +1,14 @@
 import { useState } from 'react';
 import { isCapturable, type PageContext } from '../../domain/pageContext';
 import { usePrefs } from '../../components/AppShell';
+import { Icon } from '../../components/icons';
 import { useToast } from '../../components/toasts';
-import { Field } from '../../components/ui';
+import { Field, Switch } from '../../components/ui';
 import { useI18n } from '../../i18n';
 import { remove } from '../../storage/db';
 import { captureIdea, defaultIdeaText } from './ideaActions';
 
+/** Compact idea capture for the side panel: optional text, link to the open page, one green button. */
 export function CaptureForm({ ctx }: { ctx: PageContext | null }) {
   const { t } = useI18n();
   const toast = useToast();
@@ -29,18 +31,23 @@ export function CaptureForm({ ctx }: { ctx: PageContext | null }) {
     <form
       className="card stack-s"
       aria-labelledby="capture-h"
+      data-testid="capture"
       onSubmit={(e) => {
         e.preventDefault();
         void submit();
       }}
     >
-      <h2 id="capture-h">{t('capture.heading')}</h2>
-      <Field label={t('capture.label')} help={t('capture.hint')}>
+      <div className="core-mini-h">
+        <h2 id="capture-h">{t('capture.heading')}</h2>
+        <span className="xsmall faint">{t('capture.hint')}</span>
+      </div>
+      <Field label={t('capture.label')}>
         {({ id, describedBy }) => (
           <textarea
             id={id}
             aria-describedby={describedBy}
             className="textarea"
+            style={{ minHeight: 64 }}
             rows={2}
             dir={text ? 'auto' : undefined}
             placeholder={fallback || t('capture.placeholder')}
@@ -61,11 +68,9 @@ export function CaptureForm({ ctx }: { ctx: PageContext | null }) {
         </p>
       )}
       <div className="row-between">
-        <label className="check small">
-          <input type="checkbox" checked={canLink && link} disabled={!canLink} onChange={(e) => setLink(e.target.checked)} />
-          {t('capture.link')}
-        </label>
+        <Switch checked={canLink && link} disabled={!canLink} onChange={setLink} label={<span className="small">{t('capture.link')}</span>} />
         <button type="submit" className="btn btn-primary">
+          <Icon name="plus" />
           {t('capture.save')}
         </button>
       </div>
