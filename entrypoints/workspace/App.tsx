@@ -206,11 +206,10 @@ export function App() {
         <div className="ws-hero-tint" aria-hidden="true" />
         <div className="ws-main-inner">
           <div className="ws-top">
-            <IconButton icon="chevron" label={t('shell.back')} onClick={() => history.back()} style={{ transform: 'scaleX(-1)' }} className="btn-dark" />
-            <IconButton icon="chevron" label={t('shell.forward')} onClick={() => history.forward()} className="btn-dark" />
+            <IconButton icon="chevron" label={t('shell.back')} data-hist="1" onClick={() => history.back()} style={{ transform: 'scaleX(-1)' }} className="btn-dark" />
+            <IconButton icon="chevron" label={t('shell.forward')} data-hist="1" onClick={() => history.forward()} className="btn-dark" />
             <form
-              className="grow"
-              style={{ maxWidth: 420 }}
+              className="grow ws-top-search"
               role="search"
               onSubmit={(e) => {
                 e.preventDefault();
@@ -223,7 +222,7 @@ export function App() {
               </div>
             </form>
             <span className="grow" />
-            <button type="button" className="chip" onClick={() => void setPrefs({ uiLanguage: lang === 'fa' ? 'en' : 'fa' })}>
+            <button type="button" className="chip ws-top-lang" onClick={() => void setPrefs({ uiLanguage: lang === 'fa' ? 'en' : 'fa' })}>
               {t('shell.lang')}
             </button>
             <IconButton
