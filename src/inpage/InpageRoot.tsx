@@ -6,14 +6,21 @@ import { DEFAULT_PREFS, loadPrefs, onPrefsChanged, type Prefs } from '../storage
 
 function ytDark(): boolean {
   if (document.documentElement.hasAttribute('dark')) return true;
-  // Studio and older layouts: judge by the page background.
-  const m = getComputedStyle(document.body ?? document.documentElement).backgroundColor.match(/\d+/g);
-  if (!m || m.length < 3) return false;
-  const [r, g, b] = m.map(Number) as [number, number, number];
-  return (0.2126 * r + 0.7152 * g + 0.0722 * b) / 255 < 0.5;
+  // youtube.com marks dark mode with html[dark]; no attribute there means light.
+  if (location.hostname === 'www.youtube.com') return false;
+  // Studio and older layouts: judge by the first non-transparent page background (body, then html).
+  for (const el of [document.body, document.documentElement]) {
+    if (!el) continue;
+    const m = getComputedStyle(el).backgroundColor.match(/[\d.]+/g);
+    if (!m || m.length < 3 || (m.length >= 4 && Number(m[3]) === 0)) continue;
+    const [r, g, b] = m.map(Number) as [number, number, number];
+    return (0.2126 * r + 0.7152 * g + 0.0722 * b) / 255 < 0.5;
+  }
+  return false;
 }
 
-function useYtTheme(): 'dark' | 'light' {
+/** YouTube's (or Studio's) current theme, updated live. */
+export function useYtTheme(): 'dark' | 'light' {
   const [dark, setDark] = useState(ytDark);
   useEffect(() => {
     const mo = new MutationObserver(() => setDark(ytDark()));
@@ -40,19 +47,38 @@ export function InpageRoot({ children }: { children: ReactNode }) {
   );
 }
 
+// One shared URL watcher for every island (YouTube fires yt-navigate-finish; Studio has no event, so a 1 s check).
+const hrefSubs = new Set<(h: string) => void>();
+let hrefTimer: number | undefined;
+let lastHref = typeof location !== 'undefined' ? location.href : '';
+function emitHref() {
+  if (location.href === lastHref) return;
+  lastHref = location.href;
+  hrefSubs.forEach((cb) => cb(lastHref));
+}
+function subscribeHref(cb: (h: string) => void): () => void {
+  hrefSubs.add(cb);
+  if (hrefSubs.size === 1) {
+    window.addEventListener('yt-navigate-finish', emitHref);
+    window.addEventListener('popstate', emitHref);
+    hrefTimer = window.setInterval(emitHref, 1000);
+  }
+  return () => {
+    hrefSubs.delete(cb);
+    if (hrefSubs.size === 0) {
+      window.removeEventListener('yt-navigate-finish', emitHref);
+      window.removeEventListener('popstate', emitHref);
+      clearInterval(hrefTimer);
+    }
+  };
+}
+
 /** Current page URL, updated on YouTube's SPA navigations. */
 export function useHref(): string {
   const [href, setHref] = useState(location.href);
   useEffect(() => {
-    const on = () => setHref(location.href);
-    window.addEventListener('yt-navigate-finish', on);
-    window.addEventListener('popstate', on);
-    const id = window.setInterval(on, 1000); // Studio has no navigate event; cheap fallback.
-    return () => {
-      window.removeEventListener('yt-navigate-finish', on);
-      window.removeEventListener('popstate', on);
-      clearInterval(id);
-    };
+    setHref(location.href);
+    return subscribeHref(setHref);
   }, []);
   return href;
 }

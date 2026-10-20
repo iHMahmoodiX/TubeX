@@ -1,6 +1,5 @@
 import { defineContentScript } from 'wxt/utils/define-content-script';
 import { registerStudioIslands } from '../../src/inpage/studio';
-import { loadPrefs } from '../../src/storage/prefs';
 import '../../src/inpage/inpage.css';
 
 // In-page tools in YouTube Studio (shadow roots). Form fields are only filled on an explicit click,
@@ -10,7 +9,7 @@ export default defineContentScript({
   runAt: 'document_idle',
   cssInjectionMode: 'ui',
   async main(ctx) {
-    if ((await loadPrefs()).inpage?.all === false) return;
+    // Islands follow Settings → In-page tools live (each checks its own switch), so they register even when off.
     await registerStudioIslands(ctx);
   },
 });
