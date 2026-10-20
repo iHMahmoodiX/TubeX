@@ -1,5 +1,21 @@
 # Changelog
 
+## 0.4.0 — 2026-10-21 (every buildable TubeBuddy feature, tools inside YouTube, new design)
+- New design language chosen by the owner (Spotify-inspired, dark by default): black-framed workspace with grouped navigation (Create, Research, Analyze, Manage, Engage), channel library, global keyword search, alerts bell, thumbnail-led track lists, pill buttons, content-tinted page headers. Ideas, drafts (tag chips, readiness ring), templates, channels, settings (sub-navigation, provider cards, usage meters), side panel and popup redesigned.
+- Home: channel hero, period comparison, daily views, latest uploads shelf, top videos, search terms, traffic sources, countries.
+- Reports: Health (0–100 with sub-scores and daily history), Best practice audit (13 checks per video), Retention analyzer (drops, compare two videos), Best time to publish (estimate from your own uploads), Click Magnet (impressions/CTR when the API provides them, honest fallback), Opportunity finder, Ad-friendliness (demonetization) heuristic audit.
+- Research: keyword score (estimate with explained parts, never "search volume"), related keywords, compare 3 keywords, your real YouTube search terms, language analysis and AI translation, trending.
+- Rankings: daily search rank tracking with history and alerts, tag rankings (cost shown first), brand alerts.
+- Competitors: card grid, automatic upload alerts, niche leaderboard from daily snapshots, scorecard.
+- Comments: inbox for your channel with filters, replies with canned responses, bulk moderation (hold/hide/approve) with undo.
+- Bulk edit: three-step flow, live cost, new "default upload profile" operation.
+- Playlists: create, edit, add videos in bulk, sort, reorder, copy, delete, with undo.
+- Schedule: scheduled publish (YouTube publishes itself), scheduled updates with optional revert, sunset videos.
+- Thumbnails: bulk overlays (banner, badge, logo) with restore of the originals. Shorts ideas from retention peaks, chapters and transcript.
+- Inside YouTube: card under each video (stats, tags, SEO checks, actions, inline edit of your own videos), search result badges and keyword score, channel strip, quick-links button. Inside Studio: SEO assistant in the video editor, templates in the editor and upload dialog, canned replies on the comments page. Each can be switched off in Settings.
+- Alerts and scheduled work run in a background worker while the browser is open, with desktop notifications. Public data works with Google sign-in alone (no API key needed).
+- New permissions: `alarms`, `notifications`; optional host `i.ytimg.com` (thumbnail overlays). IndexedDB v3.
+
 ## 0.3.0 — 2026-10-20 (Google sign-in, own channel, live bulk edit)
 - Sign in with Google from Settings (Chrome and Edge). Several channels, including Brand Accounts: sign in again and pick the next channel; switch the active channel anytime. Disconnect revokes the token.
 - My Channel: analytics for 7/28/90/365 days (views, watch hours, average view duration and percentage, net subscribers, likes, comments, shares), daily views chart, YouTube search terms, traffic sources, countries, top videos; video list with visibility, views, age, metadata audit, copy to draft and CSV export.

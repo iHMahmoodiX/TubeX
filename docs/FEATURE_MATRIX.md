@@ -213,3 +213,38 @@ Built because the owner asked for every feasible feature in one release. "Key" =
 Added in 0.3.0 (Google sign-in): Channelytics for the own channel with private analytics (My Channel), search terms and traffic sources (partial Search Insights for own videos), Health Report basics (metadata audit of own videos), Channel Backup of own videos.
 
 Still blocked or deferred: search volume, Click Magnet, Opportunity Finder, Best Time to Publish, Retention Analyzer, Health Report (own analytics, M2); A/B testing, scheduled publish/update, sunset videos, playlist actions, bulk thumbnails/end screens/cards, delete comments, related video manager (writes); channel valuation and channel access (out of personal scope).
+
+## Delivered in 0.4.0 (2026-10-21)
+
+Owner asked to complete every buildable feature (all but the 10 "workaround only" ones). All need Google sign-in for own-channel data; public data works with sign-in or an API key. Verified with unit tests, mocked APIs and fixtures only; nothing live yet.
+
+| TubeBuddy feature | TubeX 0.4.0 | Where |
+|---|---|---|
+| Search Insights | Your real YouTube search terms + sample | Research → Search insights |
+| Keyword Explorer | Keyword score (estimate, explained), related, compare | Research |
+| Search Positions / Search Rank Tracking | Daily trackers with history and alerts | Rankings → Tracking |
+| Tag Rankings | Position per tag (cost confirmed first) | Rankings → Tags; YouTube watch card |
+| Language Analysis | Language mix, default-language checks, AI translation | Research → Language |
+| Best Practice Audit | 13 checks per video | Reports → Audit |
+| Click Magnet | Impressions/CTR when available, honest fallback | Reports → Click Magnet |
+| Opportunity Finder | Search terms without a video, under-promoted videos, competitor topics | Reports → Opportunities |
+| Best Time to Publish | Estimate from your own uploads' first-week views | Reports → Best time |
+| Demonetization Audit | Heuristic word-list check + optional AI | Reports → Ad-friendliness |
+| Health Report | 0–100 with sub-scores and history | Reports → Health |
+| Retention Analyzer | Curve, drops, compare | Reports → Retention |
+| Niche Leaderboard | Growth ranking from daily snapshots | Competitors → Leaderboard |
+| Brand Alerts | Search for new mentions every 12 h | Rankings → Brand |
+| Competitor Upload Alerts | Automatic checks every 3 h + notifications | Competitors |
+| Suggested Shorts | Segments from retention, chapters, transcript | Shorts ideas |
+| Canned Responses | Reply from the inbox; insert in Studio | Comments; Studio comments |
+| Bulk Delete Comments | Bulk moderation (hide/hold) with undo; deleting others' comments is not in the API | Comments → Inbox |
+| Playlist Actions | Create, add, sort, reorder, copy, delete | Playlists |
+| Bulk Thumbnail Overlays | Banner/badge/logo with restore | Thumbnails |
+| Scheduled Publish | publishAt (YouTube publishes) | Schedule → Publish |
+| Scheduled Video Update | Timed update with optional revert | Schedule → Update |
+| Sunset Videos | Unlist/private at a date with note | Schedule → Sunset |
+| Default Upload Profiles | Templates in Studio editor/upload and Bulk | Templates; Studio; Bulk |
+| (in-page) Videolytics, Channelytics, Quick Links, SEO Studio | Inside YouTube and Studio pages | youtube.com, studio.youtube.com |
+
+Deferred by the owner: End Screen Templates, Card Templates, Bulk End Screen Editor, Bulk Cards Editor, Related Video Manager, Quick-Edit Toolbar, A/B Testing, Search Explorer, Channel Valuation, Channel Access.
+
