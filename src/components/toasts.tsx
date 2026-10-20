@@ -1,5 +1,7 @@
 import { createContext, useCallback, useContext, useRef, useState, type ReactNode } from 'react';
 import { useI18n } from '../i18n';
+import { Icon } from './icons';
+import '../features/core/core.css';
 
 interface Toast {
   id: number;
@@ -30,7 +32,7 @@ export function ToastProvider({ children }: { children: ReactNode }) {
       <div className="toasts" role="status" aria-live="polite">
         {toasts.map((toast) => (
           <div key={toast.id} className="toast">
-            <span>{toast.text}</span>
+            <span className="grow">{toast.text}</span>
             {toast.action && (
               <button
                 type="button"
@@ -43,8 +45,8 @@ export function ToastProvider({ children }: { children: ReactNode }) {
                 {toast.action.label}
               </button>
             )}
-            <button type="button" className="btn btn-s" aria-label={t('common.close')} onClick={() => dismiss(toast.id)}>
-              ×
+            <button type="button" className="toast-x" aria-label={t('common.close')} title={t('common.close')} onClick={() => dismiss(toast.id)}>
+              <Icon name="x" />
             </button>
           </div>
         ))}

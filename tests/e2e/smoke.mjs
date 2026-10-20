@@ -131,13 +131,21 @@ await step('workspace opens in Persian RTL by default and creates a local channe
   await ws.getByRole('button', { name: 'ذخیره', exact: true }).click();
   await ws.getByText('کانال فعال', { exact: true }).first().waitFor();
   assert(await ws.getByText('وصل نیست').first().isVisible(), 'unconnected badge missing');
-  await ws.screenshot({ path: join(ART, 'workspace-channels-fa-light.png'), fullPage: true });
+  await ws.screenshot({ path: join(ART, 'workspace-channels-fa-dark.png'), fullPage: true });
 });
 
-await step('YouTube watch page loads; content script injects nothing', async () => {
+// YouTube's own DOM, without TubeX's in-page islands (shadow hosts named tubex-*).
+const youtubeDom = () => {
+  const root = document.documentElement.cloneNode(true);
+  root.querySelectorAll('*').forEach((el) => el.tagName.toLowerCase().startsWith('tubex-') && el.remove());
+  return root.outerHTML;
+};
+
+await step('YouTube watch page loads', async () => {
   yt = await ctx.newPage();
   await yt.goto(`https://www.youtube.com/watch?v=${VIDEO_1}`);
-  ytBefore = await yt.evaluate(() => document.documentElement.outerHTML);
+  await yt.waitForTimeout(500);
+  ytBefore = await yt.evaluate(youtubeDom);
 });
 
 await step('side panel opens from the popup and detects the video from the page', async () => {
@@ -156,33 +164,34 @@ await step('side panel opens from the popup and detects the video from the page'
 await step('capture saves a source-linked idea in one click', async () => {
   await sp.evaluate(`${byText('button', 'ذخیرهٔ ایده')}.click()`);
   await sp.waitFor(`document.body.textContent.includes('ایده ذخیره شد')`, 'saved toast');
-  const href = await sp.waitFor(`document.querySelector('.list-item a[href*="watch"]')?.href`, 'idea source link');
+  const href = await sp.waitFor(`document.querySelector('[data-testid=recent-ideas] a[href*="watch"]')?.href`, 'idea source link');
   assert(href === `https://www.youtube.com/watch?v=${VIDEO_1}`, `source was ${href}`);
 });
 
 await step('start a draft from the idea, edit Persian metadata, autosave', async () => {
-  await sp.evaluate(`${byText('button', 'شروع پیش‌نویس')}.click()`);
+  await sp.evaluate(`document.querySelector('[data-testid=recent-ideas] [aria-label="شروع پیش‌نویس"]').click()`);
   const title = await sp.waitFor(`${byLabel('عنوان')}?.value`, 'draft title');
   assert(title === 'آموزش فیگما برای مبتدی‌ها', `draft title ${title}`);
   await sp.type(byLabel('توضیحات'), 'در این ویدیو با فیگما آشنا می‌شویم.\n#طراحی #فیگما');
   await sp.type(byLabel('برچسب‌ها'), 'فیگما, طراحی رابط، Figma');
   await sp.type(byLabel('کلیدواژهٔ اصلی'), 'فیگما');
   await sp.waitFor(`document.body.textContent.includes('ذخیره شد ·')`, 'saved status');
-  await sp.evaluate(`${byText('button', 'باز کردن')}.click()`);
+  await sp.evaluate(`document.querySelector('[data-testid=preview-fold] summary').click()`);
   await sp.waitFor(`document.querySelector('.yt-hashtags')?.textContent.includes('#طراحی')`, 'preview hashtags');
   assert(await sp.evaluate(`document.body.textContent.includes('امتیاز رتبه‌بندی')`), 'checklist disclaimer missing');
 });
 
 await step('language and theme switch instantly across open pages', async () => {
   await ws.goto(ext('workspace.html#settings'));
-  await ws.getByLabel('زبان رابط').selectOption('en');
+  await ws.getByRole('radio', { name: 'English' }).click();
   await sp.waitFor(`document.documentElement.lang === 'en' && document.documentElement.dir === 'ltr'`, 'panel switched to en');
   assert(await sp.evaluate(`document.body.textContent.includes('Current page')`), 'panel text not English');
-  await ws.getByLabel('Theme').selectOption('dark');
-  await sp.waitFor(`document.documentElement.dataset.theme === 'dark'`, 'panel dark');
-  await ws.screenshot({ path: join(ART, 'workspace-settings-en-dark.png'), fullPage: true });
-  await ws.getByLabel('Interface language').selectOption('fa');
-  await ws.getByLabel('پوسته').selectOption('system');
+  assert(await sp.evaluate(`document.documentElement.dataset.theme === 'dark'`), 'dark is the default theme');
+  await ws.getByRole('radio', { name: 'Light' }).click();
+  await sp.waitFor(`document.documentElement.dataset.theme === 'light'`, 'panel light');
+  await ws.screenshot({ path: join(ART, 'workspace-settings-en-light.png'), fullPage: true });
+  await ws.getByRole('radio', { name: 'فارسی' }).click();
+  await ws.getByRole('radio', { name: 'سیستم' }).click();
   await sp.waitFor(`document.documentElement.lang === 'fa'`, 'panel back to fa');
 });
 
@@ -201,9 +210,10 @@ await step('unsupported page shows a safe fallback; local work still available',
   assert(await sp.evaluate(`!!${byLabel('عنوان')}`), 'draft editor missing');
 });
 
-await step('content script left the YouTube page DOM unchanged', async () => {
+await step('YouTube DOM outside TubeX shadow hosts is unchanged', async () => {
   await yt.goto(`https://www.youtube.com/watch?v=${VIDEO_1}`);
-  const after = await yt.evaluate(() => document.documentElement.outerHTML);
+  await yt.waitForTimeout(500);
+  const after = await yt.evaluate(youtubeDom);
   assert(after === ytBefore, 'YouTube DOM changed');
 });
 
@@ -215,9 +225,11 @@ await step('side panel layout at 320px has no horizontal overflow (light and dar
   await tab.waitForTimeout(300);
   const overflow = await tab.evaluate(() => document.documentElement.scrollWidth - window.innerWidth);
   assert(overflow <= 0, `overflow ${overflow}px`);
-  await tab.screenshot({ path: join(ART, 'sidepanel-320-fa-light.png'), fullPage: true });
+  await tab.screenshot({ path: join(ART, 'sidepanel-320-fa-system.png'), fullPage: true });
   await tab.emulateMedia({ colorScheme: 'dark' });
   await tab.waitForTimeout(200);
+  const overflowDark = await tab.evaluate(() => document.documentElement.scrollWidth - window.innerWidth);
+  assert(overflowDark <= 0, `overflow (dark) ${overflowDark}px`);
   await tab.screenshot({ path: join(ART, 'sidepanel-320-fa-dark.png'), fullPage: true });
   await tab.close();
 });
@@ -228,7 +240,7 @@ await step('workspace is keyboard reachable and fits 320px', async () => {
   await ws.waitForSelector('h1');
   await ws.keyboard.press('Tab');
   const first = await ws.evaluate(() => document.activeElement?.textContent);
-  assert(first === 'کانال من', `first focus was ${first}`);
+  assert(first === 'خانه', `first focus was ${first}`);
   await ws.getByRole('link', { name: 'قالب‌ها' }).press('Enter');
   await ws.waitForFunction(() => document.activeElement?.tagName === 'H1' && document.activeElement.textContent === 'قالب‌ها');
   await ws.getByRole('link', { name: 'پیش‌نویس‌ها' }).click();
@@ -306,7 +318,7 @@ await step('research, competitors, comments and connection settings render witho
   await ws.locator('strong', { hasText: 'همراهی' }).first().waitFor();
   await ws.goto(ext('workspace.html#settings'));
   const ai = ws.getByTestId('ai-settings');
-  await ai.getByLabel('سرویس').selectOption('gemini');
+  await ai.getByRole('radiogroup', { name: 'سرویس' }).getByRole('radio', { name: /Gemini/ }).click();
   assert((await ai.getByLabel('نشانی پایه').inputValue()) === 'https://generativelanguage.googleapis.com/v1beta/openai', 'gemini preset url');
   assert((await ai.getByLabel('مدل').inputValue()) === 'gemini-2.5-flash', 'gemini preset model');
   await ws.getByTestId('yt-settings').waitFor();

@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { dedupeTags } from '../../domain/metadata';
 import { newBase, type Draft, type Lang, type Profile } from '../../domain/models';
+import { Icon } from '../../components/icons';
 import { Button, Field, Notice } from '../../components/ui';
 import { useToast } from '../../components/toasts';
 import { useI18n } from '../../i18n';
@@ -55,12 +56,11 @@ export function AiAssist({
   draft,
   profile,
   update,
-  setTagsText,
 }: {
   draft: Draft;
   profile?: Profile;
+  /** Applies a change to the draft; tag changes rebuild the tag chips. */
   update: (patch: Partial<Draft>) => void;
-  setTagsText: (s: string) => void;
 }) {
   const { t } = useI18n();
   const toast = useToast();
@@ -76,7 +76,7 @@ export function AiAssist({
       <Notice>
         <p>{t('ai.off')}</p>
         <div>
-          <Button size="s" onClick={() => void openWorkspace('settings')}>
+          <Button size="s" onClick={() => (location.pathname.endsWith('workspace.html') ? (location.hash = 'settings') : void openWorkspace('settings'))}>
             {t('conn.openSettings')}
           </Button>
         </div>
@@ -90,14 +90,7 @@ export function AiAssist({
   const replace = (patch: Partial<Draft>, msg: MessageKey) => {
     const before: Partial<Draft> = Object.fromEntries(Object.keys(patch).map((k) => [k, draft[k as keyof Draft]]));
     update(patch);
-    if (patch.tags) setTagsText(patch.tags.join(', '));
-    toast(t(msg), {
-      label: t('common.undo'),
-      run: () => {
-        update(before);
-        if (before.tags) setTagsText(before.tags.join(', '));
-      },
-    });
+    toast(t(msg), { label: t('common.undo'), run: () => update(before) });
   };
   const copy = async (text: string) => toast((await copyText(text)) ? t('common.copied') : t('common.copyFailed'));
 
@@ -107,11 +100,11 @@ export function AiAssist({
 
   return (
     <div className="stack-s" data-testid="ai-assist">
-      <div className="row" role="group" aria-label={t('ai.tools')}>
+      <div className="core-ai-tools" role="group" aria-label={t('ai.tools')}>
         {TOOLS.map((x) => (
-          <Button key={x.task} size="s" variant={active === x.task ? 'primary' : 'default'} aria-pressed={active === x.task} onClick={() => setActive(x.task)}>
+          <button key={x.task} type="button" className="chip" aria-pressed={active === x.task} onClick={() => setActive(x.task)}>
             {t(x.label)}
-          </Button>
+          </button>
         ))}
       </div>
       <p className="small muted">{t(`ai.help.${active}` as MessageKey)}</p>
@@ -136,6 +129,7 @@ export function AiAssist({
 
       <div className="row">
         <Button variant="primary" size="s" disabled={!!running || needsInput} onClick={() => go(false)} data-testid="ai-run">
+          <Icon name="sparkle" />
           {running === active ? t('ai.running') : t('ai.generate')}
         </Button>
         {running && (
@@ -153,20 +147,20 @@ export function AiAssist({
       <ErrorNotice error={error} />
 
       {out?.task === 'titles' && (
-        <ul className="list" data-testid="ai-titles">
+        <ul className="core-suggest" style={{ listStyle: 'none', margin: 0, padding: 0 }} data-testid="ai-titles">
           {out.titles.map((x, i) => (
-            <li key={i} className="list-item">
-              <span dir="auto" style={{ fontWeight: 600 }}>
-                {x.text}
-              </span>
-              <div className="row-between">
-                <span className="small muted" dir="auto">
+            <li key={i} className="core-suggest-item">
+              <span className="stack-s grow" style={{ gap: 0 }}>
+                <span dir="auto" className="bold">
+                  {x.text}
+                </span>
+                <span className="xsmall muted" dir="auto">
                   {x.angle}
                 </span>
-                <Button size="s" onClick={() => replace({ title: x.text }, 'ai.applied')}>
-                  {t('ai.use')}
-                </Button>
-              </div>
+              </span>
+              <Button size="s" onClick={() => replace({ title: x.text }, 'ai.applied')}>
+                {t('ai.use')}
+              </Button>
             </li>
           ))}
         </ul>
@@ -191,13 +185,13 @@ export function AiAssist({
       )}
       {out?.task === 'tags' && (
         <div className="stack-s">
-          <div className="row">
+          <div className="core-pill-row">
             {out.tags.map((tag) => (
               <button
                 key={tag}
                 type="button"
-                className="badge"
-                style={{ cursor: 'pointer' }}
+                className="chip"
+                aria-pressed={draft.tags.includes(tag)}
                 disabled={draft.tags.includes(tag)}
                 onClick={() => replace({ tags: fitTags([...draft.tags, tag]) }, 'ai.tagAdded')}
               >
@@ -312,7 +306,7 @@ export function AiAssist({
           </div>
         </div>
       )}
-      <p className="small muted">{t('ai.disclaimer')}</p>
+      <p className="xsmall faint">{t('ai.disclaimer')}</p>
     </div>
   );
 }

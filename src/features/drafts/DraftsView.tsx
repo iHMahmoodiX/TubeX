@@ -1,9 +1,13 @@
 import { useMemo, useState } from 'react';
+import { readiness } from '../../domain/coreScore';
+import { checkDraft } from '../../domain/metadata';
 import { matchesQuery } from '../../domain/text';
 import { usePrefs } from '../../components/AppShell';
 import { useCollection } from '../../components/hooks';
-import { Button, Empty, Field, Notice } from '../../components/ui';
+import { Icon } from '../../components/icons';
+import { Button, Empty, Notice, PageHeader, Score, SearchInput, Skeleton } from '../../components/ui';
 import { useI18n } from '../../i18n';
+import { ArtTile, Cover } from '../core/CoreUi';
 import { createDraft } from '../ideas/ideaActions';
 import { DraftEditor } from './DraftEditor';
 
@@ -13,50 +17,91 @@ export function DraftsView({ draftId, onSelect }: { draftId?: string; onSelect: 
   const { items, corrupt, loading } = useCollection('drafts');
   const profiles = useCollection('profiles').items;
   const [query, setQuery] = useState('');
-  const visible = useMemo(() => items.filter((d) => matchesQuery(`${d.title} ${d.description} ${d.tags.join(' ')}`, query)), [items, query]);
+  const visible = useMemo(
+    () => items.filter((d) => matchesQuery(`${d.title} ${d.description} ${d.tags.join(' ')}`, query)).sort((a, b) => b.updatedAt.localeCompare(a.updatedAt)),
+    [items, query],
+  );
 
   const newDraft = async () => {
     const d = await createDraft({ profileId: prefs.activeProfileId, language: prefs.uiLanguage });
     onSelect(d.id);
   };
 
+  if (draftId)
+    return (
+      <section aria-label={t('draft.heading')}>
+        <DraftEditor key={draftId} draftId={draftId} onDeleted={() => onSelect(undefined)} onBack={() => onSelect(undefined)} />
+      </section>
+    );
+
   return (
-    <div className="split">
-      <section className="stack" aria-labelledby="drafts-h">
-        <div className="row-between">
-          <h1 id="drafts-h">{t('nav.drafts')}</h1>
-          <Button variant="primary" onClick={() => void newDraft()}>
-            {t('draft.new')}
-          </Button>
-        </div>
-        {corrupt > 0 && <Notice tone="warning">{t('settings.corrupt', { n: corrupt })}</Notice>}
-        <Field label={t('common.search')}>
-          {({ id }) => <input id={id} type="search" className="input" dir="auto" value={query} onChange={(e) => setQuery(e.target.value)} />}
-        </Field>
-        {loading ? (
-          <p className="muted">{t('common.loading')}</p>
-        ) : visible.length === 0 ? (
-          <Empty>{t('draft.empty')}</Empty>
-        ) : (
-          <ul className="list">
-            {visible.map((d) => (
-              <li key={d.id} className="list-item" data-active={d.id === draftId}>
-                <button type="button" className="item-button" aria-current={d.id === draftId ? 'true' : undefined} onClick={() => onSelect(d.id)}>
-                  <span className="truncate" dir="auto" style={{ display: 'block', fontWeight: 600 }}>
-                    {d.title.trim() || t('draft.untitled')}
-                  </span>
-                  <span className="small muted">
-                    {profiles.find((p) => p.id === d.profileId)?.name ?? t('draft.noChannel')} · {formatDate(d.updatedAt)}
-                  </span>
-                </button>
+    <section className="stack-l" aria-labelledby="drafts-h">
+      <PageHeader
+        kicker={t('shell.group.create')}
+        title={t('nav.drafts')}
+        desc={
+          <>
+            {t('core.drafts.desc')} <span className="faint">· {t('core.drafts.count', { n: items.length })}</span>
+          </>
+        }
+        art={<Cover icon="edit" />}
+        actions={
+          <>
+            <Button variant="primary" onClick={() => void newDraft()}>
+              <Icon name="plus" />
+              {t('draft.new')}
+            </Button>
+            <div className="grow" style={{ maxWidth: 360, minWidth: 200 }}>
+              <SearchInput label={t('core.drafts.search')} placeholder={t('core.drafts.search')} value={query} onChange={setQuery} />
+            </div>
+          </>
+        }
+      />
+      {corrupt > 0 && <Notice tone="warning">{t('settings.corrupt', { n: corrupt })}</Notice>}
+      {loading ? (
+        <Skeleton lines={5} />
+      ) : items.length === 0 ? (
+        <Empty icon="edit" title={t('core.drafts.emptyTitle')} action={<Button variant="primary" onClick={() => void newDraft()}>{t('draft.new')}</Button>}>
+          {t('draft.empty')}
+        </Empty>
+      ) : visible.length === 0 ? (
+        <Empty icon="search" title={t('core.noMatch')} action={<Button onClick={() => setQuery('')}>{t('core.clearFilters')}</Button>} />
+      ) : (
+        <div>
+          <div className="track-head" aria-hidden="true">
+            <span className="track-n">#</span>
+            <span>{t('draft.title')}</span>
+            <span className="core-hide-s">{t('core.draft.readiness')}</span>
+          </div>
+          <ul className="tracks" style={{ listStyle: 'none', margin: 0, padding: 0 }} data-testid="drafts-list">
+            {visible.map((d, n) => (
+              <li key={d.id} className="track core-track">
+                <span className="track-n">
+                  <span className="num">{n + 1}</span>
+                </span>
+                <div className="track-main">
+                  <button type="button" className="core-track-btn" onClick={() => onSelect(d.id)}>
+                    <ArtTile videoId={d.source?.videoId} icon="edit" />
+                    <span className="stack-s grow" style={{ gap: 0 }}>
+                      <span className="track-title truncate">
+                        <bdi>{d.title.trim() || t('draft.untitled')}</bdi>
+                      </span>
+                      <span className="track-sub truncate">
+                        {profiles.find((p) => p.id === d.profileId)?.name ?? t('draft.noChannel')} · {t(`lang.${d.language}`)} ·{' '}
+                        {t('core.drafts.tagsN', { n: d.tags.length })}
+                      </span>
+                    </span>
+                  </button>
+                </div>
+                <div className="core-track-end">
+                  <span className="core-date">{formatDate(d.updatedAt)}</span>
+                  <Score value={readiness(d, checkDraft(d))} label={t('core.draft.readiness')} />
+                </div>
               </li>
             ))}
           </ul>
-        )}
-      </section>
-      <section aria-label={t('draft.heading')}>
-        {draftId ? <DraftEditor key={draftId} draftId={draftId} onDeleted={() => onSelect(undefined)} /> : null}
-      </section>
-    </div>
+        </div>
+      )}
+    </section>
   );
 }
