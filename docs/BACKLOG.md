@@ -7,7 +7,7 @@ IDs refer to docs/FEATURE_MATRIX.md. No external issue tracker is used yet.
 - Decide M2 start: create a Google Cloud project (OAuth client for a Chrome extension, test users) or postpone.
 
 ## Validate first
-- Re-audit TubeBuddy and vidIQ official catalogs from a normal browser; correct FEATURE_MATRIX rows (evidence S/B/U → verified).
+- Re-audit the vidIQ official catalog (TubeBuddy list received from owner 2026-10-20); confirm behaviour of paid TubeBuddy features before building their rows.
 - Verify every Inferred API fact in INTEGRATIONS before its milestone; read the derived-metrics policy.
 - Check watch-page selectors against live YouTube; update the fixture from a sanitized real snapshot.
 - Run the e2e smoke on Windows Chrome and Edge.

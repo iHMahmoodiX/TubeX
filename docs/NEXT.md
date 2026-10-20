@@ -4,7 +4,7 @@ Updated 2026-10-20.
 
 ## State
 - Branch `claude/m0-m1-baseline-9rp5tg`, draft PR to `main`. Base was a single commit with a 7-byte README.
-- M0 done with one gap: official TubeBuddy/vidIQ catalogs and Google docs were unreachable from the build environment. Matrix and API facts are marked secondary/Inferred.
+- M0 done with one gap: official vidIQ catalog (TubeBuddy list since supplied by owner and mapped) and Google docs were unreachable from the build environment. Matrix and API facts are marked secondary/Inferred.
 - M1 delivered: side panel, popup, workspace; context detection; idea capture; drafts with autosave/recovery/conflicts; templates; local channel profiles; fa/en RTL; themes; backup export/import/undo. No Google, AI or YouTube writes.
 
 ## Checks run (Linux, Chromium 141 headless)

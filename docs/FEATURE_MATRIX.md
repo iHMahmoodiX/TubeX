@@ -2,7 +2,7 @@
 
 Checked 2026-10-20. **Important limit:** the official catalogs (TubeBuddy `https://www.tubebuddy.com/tutorials/` = **TB**, vidIQ `https://vidiq.com/features/` = **VQ**) and Google developer docs were **not reachable from the build environment** (DNS/proxy block). Competitor rows therefore come from the brief's seed list plus secondary reviews found by web search (Capterra, wyzowl.com, alejandrorioja.com, thefoodranger.com, toolradar.com; 2026). Re-audit against the official catalogs from a normal browser before relying on completeness. Paid-tier behaviour is unverified throughout.
 
-Legend. Evidence (about the competitor capability): **S** = secondary source names it; **B** = brief seed only; **U** = unknown. Feasibility: Direct / Approximation / Native handoff / Optional service / Research required / Blocked / Out of personal scope. Status: Not started / In progress / Verified / Blocked / Deferred. "Verified" for M1 means unit tests + Chromium smoke test on fixtures (TESTING.md), not live YouTube. API facts are **Inferred** until checked against current docs (docs/INTEGRATIONS.md). Priority: P1 next milestones, P2 later, P3 park.
+Legend. Evidence (about the competitor capability): **O** = on the official TubeBuddy feature list the owner supplied on 2026-10-20 (see catalog below); **S** = secondary source names it; **B** = brief seed only; **U** = unknown. Feasibility: Direct / Approximation / Native handoff / Optional service / Research required / Blocked / Out of personal scope. Status: Not started / In progress / Verified / Blocked / Deferred. "Verified" for M1 means unit tests + Chromium smoke test on fixtures (TESTING.md), not live YouTube. API facts are **Inferred** until checked against current docs (docs/INTEGRATIONS.md). Priority: P1 next milestones, P2 later, P3 park.
 
 | ID | Workflow | Source (checked 2026-10-20) | Ev. | TubeX behaviour | Data origin | API / scope | Feasibility | Deps / cost | Prio | Status | Acceptance proof |
 |---|---|---|---|---|---|---|---|---|---|---|---|
@@ -98,3 +98,87 @@ Legend. Evidence (about the competitor capability): **S** = secondary source nam
 | EC-02 | Mobile apps | TB/VQ mobile (U) | U | — | — | — | Out of personal scope | — | — | Deferred | — |
 | EC-03 | Coaching / professional services | VQ Coaching (S) | S | — | — | — | Out of personal scope | — | — | Deferred | — |
 | EC-04 | Other platforms (Instagram, TikTok) | seed | B | — | — | — | Out of personal scope | — | — | Deferred | — |
+| MD-13 | Tag sorter (reorder tags) | TB Tag Sorter | O | Drag/keyboard reordering of draft tags | Local | — | Direct | — | P2 | Not started | Order persists and exports |
+| MD-14 | Language analysis of metadata | TB Language Analysis | O | Behaviour unverified (paid screen not seen); candidate: language/script mix and readability notes on drafts | Local | — | Research required | — | P3 | Not started | Define behaviour from the real TB help page first |
+| MD-15 | Demonetization word audit | TB Demonetization Audit | O | Local, editable word list check on own metadata; never a monetization guarantee | Local | — | Approximation | — | P3 | Not started | Copy states "not a policy decision" |
+| DC-10 | Niche leaderboard | TB Niche Leaderboard | O | Ranked list of watched channels by raw public counts only | Public API | channels.list | Research required | Derived-metrics policy | P3 | Not started | Policy check recorded |
+| DC-11 | Brand / keyword mention alerts | TB Brand Alerts | O | On-demand or scheduled search for keywords; alerts only while browser runs | Public API | search.list (quota-heavy) | Approximation | Quota; scheduler limits | P3 | Not started | Missed checks visible |
+| DC-12 | Competitor upload alerts | TB Competitor Upload Alerts | O | Watchlist refresh with "new since last check" | Public API | playlistItems.list | Direct (Inferred) | alarms permission | P2 | Not started | New-upload badge after refresh |
+| AN-09 | Own-video quick stats (Videolytics/Channelytics for own channel) | TB Videolytics, Channelytics | O | Side-panel card for own video/channel from authorized data | Owner analytics | Analytics API | Direct | — | P2 | Not started | Period and freshness shown |
+| AN-10 | Channel valuation | TB Channel Valuation | O | Not built: inferring others' revenue is out of bounds | — | — | Out of personal scope | — | — | Deferred | — |
+| AN-11 | Milestones | TB Milestones | O | Own subscriber/view milestones from authorized data, no gamification | Owner API | channels.list statistics | Direct | — | P3 | Not started | — |
+| BK-08 | Quick-edit toolbar / quick links | TB Quick-Edit Toolbar, Quick Links Menu | O | Deep links to Studio sections for the current own video; custom links list | Local | — | Native handoff | — | P2 | Not started | Links open the right Studio page |
+| BK-09 | Sunset videos (scheduled privacy change) | TB Sunset Videos | O | Planned privacy change with visible due state; applied explicitly or by approved scheduler | Owner API | videos.update status (Inferred) | Approximation | Browser-closed needs service | P3 | Not started | Overdue state after sleep |
+| CM-05 | Comment formatting helper | TB Comment Formatting | O | Bold/italic/strike helpers in reply editor | Local | — | Direct | — | P3 | Not started | — |
+| CM-06 | Comment word cloud | TB Comment Word Cloud | O | Word frequency over own comments, Persian-normalized | Owner API | commentThreads.list | Research required | Policy on derived analysis | P3 | Not started | — |
+| CM-07 | Export comments | TB Export Comments | O | CSV export of own channel comments, formula-safe | Owner API | commentThreads.list | Direct (Inferred) | Quota | P3 | Not started | — |
+| CE-03 | Related video manager | TB Related Video Manager | O | Guided handoff; no public API known (Inferred) | Native | — | Native handoff | — | P3 | Not started | — |
+| AC-01 | Channel access / team permissions | TB Channel Access | O | — | — | — | Out of personal scope | — | — | Deferred | — |
+
+## TubeBuddy catalog (owner-supplied, 2026-10-20)
+
+Copied from the list Hossein pasted from TubeBuddy's feature/pricing page. "Limited" means the source marked the feature *Limited* in at least one plan column; which plan was not preserved in the paste. Behaviour of paid features is unverified. Mapping is to TubeX rows above.
+
+| Group | TubeBuddy feature | Plan note | TubeX row(s) | TubeX feasibility |
+|---|---|---|---|---|
+| SEO | SEO Studio | — | MD-01, MD-06 | Direct (checklist, no ranking score) |
+| SEO | Search Insights | — | KW-01, AN-04 | Approximation / Direct for own search terms |
+| SEO | Tag Rankings | — | KW-08 | Research required |
+| SEO | Tag Sorter | — | MD-13 | Direct |
+| SEO | View and Copy Tags | — | DC-07 | Research required |
+| SEO | Language Analysis | — | MD-14 | Research required |
+| SEO | Keyword Explorer | — | KW-01, KW-02 | Approximation; volume Blocked |
+| SEO | Search Explorer | — | KW-09 | Blocked (no data) |
+| SEO | Tag Lists | — | MD-05 | Direct (**Verified M1**) |
+| SEO | Insta-Suggest | — | MD-02 | Approximation |
+| SEO | Search Positions | — | KW-08 | Research required |
+| SEO | Best Practice Audit | — | AN-07, PB-01 | Approximation |
+| SEO | Click Magnet | — | AN-02 | Research required |
+| SEO | Opportunity Finder | — | TO-03 | Direct (needs analytics) |
+| SEO | Tag Translator | — | MD-09 | Direct (+ optional AI) |
+| SEO | Search Rank Tracking | Limited | KW-08 | Research required |
+| SEO | Auto Translator | Limited | MD-09 | Direct (+ optional AI) |
+| Content strategy | Best Time to Publish | — | PB-02 | Research required |
+| Content strategy | Channelytics | — | DC-03, AN-09 | Approximation / Direct for own |
+| Content strategy | Demonetization Audit | — | MD-15 | Approximation |
+| Content strategy | Channel Valuation | — | AN-10 | Out of personal scope |
+| Content strategy | Video Topic Planner | — | IP-03, IP-05 | Direct |
+| Content strategy | Milestones | — | AN-11 | Direct |
+| Content strategy | Videolytics | — | DC-06, AN-09 | Approximation / Direct for own |
+| Content strategy | Health Report | — | AN-07 | Approximation |
+| Content strategy | Topical Analysis | — | KW-10 | Direct |
+| Content strategy | Niche Leaderboard | — | DC-10 | Research required |
+| Content strategy | Brand Alerts | — | DC-11 | Approximation |
+| Content strategy | Retention Analyzer | — | AN-03 | Direct (verify) |
+| Content strategy | A/B Testing | — | TO-01, TH-03 | Native handoff / observational log |
+| Content strategy | Competitor Upload Alerts | — | DC-12 | Direct (Inferred) |
+| Content strategy | Competitor Scorecard | Limited | DC-03 | Approximation |
+| Video + thumbnail | Suggested Shorts | — | RP-01 | Optional service |
+| Video + thumbnail | Advanced Video Embed | — | PR-01 | Direct |
+| Video + thumbnail | Thumbnail Generator | — | TH-01 | Direct |
+| Video + thumbnail | Thumbnail Analyzer | Limited | TH-05 | Optional service (qualitative) |
+| Video + thumbnail | End Screen Templates | — | CE-01 | Native handoff |
+| Video + thumbnail | Card Templates | — | CE-01 | Native handoff |
+| Video + thumbnail | Title Generator | — | MD-03 | Optional service |
+| Productivity | Quick Links Menu | — | BK-08, HU-02 | Direct |
+| Productivity | Quick-Edit Toolbar | — | BK-08 | Native handoff |
+| Productivity | Comment Formatting | — | CM-05 | Direct |
+| Productivity | Comment Word Cloud | — | CM-06 | Research required |
+| Productivity | Canned Responses | — | CM-02 | Direct |
+| Productivity | Default Upload Profiles | — | MD-04 | Direct (templates **Verified M1**) |
+| Productivity | Playlist Actions | — | BK-03 | Direct |
+| Productivity | Bulk End Screen Editor | Limited | BK-05 | Blocked → Native handoff |
+| Productivity | Bulk Cards Editor | Limited | BK-05 | Blocked → Native handoff |
+| Productivity | Chapter Editor | — | MD-12 | Approximation |
+| Productivity | Channel Backup | Limited | BK-04 | Direct |
+| Productivity | Bulk Find, Replace & Append | — | BK-01 | Direct (M4, with dry run) |
+| Productivity | Bulk Delete Comments | — | CM-04 | Direct (explicit, scoped) |
+| Productivity | Bulk Thumbnail Overlays | — | BK-02 | Direct |
+| Productivity | Export Comments | — | CM-07 | Direct |
+| Productivity | Scheduled Publish | — | PB-03 | Native handoff → Direct |
+| Productivity | Scheduled Video Update | — | BK-06 | Approximation / Optional service |
+| Productivity | Channel Access | — | AC-01 | Out of personal scope |
+| Productivity | Sunset Videos | — | BK-09 | Approximation |
+| Productivity | Related Video Manager | Limited | CE-03 | Native handoff |
+
+59 distinct features (SEO Studio appeared twice in the paste). Every one has a TubeX row; 3 are already covered by M1 (Tag Lists, Default Upload Profiles via templates, SEO Studio as checklist and editor). vidIQ's official list has not been supplied or fetched yet.
