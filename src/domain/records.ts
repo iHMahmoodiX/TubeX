@@ -1,7 +1,7 @@
 // Single owner of record shapes at trust boundaries (backup import, stored data read-back).
 // Only known keys are copied, so unexpected keys (including __proto__) never reach storage.
 import { COLLECTIONS, IDEA_STATUSES } from './models';
-import type { BaseRecord, CollectionName, Collections, Draft, Idea, Lang, Profile, SourceRef, Template } from './models';
+import type { BaseRecord, CollectionName, Collections, Draft, Idea, KeywordList, Lang, Profile, Reply, SourceRef, Template, WatchedChannel } from './models';
 import type { PageKind } from './pageContext';
 
 const MAX_TEXT = 20_000;
@@ -124,11 +124,52 @@ function template(r: Raw): Template | null {
   return { ...b, name, description, tags: t, ...(profileId && { profileId }) };
 }
 
+function keywordList(r: Raw): KeywordList | null {
+  const b = base(r);
+  const name = str(r.name, MAX_SHORT);
+  const profileId = optStr(r.profileId, 100);
+  if (!b || !name?.trim() || profileId === null) return null;
+  const raw = r.keywords === undefined ? [] : r.keywords;
+  if (!Array.isArray(raw) || raw.length > 2000) return null;
+  const keywords: KeywordList['keywords'] = [];
+  for (const k of raw) {
+    if (!isObj(k)) return null;
+    const text = str(k.text, MAX_SHORT);
+    const note = str(k.note, MAX_TEXT);
+    if (!text?.trim() || note === null) return null;
+    keywords.push({ text, note, addedAt: isIso(k.addedAt) ? k.addedAt : b.createdAt });
+  }
+  return { ...b, name, keywords, ...(profileId && { profileId }) };
+}
+
+function watched(r: Raw): WatchedChannel | null {
+  const b = base(r);
+  const channelId = typeof r.channelId === 'string' && /^UC[A-Za-z0-9_-]{22}$/.test(r.channelId) ? r.channelId : null;
+  const title = str(r.title, MAX_SHORT);
+  const handle = str(r.handle, MAX_SHORT);
+  const notes = str(r.notes, MAX_TEXT);
+  const seen = tags(r.seenVideoIds);
+  if (!b || !channelId || title === null || handle === null || notes === null || !seen) return null;
+  return { ...b, channelId, title, handle, notes, seenVideoIds: seen, ...(isIso(r.lastCheckedAt) && { lastCheckedAt: r.lastCheckedAt }) };
+}
+
+function reply(r: Raw): Reply | null {
+  const b = base(r);
+  const name = str(r.name, MAX_SHORT);
+  const text = str(r.text, MAX_TEXT);
+  const profileId = optStr(r.profileId, 100);
+  if (!b || !name?.trim() || text === null || profileId === null) return null;
+  return { ...b, name, text, ...(profileId && { profileId }) };
+}
+
 const SANITIZERS: { [K in CollectionName]: (r: Raw) => Collections[K] | null } = {
   profiles: profile,
   ideas: idea,
   drafts: draft,
   templates: template,
+  keywordLists: keywordList,
+  watchlist: watched,
+  replies: reply,
 };
 
 export function sanitizeRecord<K extends CollectionName>(name: K, raw: unknown): Collections[K] | null {

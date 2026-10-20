@@ -20,12 +20,13 @@ tests/unit, tests/e2e, tests/fixtures
 No background service worker in M1: nothing needs privileged network or scheduled work yet.
 
 ### Data
-- IndexedDB `tubex` v1: stores `profiles`, `ideas`, `drafts`, `templates` (keyPath `id`, index `updatedAt`), `meta` (import snapshot). Upgrades run per version from `MIGRATIONS` in `db.ts`.
+- IndexedDB `tubex` v2: stores `profiles`, `ideas`, `drafts`, `templates`, `keywordLists`, `watchlist`, `replies` (keyPath `id`, index `updatedAt`), `meta` (import snapshot), `cache` (API/AI responses, `expiresAt` index, not backed up). Upgrades run per version from `MIGRATIONS` in `db.ts`.
 - Every record: `id`, `createdAt`, `updatedAt`, `rev`. `save()` writes only if the stored `rev` matches (cross-window conflict detection); `put()` is the explicit override.
 - Reads pass through `sanitizeRecord()`; invalid rows are hidden and counted, never deleted.
 - Draft edits are mirrored synchronously to `localStorage` (`tubex:pending-draft:<id>`) until IndexedDB confirms, so closing the panel or browser mid-debounce does not lose text.
 - Backup: JSON `{ app: "tubex", format: 1, exportedAt, appVersion, data }`, max 5 MB; import validates every record (known keys only, https URLs only, size caps), reports rejects, snapshots current data for one-step undo.
 - Preferences (`chrome.storage.local` key `prefs`): UI language, theme, active profile, last draft, page-adapter kill switch.
+- Connections (`chrome.storage.local` key `integrations`): AI base URL/model/key/monthly cap, YouTube key/region/language/daily cap; `usage` holds monthly AI and Pacific-day YouTube counters. Neither is in backups.
 
 ### Page context
 1. Side panel/popup asks `tabs.query` for the active tab; URL is parsed purely (`parsePageUrl`). Hosts outside the permission list come back without URL and are shown as unsupported.
@@ -34,7 +35,7 @@ No background service worker in M1: nothing needs privileged network or schedule
 
 ### Security boundaries
 - Permissions: `storage`, `sidePanel`; hosts `https://www.youtube.com/*`, `https://studio.youtube.com/*`. CSP `script-src 'self'`.
-- No network requests, no credentials, no remote code. Page DOM and imported files are untrusted and validated.
+- Network only to origins the owner allowed at runtime (`optional_host_permissions`): the YouTube Data API and the chosen AI base URL, from extension pages. No remote code. Page DOM, imported files, API responses and model output are untrusted and validated.
 
 ## Proposed (not built)
 - M2: service worker owns OAuth (`chrome.identity`), YouTube Data/Analytics adapters with quota accounting, per-channel cache partitions with retention rules. Needs a stable extension ID (manifest `key`) for redirect URIs.

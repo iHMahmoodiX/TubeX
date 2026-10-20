@@ -6,18 +6,10 @@ import { usePrefs } from '../../components/AppShell';
 import { useToast } from '../../components/toasts';
 import { Button, ConfirmButton, Field, Notice } from '../../components/ui';
 import { useI18n } from '../../i18n';
+import { ConnectionsSettings } from '../connections/ConnectionsSettings';
 import { downloadText } from '../../platform/files';
 import type { ThemePref } from '../../storage/prefs';
 import { deleteAllData, exportAll, hasImportSnapshot, importData, undoLastImport } from '../../storage/db';
-
-function Row({ title, children }: { title: string; children: React.ReactNode }) {
-  return (
-    <div className="stack-s">
-      <h3>{title}</h3>
-      {children}
-    </div>
-  );
-}
 
 export function SettingsView() {
   const { t } = useI18n();
@@ -89,18 +81,7 @@ export function SettingsView() {
         <p className="small muted">{t('settings.pageAdapterHelp')}</p>
       </div>
 
-      <div className="card stack">
-        <h2>{t('settings.connections')}</h2>
-        <Row title={t('settings.youtube')}>
-          <p className="muted">{t('settings.youtubeState')}</p>
-        </Row>
-        <Row title={t('settings.ai')}>
-          <p className="muted">{t('settings.aiState')}</p>
-        </Row>
-        <Row title={t('settings.writes')}>
-          <p className="muted">{t('settings.writesState')}</p>
-        </Row>
-      </div>
+      <ConnectionsSettings />
 
       <div className="card stack">
         <h2>{t('settings.backup')}</h2>

@@ -1,6 +1,6 @@
 import { browser } from 'wxt/browser';
 
-export type WorkspaceRoute = 'ideas' | 'drafts' | 'templates' | 'channels' | 'settings';
+export type WorkspaceRoute = 'ideas' | 'drafts' | 'research' | 'competitors' | 'bulk' | 'comments' | 'templates' | 'channels' | 'settings';
 
 /** Opens the full-page workspace at a section in a new tab. */
 export async function openWorkspace(route: WorkspaceRoute = 'ideas', id?: string): Promise<void> {

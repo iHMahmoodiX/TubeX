@@ -31,3 +31,12 @@ Matches the brief's consequence-based confirmation and avoids focus traps.
 
 ### D-010 Skills: vendor three small Markdown skills, not full design systems — Accepted
 See `.agents/skills/SOURCES.md`. `ui-ux-pro-max` (30 MB with datasets and Python scripts) reviewed and not vendored.
+
+### D-011 AI is provider-agnostic (OpenAI-compatible), called directly from the extension — Accepted
+The owner wants AI that always works directly. One client covers Ollama (local, free), Gemini's OpenAI-compatible endpoint with the owner's own key, and any custom service (including a relay the owner may run on Supabase or Cloudflare). A TubeX-hosted relay was dropped: it would hold a shared key and add a service to operate.
+
+### D-012 YouTube public data via the owner's API key before OAuth — Accepted
+Research, competitor and page stats need only public data, so they ship now with an API key the owner creates. OAuth (own analytics, writes) stays M2. The daily unit cap and caching protect the default quota (Inferred 10,000 units).
+
+### D-013 Bulk edit works on TubeX drafts and templates first — Accepted
+The owner prioritized Bulk Find & Replace. Live video edits need OAuth and explicit write authorization; local bulk edit ships with preview, per-item opt-out, rev-checked saves and undo.

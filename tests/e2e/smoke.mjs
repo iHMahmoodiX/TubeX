@@ -272,6 +272,41 @@ await step('invalid and unsafe imports are rejected safely; valid import merges'
   await ws.getByRole('button', { name: 'بازگردانی آخرین ورود' }).waitFor();
 });
 
+await step('bulk find and replace previews, applies and undoes across drafts', async () => {
+  await ws.goto(ext('workspace.html#bulk'));
+  await ws.getByTestId('bulk-find').fill('فیگما');
+  await ws.getByTestId('bulk-replace').fill('Figma');
+  await ws.getByRole('heading', { name: 'پیش‌نمایش: ۱ مورد تغییر می‌کند' }).waitFor();
+  await ws.getByTestId('bulk-apply').click();
+  await ws.getByText(/۱ مورد تغییر کرد/).waitFor();
+  await ws.goto(ext('workspace.html#drafts'));
+  await ws.getByText('آموزش Figma برای مبتدی‌ها').first().waitFor();
+  await ws.goto(ext('workspace.html#bulk'));
+  await ws.getByTestId('bulk-find').fill('Figma');
+  await ws.getByTestId('bulk-replace').fill('فیگما');
+  await ws.getByTestId('bulk-apply').click();
+  await ws.getByText(/۱ مورد تغییر کرد/).waitFor();
+});
+
+await step('research, competitors, comments and connection settings render without keys', async () => {
+  await ws.goto(ext('workspace.html#research'));
+  await ws.getByText('برای استفاده از این بخش، کلید YouTube Data API را در تنظیمات وارد کنید.').first().waitFor();
+  await ws.goto(ext('workspace.html#competitors'));
+  await ws.getByRole('heading', { name: 'رقبا' }).waitFor();
+  await ws.goto(ext('workspace.html#comments'));
+  await ws.getByLabel('نام').first().fill('تشکر');
+  await ws.getByLabel('متن پاسخ').first().fill('ممنون از *همراهی* شما');
+  await ws.getByRole('button', { name: 'ذخیرهٔ پاسخ' }).click();
+  await ws.locator('strong', { hasText: 'همراهی' }).first().waitFor();
+  await ws.goto(ext('workspace.html#settings'));
+  const ai = ws.getByTestId('ai-settings');
+  await ai.getByLabel('سرویس').selectOption('gemini');
+  assert((await ai.getByLabel('نشانی پایه').inputValue()) === 'https://generativelanguage.googleapis.com/v1beta/openai', 'gemini preset url');
+  assert((await ai.getByLabel('مدل').inputValue()) === 'gemini-2.5-flash', 'gemini preset model');
+  await ws.getByTestId('yt-settings').waitFor();
+  await ws.screenshot({ path: join(ART, 'settings-connections.png'), fullPage: true });
+});
+
 await step('unsaved edit typed just before the browser quits survives restart', async () => {
   await sp.type(byLabel('توضیحات'), ' پایان');
   // Close immediately, inside the autosave debounce window.

@@ -2,9 +2,18 @@
 
 A personal, local-first YouTube creator workbench as a Chrome/Edge extension, with a Persian-first (RTL) and English interface.
 
-**Status (2026-10-20): M1, local development build `0.1.0`.** It works without any Google or AI credentials. It does not connect to YouTube accounts, call YouTube APIs, use AI, or change anything on YouTube yet. See [docs/NEXT.md](docs/NEXT.md) for the current state and [docs/FEATURE_MATRIX.md](docs/FEATURE_MATRIX.md) for coverage.
+**Status (2026-10-20): local development build `0.2.0`.** Everything local works without credentials. Optional: your own YouTube Data API key (public stats and research) and an AI provider (Ollama, Gemini with your key, or any OpenAI-compatible service). TubeX never signs in to your YouTube account or changes anything on YouTube yet. See [docs/NEXT.md](docs/NEXT.md) for the current state and [docs/FEATURE_MATRIX.md](docs/FEATURE_MATRIX.md) for coverage.
 
-## What M1 does
+## What it does
+
+**New in 0.2.0**
+- **AI assistant** in every draft: titles, description, tags, hooks/outline, content brief, translation, chapters from a transcript, thumbnail critique. Settings → Connections: choose Ollama, Gemini (your key) or a custom service.
+- **Public stats** in the side panel (with your YouTube API key): video/channel/search stats, view and copy tags, embed code, comment export, channel video export.
+- **Research**: keyword explorer on a labeled search sample, trending, keyword lists (CSV). **Competitors**: watchlist with new-upload badges.
+- **Bulk edit**: find and replace, add/remove tags and add text across drafts and templates, with preview and undo.
+- **Comments**: canned replies and comment formatter. **Thumbnails**: size previews and a simple maker.
+
+**From M1**
 
 - **Side panel**: shows the current YouTube page (video, Short, search, channel, playlist, Studio video) and saves a source-linked idea in one click. Non-YouTube pages get a safe fallback.
 - **Draft editor**: title, description, tags and focus keyword with autosave, Persian-aware limit checks (description limit is in bytes), an approximate search/watch preview, reusable templates, and copy/download of the package.
@@ -58,4 +67,4 @@ To update: `git pull`, `npm install`, `npm run build`, then press **Reload** on 
 
 ## Privacy
 
-All data is stored in your browser profile (IndexedDB and `chrome.storage.local`). Nothing is sent anywhere. Backups contain your ideas and drafts in plain JSON; keep them out of this public repository (`.gitignore` excludes `tubex-backup-*.json`).
+All data is stored in your browser profile (IndexedDB and `chrome.storage.local`). Nothing leaves the browser unless you add a connection: then video ids, search terms and channel ids go to the YouTube Data API, and the draft text you ask about goes to the AI service you chose. API keys stay in the browser profile, unencrypted and outside backups. Backups contain your ideas and drafts in plain JSON; keep them out of this public repository (`.gitignore` excludes `tubex-backup-*.json`).

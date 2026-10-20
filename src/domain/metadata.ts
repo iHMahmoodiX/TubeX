@@ -1,6 +1,7 @@
 // Metadata draft rules. Limits are documented in docs/INTEGRATIONS.md with their evidence status;
 // they are a pre-flight checklist, not a ranking score.
 import type { Draft } from './models';
+import { chapterProblems } from './chapters';
 import { charCount, normalizeForSearch, utf8Bytes } from './text';
 
 export const LIMITS = {
@@ -24,6 +25,7 @@ export type CheckId =
   | 'description-too-long'
   | 'tags-too-long'
   | 'too-many-hashtags'
+  | 'chapters-invalid'
   | 'keyword-in-title'
   | 'keyword-in-description-start'
   | 'keyword-in-tags';
@@ -99,6 +101,8 @@ export function checkDraft(d: Pick<Draft, 'title' | 'description' | 'tags' | 'fo
   if (hashtags.length > LIMITS.hashtagsIgnoredAbove)
     checks.push({ id: 'too-many-hashtags', severity: 'warning', values: { count: hashtags.length, max: LIMITS.hashtagsIgnoredAbove } });
 
+  if (chapterProblems(d.description).length) checks.push({ id: 'chapters-invalid', severity: 'warning' });
+
   const kw = d.focusKeyword.trim();
   if (kw) {
     const firstLines = d.description.split('\n').slice(0, 2).join(' ');
@@ -137,4 +141,17 @@ export function applyTemplate<T extends Pick<Draft, 'description' | 'tags'>>(
   const base = draft.description.trimEnd();
   const description = !add ? draft.description : base ? `${base}\n\n${add}` : add;
   return { ...draft, description, tags: dedupeTags([...draft.tags, ...tpl.tags]) };
+}
+
+/** Tag order: tags containing the focus keyword first, then specific (multi-word, longer) before broad. Stable otherwise. */
+export function sortTags(tags: string[], focusKeyword = ''): string[] {
+  const kw = normalizeForSearch(focusKeyword);
+  const score = (t: string) => {
+    const n = normalizeForSearch(t);
+    return (kw && n.includes(kw) ? 1000 : 0) + (n === kw ? 500 : 0) + n.split(' ').length * 10 + Math.min(n.length, 9);
+  };
+  return tags
+    .map((t, i) => ({ t, i, s: score(t) }))
+    .sort((a, b) => b.s - a.s || a.i - b.i)
+    .map((x) => x.t);
 }

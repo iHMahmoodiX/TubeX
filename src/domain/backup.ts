@@ -19,7 +19,7 @@ export interface BackupFile {
 }
 
 export function emptyData(): BackupData {
-  return { profiles: [], ideas: [], drafts: [], templates: [] };
+  return { profiles: [], ideas: [], drafts: [], templates: [], keywordLists: [], watchlist: [], replies: [] };
 }
 
 export function createBackup(data: BackupData, appVersion: string): BackupFile {
@@ -63,7 +63,7 @@ export function parseBackup(text: string): ImportPreview | { ok: false; error: I
   const rawData = obj.data;
   if (typeof rawData !== 'object' || rawData === null || Array.isArray(rawData)) return { ok: false, error: 'bad-shape' };
   const data = emptyData();
-  const rejected = { profiles: 0, ideas: 0, drafts: 0, templates: 0 } as Record<CollectionName, number>;
+  const rejected = Object.fromEntries(COLLECTIONS.map((c) => [c, 0])) as Record<CollectionName, number>;
   for (const name of COLLECTIONS) {
     const list = (rawData as Record<string, unknown>)[name];
     if (list === undefined) continue;

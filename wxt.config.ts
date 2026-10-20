@@ -11,6 +11,8 @@ export default defineConfig({
     minimum_chrome_version: '116',
     permissions: ['storage', 'sidePanel'],
     host_permissions: YOUTUBE_MATCHES,
+    // Requested at runtime, per exact origin, when the owner connects a service in Settings.
+    optional_host_permissions: ['https://www.googleapis.com/*', 'http://localhost/*', 'http://127.0.0.1/*', 'https://*/*'],
     action: { default_title: 'TubeX' },
     content_security_policy: {
       extension_pages: "script-src 'self'; object-src 'self'",

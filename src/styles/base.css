@@ -232,3 +232,33 @@ a:hover { color: var(--accent-hover); }
 .item-button { all: unset; cursor: pointer; display: block; min-width: 0; }
 .item-button:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; border-radius: 4px; }
 h1[tabindex="-1"]:focus { outline: none; }
+
+/* Disclosure cards */
+.disclosure > summary { cursor: pointer; list-style: none; display: flex; align-items: center; gap: var(--space-2); }
+.disclosure > summary::-webkit-details-marker { display: none; }
+.disclosure > summary::before { content: '▸'; color: var(--text-3); font-size: var(--text-s); }
+:root[dir='rtl'] .disclosure > summary::before { content: '◂'; }
+.disclosure[open] > summary::before { content: '▾'; }
+.disclosure[open] > summary { margin-block-end: var(--space-3); }
+
+/* Data tables */
+.table-wrap { overflow-x: auto; border: 1px solid var(--border); border-radius: var(--radius-m); }
+.table { width: 100%; border-collapse: collapse; font-size: var(--text-s); }
+.table th, .table td { padding: 6px 8px; border-block-end: 1px solid var(--border); text-align: start; vertical-align: top; }
+.table th { background: var(--surface-2); font-weight: 600; white-space: nowrap; }
+.table td.num, .table th.num { text-align: end; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.table tr[data-mine='true'] td { background: var(--accent-soft); }
+.table tbody tr:last-child td { border-block-end: 0; }
+.stats { display: grid; grid-template-columns: repeat(auto-fill, minmax(110px, 1fr)); gap: var(--space-2); }
+.stat { background: var(--surface-2); border-radius: var(--radius-s); padding: 6px 10px; display: flex; flex-direction: column; }
+.stat b { font-size: var(--text-l); font-variant-numeric: tabular-nums; }
+.stat span { font-size: var(--text-s); color: var(--text-2); }
+.chip { all: unset; cursor: pointer; display: inline-flex; align-items: center; gap: 4px; padding-inline: 8px; min-height: 24px; border-radius: 999px; font-size: var(--text-s); background: var(--surface-2); border: 1px solid var(--border); }
+.chip:hover { border-color: var(--accent); }
+.chip:focus-visible { outline: 2px solid var(--focus); outline-offset: 1px; }
+.chip[aria-pressed='true'] { background: var(--accent-soft); border-color: var(--accent); }
+.chip small { color: var(--text-3); }
+.tabs { display: flex; gap: 2px; border-block-end: 1px solid var(--border); }
+.tabs button { all: unset; cursor: pointer; padding: 6px 12px; border-block-end: 2px solid transparent; color: var(--text-2); font-weight: 550; }
+.tabs button[aria-selected='true'] { color: var(--text); border-color: var(--accent); }
+.tabs button:focus-visible { outline: 2px solid var(--focus); }

@@ -182,3 +182,32 @@ Copied from the list Hossein pasted from TubeBuddy's feature/pricing page. "Limi
 | Productivity | Related Video Manager | Limited | CE-03 | Native handoff |
 
 59 distinct features (SEO Studio appeared twice in the paste). Every one has a TubeX row; 3 are already covered by M1 (Tag Lists, Default Upload Profiles via templates, SEO Studio as checklist and editor). vidIQ's official list has not been supplied or fetched yet.
+
+## Delivered in 0.2.0 (2026-10-20)
+
+Built because the owner asked for every feasible feature in one release. "Key" = owner's YouTube Data API key; "AI" = owner-chosen OpenAI-compatible provider. Verified by unit tests with mocked responses and the Chromium smoke test; live API calls not yet verified.
+
+| TubeBuddy feature | TubeX 0.2.0 | Needs |
+|---|---|---|
+| View and Copy Tags | Side panel tag list, copy, add to open draft | Key |
+| Tag Sorter | Draft "Sort tags" (keyword first, specific before broad), undo | — |
+| Keyword Explorer / Search Insights | Labeled search sample: common tags, title words, median views, recent share; no volume | Key |
+| Search Positions | Own channel's positions highlighted in each sample | Key |
+| Insta-Suggest / Title Generator | AI titles, tags, related terms and viewer questions | AI |
+| Tag Translator / Auto Translator | AI translation into a new draft | AI |
+| Channelytics / Videolytics | Public stats for the open channel/video, views/day, engagement | Key |
+| Milestones | Next subscriber milestone from public count | Key |
+| Topical Analysis | Common title words and tags in samples | Key |
+| Competitor Upload Alerts / Scorecard | Watchlist with new-upload badges (on refresh, no background polling) and side-by-side counts | Key |
+| Thumbnail Analyzer | Local size previews + AI critique (vision model) | AI optional |
+| Thumbnail Generator | 1280×720 text-overlay maker, PNG | — |
+| Advanced Video Embed | Embed builder (start/end, autoplay, loop, captions, privacy mode) | Key for the panel |
+| Chapter Editor | AI chapters from transcript + chapter-rule check in the checklist | AI optional |
+| Comment Formatting / Canned Responses | Comments workspace | — |
+| Export Comments / Comment Word Cloud | CSV export and common words (up to 500 comments) | Key |
+| Channel Backup | CSV export of up to 500 public videos of any channel | Key |
+| Bulk Find, Replace & Append | Drafts and templates (preview, undo). Published videos need M2 OAuth + write authorization | — |
+| Quick Links Menu | Popup links to workspace sections and Studio pages (Studio `/channel/UC/` shortcut is Inferred) | — |
+| Trending (partial Opportunity Finder) | mostPopular by category and region | Key |
+
+Still blocked or deferred: search volume, Click Magnet, Opportunity Finder, Best Time to Publish, Retention Analyzer, Health Report (own analytics, M2); A/B testing, scheduled publish/update, sunset videos, playlist actions, bulk thumbnails/end screens/cards, delete comments, related video manager (writes); channel valuation and channel access (out of personal scope).

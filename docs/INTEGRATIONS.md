@@ -21,6 +21,17 @@ Checked 2026-10-20. Google developer docs were **not reachable** from the build 
 | Hashtags | more than 60 → all ignored; first 3 shown above title |
 | Title visible in search | ~70 characters (approximate, display varies) |
 
+## Used in 0.2.0 (Inferred, mocked in unit tests; live calls not yet verified)
+| Service | Calls | Auth | TubeX safeguards |
+|---|---|---|---|
+| YouTube Data API v3 | `search` (100 units), `videos`, `channels` (`forHandle`), `playlistItems`, `videoCategories`, `commentThreads` (1 unit each) | Owner's API key (public data only) | Whitelisted GET resources only; local daily unit cap (default 8,000) counted before sending, reset at Pacific midnight; responses cached 3 h–7 d in IndexedDB `cache`; key not part of the cache key; errors mapped (quota, bad key, API not enabled) |
+| OpenAI-compatible chat | `POST {base}/chat/completions` (`response_format: json_object`, non-streaming), `GET {base}/models` | Optional Bearer key | Presets: Ollama `http://localhost:11434/v1`, Gemini `https://generativelanguage.googleapis.com/v1beta/openai` (Inferred endpoint); monthly request cap counted before sending; 120 s timeout; output validated per task; page/user data wrapped in `<data>` and declared untrusted; results cached 30 days keyed by prompt version, URL, model and prompt |
+| Thumbnails | `https://i.ytimg.com/vi/<id>/{maxres,hq,mq}default.jpg` | none | Links only; TubeX fetches nothing |
+
+- Host access is requested at runtime per origin (`optional_host_permissions`), from the Save/Test click. Keys live unencrypted in `chrome.storage.local` (`integrations`), never in backups or logs.
+- Ollama may reject extension origins; the UI documents the fix: start it with `OLLAMA_ORIGINS=chrome-extension://*`.
+- Derived values (views/day, likes+comments per view, sample medians) are computed on screen and not stored; the derived-metrics policy check below is still open.
+
 ## Planned APIs (all Inferred, verify at the milestone)
 | Need | Endpoint | Scope | Notes to verify |
 |---|---|---|---|

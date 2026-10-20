@@ -60,14 +60,42 @@ export interface Template extends BaseRecord {
   tags: string[];
 }
 
+/** A saved keyword with optional notes, grouped into named lists. */
+export interface KeywordList extends BaseRecord {
+  name: string;
+  profileId?: string;
+  keywords: { text: string; note: string; addedAt: string }[];
+}
+
+/** A public channel the owner follows (competitor, peer or inspiration). */
+export interface WatchedChannel extends BaseRecord {
+  channelId: string;
+  title: string;
+  handle: string;
+  notes: string;
+  /** Video ids seen at the last refresh; used to mark new uploads. */
+  seenVideoIds: string[];
+  lastCheckedAt?: string;
+}
+
+/** A saved comment reply (canned response). */
+export interface Reply extends BaseRecord {
+  name: string;
+  text: string;
+  profileId?: string;
+}
+
 export interface Collections {
   profiles: Profile;
   ideas: Idea;
   drafts: Draft;
   templates: Template;
+  keywordLists: KeywordList;
+  watchlist: WatchedChannel;
+  replies: Reply;
 }
 export type CollectionName = keyof Collections;
-export const COLLECTIONS: CollectionName[] = ['profiles', 'ideas', 'drafts', 'templates'];
+export const COLLECTIONS: CollectionName[] = ['profiles', 'ideas', 'drafts', 'templates', 'keywordLists', 'watchlist', 'replies'];
 
 export function nowIso(): string {
   return new Date().toISOString();

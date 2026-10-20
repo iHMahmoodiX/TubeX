@@ -6,21 +6,30 @@ import type { CollectionName, Collections } from '../domain/models';
 import { sanitizeRecord } from '../domain/records';
 
 export const DB_NAME = 'tubex';
-export const DB_VERSION = 1;
+export const DB_VERSION = 2;
 const META = 'meta';
 const SNAPSHOT_KEY = 'preImportSnapshot';
+export const CACHE = 'cache';
 
 type Db = IDBPDatabase<unknown>;
 let dbPromise: Promise<Db> | null = null;
 
 /** Versioned schema upgrades. Each step must be safe to run on data written by every earlier version. */
 const MIGRATIONS: Record<number, (db: Db) => void> = {
+  // Store lists are written out per version: COLLECTIONS grows over time, migrations must not.
   1: (db) => {
-    for (const name of COLLECTIONS) {
+    for (const name of ['profiles', 'ideas', 'drafts', 'templates'] as const) {
       const store = db.createObjectStore(name, { keyPath: 'id' });
       store.createIndex('updatedAt', 'updatedAt');
     }
     db.createObjectStore(META, { keyPath: 'key' });
+  },
+  2: (db) => {
+    for (const name of ['keywordLists', 'watchlist', 'replies'] as const) {
+      db.createObjectStore(name, { keyPath: 'id' }).createIndex('updatedAt', 'updatedAt');
+    }
+    // Cache of API/AI responses. Not part of backups; entries expire (see src/storage/cache.ts).
+    db.createObjectStore(CACHE, { keyPath: 'key' }).createIndex('expiresAt', 'expiresAt');
   },
 };
 
@@ -207,6 +216,7 @@ export async function deleteAllData(): Promise<void> {
   const db = await openDb();
   const tx = db.transaction([...COLLECTIONS, META], 'readwrite');
   for (const name of [...COLLECTIONS, META]) await tx.objectStore(name).clear();
+  await db.clear(CACHE);
   await tx.done;
   COLLECTIONS.forEach(notify);
 }

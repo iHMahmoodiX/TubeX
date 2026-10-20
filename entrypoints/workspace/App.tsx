@@ -1,6 +1,10 @@
 import { useEffect, useRef, useState } from 'react';
+import { BulkView } from '../../src/features/bulk/BulkView';
+import { CommentsView } from '../../src/features/comments/CommentsView';
+import { CompetitorsView } from '../../src/features/competitors/CompetitorsView';
 import { DraftsView } from '../../src/features/drafts/DraftsView';
 import { IdeasView } from '../../src/features/ideas/IdeasView';
+import { ResearchView } from '../../src/features/research/ResearchView';
 import { ProfileSelect, ProfilesView } from '../../src/features/profiles/ProfilesView';
 import { SettingsView } from '../../src/features/settings/SettingsView';
 import { TemplatesView } from '../../src/features/templates/TemplatesView';
@@ -11,6 +15,10 @@ import type { WorkspaceRoute } from '../../src/platform/navigation';
 const ROUTES: { route: WorkspaceRoute; label: MessageKey }[] = [
   { route: 'ideas', label: 'nav.ideas' },
   { route: 'drafts', label: 'nav.drafts' },
+  { route: 'research', label: 'nav.research' },
+  { route: 'competitors', label: 'nav.competitors' },
+  { route: 'bulk', label: 'nav.bulk' },
+  { route: 'comments', label: 'nav.comments' },
   { route: 'templates', label: 'nav.templates' },
   { route: 'channels', label: 'nav.channels' },
   { route: 'settings', label: 'nav.settings' },
@@ -67,6 +75,10 @@ export function App() {
       <main className="ws-main" ref={mainRef}>
         {loc.route === 'ideas' && <IdeasView onOpenDraft={(id) => go('drafts', id)} />}
         {loc.route === 'drafts' && <DraftsView draftId={loc.id} onSelect={(id) => go('drafts', id)} />}
+        {loc.route === 'research' && <ResearchView query={loc.id} />}
+        {loc.route === 'competitors' && <CompetitorsView />}
+        {loc.route === 'bulk' && <BulkView />}
+        {loc.route === 'comments' && <CommentsView />}
         {loc.route === 'templates' && <TemplatesView />}
         {loc.route === 'channels' && <ProfilesView />}
         {loc.route === 'settings' && <SettingsView />}

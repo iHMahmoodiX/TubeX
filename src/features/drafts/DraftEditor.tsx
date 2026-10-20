@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { applyTemplate, checkDraft, formatDraftAsText, LIMITS, parseTags, tagsCharCount } from '../../domain/metadata';
+import { applyTemplate, checkDraft, formatDraftAsText, LIMITS, parseTags, sortTags, tagsCharCount } from '../../domain/metadata';
 import { newBase, type Draft, type Lang } from '../../domain/models';
 import { canonicalUrl, isCapturable, type PageContext } from '../../domain/pageContext';
 import { sanitizeRecord } from '../../domain/records';
@@ -10,6 +10,8 @@ import { Button, Field, Notice } from '../../components/ui';
 import { useI18n } from '../../i18n';
 import { copyText, downloadText, fileSlug } from '../../platform/files';
 import { create, get, onDataChanged, put, remove, save } from '../../storage/db';
+import { AiAssist } from '../ai/AiAssist';
+import { ThumbnailCheck } from '../ai/ThumbnailCheck';
 import { Checks } from './Checks';
 import { Preview } from './Preview';
 
@@ -391,6 +393,30 @@ export function DraftEditor({
         )}
       </Field>
 
+      {draft.tags.length > 1 && (
+        <div>
+          <Button
+            size="s"
+            variant="ghost"
+            onClick={() => {
+              const before = draft.tags;
+              const sorted = sortTags(before, draft.focusKeyword);
+              update({ tags: sorted });
+              setTagsText(sorted.join(', '));
+              toast(t('draft.tagsSorted'), {
+                label: t('common.undo'),
+                run: () => {
+                  update({ tags: before });
+                  setTagsText(before.join(', '));
+                },
+              });
+            }}
+          >
+            {t('draft.sortTags')}
+          </Button>
+        </div>
+      )}
+
       <Field label={t('draft.focusKeyword')} help={t('draft.focusKeywordHelp')}>
         {({ id, describedBy }) => (
           <input
@@ -461,6 +487,18 @@ export function DraftEditor({
         <h2 id={`checks-${draft.id}`}>{t('checks.heading')}</h2>
         <Checks checks={checks} />
       </section>
+      <details className="card disclosure" open={!compact} data-testid="ai-section">
+        <summary>
+          <h2>{t('ai.heading')}</h2>
+        </summary>
+        <AiAssist draft={draft} profile={profile} update={update} setTagsText={setTagsText} />
+      </details>
+      <details className="card disclosure">
+        <summary>
+          <h2>{t('thumb.heading')}</h2>
+        </summary>
+        <ThumbnailCheck title={draft.title} language={draft.language} />
+      </details>
       <section className="card stack-s" aria-labelledby={`pkg-${draft.id}`}>
         <h2 id={`pkg-${draft.id}`}>{t('draft.package')}</h2>
         <p className="small muted">{t('settings.writesState')}</p>

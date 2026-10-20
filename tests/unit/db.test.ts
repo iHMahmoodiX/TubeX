@@ -93,3 +93,24 @@ describe('import', () => {
     expect(await db.exportAll()).toEqual(exported);
   });
 });
+
+describe('schema', () => {
+  it('upgrades a version 1 database to version 2 without losing data', async () => {
+    await db.resetDbForTests();
+    const { openDB } = await import('idb');
+    const v1 = await openDB(db.DB_NAME, 1, {
+      upgrade(d) {
+        for (const n of ['profiles', 'ideas', 'drafts', 'templates']) d.createObjectStore(n, { keyPath: 'id' }).createIndex('updatedAt', 'updatedAt');
+        d.createObjectStore('meta', { keyPath: 'key' });
+      },
+    });
+    const old = idea();
+    await v1.put('ideas', old);
+    v1.close();
+    expect((await db.list('ideas')).items.map((i) => i.id)).toEqual([old.id]);
+    expect((await db.list('watchlist')).items).toEqual([]);
+    expect((await db.list('replies')).items).toEqual([]);
+    const raw = await db.openDb();
+    expect([...raw.objectStoreNames]).toContain('cache');
+  });
+});

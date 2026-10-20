@@ -8,6 +8,7 @@ import { CaptureForm } from '../../src/features/ideas/CaptureForm';
 import { ContextCard } from '../../src/features/ideas/ContextCard';
 import { createDraft, sourceFromContext } from '../../src/features/ideas/ideaActions';
 import { IdeaRow } from '../../src/features/ideas/IdeasView';
+import { PageInsights } from '../../src/features/insights/PageInsights';
 import { ProfileSelect } from '../../src/features/profiles/ProfilesView';
 import { useI18n } from '../../src/i18n';
 import { openWorkspace } from '../../src/platform/navigation';
@@ -56,6 +57,7 @@ export function App() {
       </header>
 
       <ContextCard ctx={ctx} />
+      <PageInsights ctx={ctx} draftId={draftId} />
       <CaptureForm ctx={ctx} />
 
       <section className="stack" aria-labelledby="draft-h">
