@@ -10,3 +10,4 @@ dist/
 backups/
 tubex-backup-*.json
 tests/e2e/artifacts/
+.claude/worktrees/
