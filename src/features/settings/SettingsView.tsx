@@ -7,6 +7,7 @@ import { useToast } from '../../components/toasts';
 import { Button, ConfirmButton, Field, Notice } from '../../components/ui';
 import { useI18n } from '../../i18n';
 import { ConnectionsSettings } from '../connections/ConnectionsSettings';
+import { InpageSettings } from './InpageSettings';
 import { downloadText } from '../../platform/files';
 import type { ThemePref } from '../../storage/prefs';
 import { deleteAllData, exportAll, hasImportSnapshot, importData, undoLastImport } from '../../storage/db';
@@ -82,6 +83,7 @@ export function SettingsView() {
       </div>
 
       <ConnectionsSettings />
+      <InpageSettings />
 
       <div className="card stack">
         <h2>{t('settings.backup')}</h2>
