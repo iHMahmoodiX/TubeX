@@ -1,0 +1,42 @@
+<!doctype html>
+<!-- Synthetic fixture modelled on the 2026 YouTube Studio upload dialog, details step (Inferred). -->
+<html dark lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>Channel content - YouTube Studio</title>
+    <style>
+      html { background: #f9f9f9; color: #0d0d0d; font: 14px Roboto, Arial, sans-serif; }
+      html[dark] { background: #1f1f1f; color: #fff; }
+      body { margin: 0; background: inherit; }
+      ytcp-uploads-dialog { position: fixed; inset: 32px 10%; background: #282828; border-radius: 8px; overflow: auto; display: block; }
+      html:not([dark]) ytcp-uploads-dialog { background: #fff; box-shadow: 0 4px 24px rgba(0,0,0,.2); }
+      h2 { margin: 0; padding: 16px 24px; font-size: 22px; }
+      #scrollable-content { padding: 0 24px 24px; }
+      ytcp-uploads-details { display: block; max-width: 640px; }
+      .box { border: 1px solid #606060; border-radius: 4px; padding: 8px 12px; margin-bottom: 16px; }
+      .box label { font-size: 12px; color: #aaa; display: block; }
+      #textbox { outline: none; min-height: 24px; white-space: pre-wrap; }
+      #text-input { background: transparent; border: 0; color: inherit; }
+    </style>
+  </head>
+  <body>
+    <ytcp-app>
+      <ytcp-uploads-dialog>
+        <h2>my_new_video.mp4</h2>
+        <div id="scrollable-content">
+          <ytcp-uploads-details>
+            <ytcp-video-metadata-editor>
+              <ytcp-video-title>
+                <div id="title-textarea" class="box"><label>Title (required)</label><div id="textbox" contenteditable="true">my_new_video</div></div>
+              </ytcp-video-title>
+              <ytcp-video-description>
+                <div id="description-textarea" class="box"><label>Description</label><div id="textbox" contenteditable="true"></div></div>
+              </ytcp-video-description>
+              <div id="tags-container" class="box"><label>Tags</label><ytcp-free-text-chip-bar><input id="text-input" aria-label="Tags" /></ytcp-free-text-chip-bar></div>
+            </ytcp-video-metadata-editor>
+          </ytcp-uploads-details>
+        </div>
+      </ytcp-uploads-dialog>
+    </ytcp-app>
+  </body>
+</html>

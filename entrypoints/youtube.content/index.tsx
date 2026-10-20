@@ -24,7 +24,7 @@ export default defineContentScript({
       })();
       return true;
     });
-    if ((await loadPrefs()).inpage?.all === false) return;
+    // Islands follow Settings → In-page tools live (each checks its own switch), so they register even when off.
     await registerYoutubeIslands(ctx);
   },
 });

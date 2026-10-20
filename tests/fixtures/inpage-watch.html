@@ -1,0 +1,66 @@
+<!doctype html>
+<!-- Synthetic, hand-written fixture modelled on the 2026 YouTube watch page (Inferred structure, not captured from
+     youtube.com). Used by tests/unit/inpageDom.test.ts and tests/e2e/inpage-shots.mjs. -->
+<html dark lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>How to edit videos in Figma - YouTube</title>
+    <style>
+      html { background: #fff; color: #0f0f0f; font: 14px Roboto, Arial, sans-serif; }
+      html[dark] { background: #0f0f0f; color: #f1f1f1; }
+      body { margin: 0; }
+      ytd-masthead { display: flex; align-items: center; justify-content: space-between; height: 56px; padding: 0 16px; }
+      #logo { font-weight: 700; font-size: 18px; }
+      #center input { width: 480px; height: 36px; border-radius: 18px; border: 1px solid #555; background: transparent; color: inherit; padding: 0 16px; }
+      #end, #buttons { display: flex; align-items: center; gap: 8px; }
+      .yt-icon { width: 40px; height: 40px; border-radius: 50%; display: grid; place-items: center; }
+      .avatar { width: 32px; height: 32px; border-radius: 50%; background: #c66; }
+      ytd-watch-flexy { display: block; max-width: 1280px; margin: 0 auto; padding: 24px; }
+      .player { aspect-ratio: 16/9; max-width: 860px; background: #222; border-radius: 12px; }
+      ytd-watch-metadata { display: block; max-width: 860px; }
+      h1 { font-size: 20px; margin: 12px 0; }
+      #top-row { display: flex; align-items: center; gap: 12px; }
+      #description { background: rgba(127,127,127,0.15); border-radius: 12px; padding: 12px; white-space: pre-wrap; }
+    </style>
+  </head>
+  <body>
+    <ytd-app>
+      <div id="masthead-container">
+        <ytd-masthead>
+          <div id="start"><span id="logo">▶ YouTube</span></div>
+          <div id="center"><input aria-label="Search" placeholder="Search" /></div>
+          <div id="end">
+            <div id="buttons">
+              <span class="yt-icon" aria-label="Create">＋</span>
+              <span class="yt-icon" aria-label="Notifications">🔔</span>
+              <span class="avatar"></span>
+            </div>
+          </div>
+        </ytd-masthead>
+      </div>
+      <ytd-watch-flexy video-id="dQw4w9WgXcQ">
+        <div id="primary">
+          <div class="player"></div>
+          <div id="below">
+            <ytd-watch-metadata>
+              <div id="above-the-fold">
+                <div id="title"><h1><yt-formatted-string>How to edit videos in Figma — full beginner tutorial</yt-formatted-string></h1></div>
+                <div id="top-row">
+                  <div id="owner">
+                    <ytd-video-owner-renderer>
+                      <ytd-channel-name><a href="/@sample-channel">Sample Channel</a></ytd-channel-name>
+                    </ytd-video-owner-renderer>
+                  </div>
+                </div>
+                <div id="bottom-row">
+                  <div id="description">120K views  3 months ago
+Learn Figma video editing step by step.</div>
+                </div>
+              </div>
+            </ytd-watch-metadata>
+          </div>
+        </div>
+      </ytd-watch-flexy>
+    </ytd-app>
+  </body>
+</html>
