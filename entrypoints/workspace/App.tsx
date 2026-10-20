@@ -132,7 +132,7 @@ export function App() {
     case 'playlists': view = <PlaylistsView tab={loc.id} />; break;
     case 'schedule': view = <ScheduleView tab={loc.id} />; break;
     case 'thumbs': view = <ThumbsView tab={loc.id} />; break;
-    case 'comments': view = <CommentsView />; break;
+    case 'comments': view = <CommentsView tab={loc.id} />; break;
     case 'alerts': view = <AlertsView tab={loc.id} />; break;
     case 'channels': view = <ProfilesView />; break;
     case 'settings': view = <SettingsView />; break;
