@@ -206,8 +206,10 @@ Built because the owner asked for every feasible feature in one release. "Key" =
 | Comment Formatting / Canned Responses | Comments workspace | — |
 | Export Comments / Comment Word Cloud | CSV export and common words (up to 500 comments) | Key |
 | Channel Backup | CSV export of up to 500 public videos of any channel | Key |
-| Bulk Find, Replace & Append | Drafts and templates (preview, undo). Published videos need M2 OAuth + write authorization | — |
+| Bulk Find, Replace & Append | Drafts, templates and (0.3.0) published videos: title, description, tags, with preview, confirmation, undo | Google sign-in for videos |
 | Quick Links Menu | Popup links to workspace sections and Studio pages (Studio `/channel/UC/` shortcut is Inferred) | — |
 | Trending (partial Opportunity Finder) | mostPopular by category and region | Key |
+
+Added in 0.3.0 (Google sign-in): Channelytics for the own channel with private analytics (My Channel), search terms and traffic sources (partial Search Insights for own videos), Health Report basics (metadata audit of own videos), Channel Backup of own videos.
 
 Still blocked or deferred: search volume, Click Magnet, Opportunity Finder, Best Time to Publish, Retention Analyzer, Health Report (own analytics, M2); A/B testing, scheduled publish/update, sunset videos, playlist actions, bulk thumbnails/end screens/cards, delete comments, related video manager (writes); channel valuation and channel access (out of personal scope).

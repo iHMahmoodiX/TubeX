@@ -34,10 +34,10 @@ No background service worker in M1: nothing needs privileged network or schedule
 3. Content script validates `sender.id` and message type, changes nothing, injects nothing.
 
 ### Security boundaries
-- Permissions: `storage`, `sidePanel`; hosts `https://www.youtube.com/*`, `https://studio.youtube.com/*`. CSP `script-src 'self'`.
+- Permissions: `storage`, `sidePanel`, `identity`; hosts `https://www.youtube.com/*`, `https://studio.youtube.com/*`. CSP `script-src 'self'`.
 - Network only to origins the owner allowed at runtime (`optional_host_permissions`): the YouTube Data API and the chosen AI base URL, from extension pages. No remote code. Page DOM, imported files, API responses and model output are untrusted and validated.
 
 ## Proposed (not built)
-- M2: service worker owns OAuth (`chrome.identity`), YouTube Data/Analytics adapters with quota accounting, per-channel cache partitions with retention rules. Needs a stable extension ID (manifest `key`) for redirect URIs.
+- M2 remainder: per-channel cache retention rules; background jobs if scheduled updates are requested. OAuth itself is built in extension pages (`src/integrations/google`, D-015), no service worker.
 - M3: one optional AI provider adapter with budget enforcement; thumbnail canvas workbench.
 - M4: durable job store with per-item checkpoints, lease against duplicate execution, conditional restore.

@@ -45,7 +45,7 @@ Checked 2026-10-20. Google developer docs were **not reachable** from the build 
 | Analytics | YouTube Analytics API `reports.query` | `yt-analytics.readonly` (+ `yt-analytics-monetary.readonly` for revenue) | Which metrics/dimensions combine; data delay; impressions/CTR availability Unknown |
 | Bulk reports | YouTube Reporting API | same | Job creation latency, retention |
 | Public research | `search.list`, `videos.list chart=mostPopular` | API key or OAuth | `search.list` is far more expensive than `videos.list`; read actual costs from the quota calculator |
-| Auth | `chrome.identity.launchWebAuthFlow` / `getAuthToken` | — | Chrome vs Edge differences (Edge lacks `getAuthToken` support, Inferred), stable extension ID via manifest `key`, OAuth testing-mode user limits and token expiry |
+| Auth (built 0.3.0, token flow, `prompt=select_account`, D-015) | `chrome.identity.launchWebAuthFlow` / `getAuthToken` | — | Chrome vs Edge differences (Edge lacks `getAuthToken` support, Inferred), stable extension ID via manifest `key`, OAuth testing-mode user limits and token expiry |
 
 ## Policy gates (must check before building)
 - YouTube API Services Developer Policies and the derived-metrics policy: composite scores, outlier ratios, velocity, sentiment, cross-source combinations and stored history of public metrics. Until checked: show only raw permitted values with retrieval time.

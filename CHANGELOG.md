@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.3.0 — 2026-10-20 (Google sign-in, own channel, live bulk edit)
+- Sign in with Google from Settings (Chrome and Edge). Several channels, including Brand Accounts: sign in again and pick the next channel; switch the active channel anytime. Disconnect revokes the token.
+- My Channel: analytics for 7/28/90/365 days (views, watch hours, average view duration and percentage, net subscribers, likes, comments, shares), daily views chart, YouTube search terms, traffic sources, countries, top videos; video list with visibility, views, age, metadata audit, copy to draft and CSV export.
+- Bulk edit on published videos: find and replace, add/remove tags and add text now also apply to the signed-in channel's videos, with preview, per-video selection, limit checks, unit cost shown before confirming, sequential writes, and undo of the last 10 batches.
+- New permission `identity`; optional host for the YouTube Analytics API.
+
 ## 0.2.0 — 2026-10-20 (connections, research and bulk tools, local development build)
 - Optional AI through any OpenAI-compatible service: presets for Ollama (local) and Google Gemini (own key), or a custom base URL. Runtime host permission per origin, monthly request cap, token usage, 30-day result cache, prompt-injection guard for page data.
 - Draft AI tools: titles, description, tags, hooks and outline, content brief, translation into a new draft, chapters from a timestamped transcript (validated). Every suggestion is applied by click with undo.

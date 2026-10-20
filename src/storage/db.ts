@@ -220,3 +220,37 @@ export async function deleteAllData(): Promise<void> {
   await tx.done;
   COLLECTIONS.forEach(notify);
 }
+
+// ---- undo log for changes written to YouTube ----
+const LIVE_UNDO_KEY = 'liveUndo';
+
+export interface LiveUndoEntry {
+  channelId: string;
+  videoId: string;
+  /** Title, description and tags as they were on YouTube before TubeX changed them. */
+  before: { title: string; description: string; tags: string[] };
+  after: { title: string; description: string; tags: string[] };
+}
+export interface LiveUndoBatch {
+  at: string;
+  label: string;
+  entries: LiveUndoEntry[];
+}
+
+/** Keeps the last 10 batches of live changes so each can be reverted. */
+export async function pushLiveUndo(batch: LiveUndoBatch): Promise<void> {
+  const db = await openDb();
+  const cur = ((await db.get(META, LIVE_UNDO_KEY)) as { batches?: LiveUndoBatch[] } | undefined)?.batches ?? [];
+  await db.put(META, { key: LIVE_UNDO_KEY, batches: [batch, ...cur].slice(0, 10) });
+}
+
+export async function listLiveUndo(): Promise<LiveUndoBatch[]> {
+  const db = await openDb();
+  return ((await db.get(META, LIVE_UNDO_KEY)) as { batches?: LiveUndoBatch[] } | undefined)?.batches ?? [];
+}
+
+export async function dropLiveUndo(at: string): Promise<void> {
+  const db = await openDb();
+  const cur = await listLiveUndo();
+  await db.put(META, { key: LIVE_UNDO_KEY, batches: cur.filter((b) => b.at !== at) });
+}

@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { BulkView } from '../../src/features/bulk/BulkView';
+import { MyChannelView } from '../../src/features/mychannel/MyChannelView';
 import { CommentsView } from '../../src/features/comments/CommentsView';
 import { CompetitorsView } from '../../src/features/competitors/CompetitorsView';
 import { DraftsView } from '../../src/features/drafts/DraftsView';
@@ -13,6 +14,7 @@ import type { MessageKey } from '../../src/i18n/en';
 import type { WorkspaceRoute } from '../../src/platform/navigation';
 
 const ROUTES: { route: WorkspaceRoute; label: MessageKey }[] = [
+  { route: 'mychannel', label: 'nav.mychannel' },
   { route: 'ideas', label: 'nav.ideas' },
   { route: 'drafts', label: 'nav.drafts' },
   { route: 'research', label: 'nav.research' },
@@ -77,6 +79,7 @@ export function App() {
         {loc.route === 'drafts' && <DraftsView draftId={loc.id} onSelect={(id) => go('drafts', id)} />}
         {loc.route === 'research' && <ResearchView query={loc.id} />}
         {loc.route === 'competitors' && <CompetitorsView />}
+        {loc.route === 'mychannel' && <MyChannelView />}
         {loc.route === 'bulk' && <BulkView />}
         {loc.route === 'comments' && <CommentsView />}
         {loc.route === 'templates' && <TemplatesView />}

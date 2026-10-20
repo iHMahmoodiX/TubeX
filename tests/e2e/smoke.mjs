@@ -228,7 +228,7 @@ await step('workspace is keyboard reachable and fits 320px', async () => {
   await ws.waitForSelector('h1');
   await ws.keyboard.press('Tab');
   const first = await ws.evaluate(() => document.activeElement?.textContent);
-  assert(first === 'ایده‌ها', `first focus was ${first}`);
+  assert(first === 'کانال من', `first focus was ${first}`);
   await ws.getByRole('link', { name: 'قالب‌ها' }).press('Enter');
   await ws.waitForFunction(() => document.activeElement?.tagName === 'H1' && document.activeElement.textContent === 'قالب‌ها');
   await ws.getByRole('link', { name: 'پیش‌نویس‌ها' }).click();
@@ -293,6 +293,10 @@ await step('bulk find and replace previews, applies and undoes across drafts', a
 await step('research, competitors, comments and connection settings render without keys', async () => {
   await ws.goto(ext('workspace.html#research'));
   await ws.getByText('برای استفاده از این بخش، کلید YouTube Data API را در تنظیمات وارد کنید.').first().waitFor();
+  await ws.goto(ext('workspace.html#mychannel'));
+  await ws.getByText('برای دیدن آمار و ویدیوهای کانالتان، در تنظیمات با گوگل وارد شوید.').first().waitFor();
+  await ws.goto(ext('workspace.html#bulk'));
+  assert(await ws.getByTestId('bulk-live').isDisabled(), 'live bulk scope disabled when signed out');
   await ws.goto(ext('workspace.html#competitors'));
   await ws.getByRole('heading', { name: 'رقبا' }).waitFor();
   await ws.goto(ext('workspace.html#comments'));

@@ -1,5 +1,5 @@
 // Bulk find-and-replace and other batch edits across drafts and templates, with preview and undo.
-import { useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { applyBulk, changedFields, changedLines, countMatches, findPattern, type BulkField, type BulkOp } from '../../domain/bulk';
 import { checkDraft, LIMITS, parseTags, tagsCharCount } from '../../domain/metadata';
 import type { Draft, Template } from '../../domain/models';
@@ -8,21 +8,38 @@ import { useToast } from '../../components/toasts';
 import { Button, Empty, Field, Notice } from '../../components/ui';
 import { useI18n } from '../../i18n';
 import type { MessageKey } from '../../i18n/en';
-import { put, save } from '../../storage/db';
+import { dropLiveUndo, listLiveUndo, pushLiveUndo, put, save, type LiveUndoBatch, type LiveUndoEntry } from '../../storage/db';
+import { ownVideos, UPDATE_COST, updateVideo, type OwnVideo, type SnippetEdit } from '../../integrations/google/own';
+import { AuthError } from '../../integrations/google/auth';
+import { YtError } from '../../integrations/youtube/client';
+import { ConfirmButton } from '../../components/ui';
+import { ErrorNotice } from '../connections/ErrorNotice';
+import { useGoogle } from '../connections/useConnections';
+import { useAsync } from '../research/shared';
 
 type Kind = BulkOp['kind'];
-type Item = { col: 'drafts'; rec: Draft } | { col: 'templates'; rec: Template };
+type Item = { col: 'drafts'; rec: Draft } | { col: 'templates'; rec: Template } | { col: 'live'; rec: OwnVideo };
 
 interface Change {
   key: string;
   item: Item;
-  next: Draft | Template;
+  next: Draft | Template | OwnVideo;
   fields: BulkField[];
   matches: number;
   overLimit: boolean;
 }
 
-const nameOf = (i: Item) => (i.col === 'drafts' ? i.rec.title : i.rec.name);
+const nameOf = (i: Item) => (i.col === 'templates' ? i.rec.name : i.rec.title);
+const breaksLimits = (e: SnippetEdit) => checkDraft({ ...e, focusKeyword: '' }).some((c) => c.severity === 'error');
+
+interface LiveProgress {
+  done: number;
+  total: number;
+  changed: number;
+  skipped: number;
+  failed: { title: string; error: unknown }[];
+  stopped?: unknown;
+}
 
 function Diff({ before, after, label }: { before: string; after: string; label: string }) {
   const lines = before.length > 200 || after.length > 200 ? changedLines(before, after) : { before: [before], after: [after] };
@@ -64,6 +81,19 @@ export function BulkView() {
   const [position, setPosition] = useState<'start' | 'end'>('end');
   const [excluded, setExcluded] = useState<Set<string>>(new Set());
   const [applying, setApplying] = useState(false);
+  const g = useGoogle();
+  const channel = g.channels.find((c) => c.channelId === g.activeChannelId);
+  const [useLive, setUseLive] = useState(false);
+  const live = useAsync(useCallback((chId: string, pl: string, fresh: boolean) => ownVideos(chId, pl, 500, fresh), []));
+  const [progress, setProgress] = useState<LiveProgress | null>(null);
+  const [undo, setUndo] = useState<LiveUndoBatch[]>([]);
+  useEffect(() => {
+    void listLiveUndo().then(setUndo);
+  }, []);
+  useEffect(() => {
+    if (useLive && channel?.uploadsPlaylistId && !live.data && !live.loading) void live.run(channel.channelId, channel.uploadsPlaylistId, false);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [useLive, channel?.channelId]);
 
   const op: BulkOp = useMemo(() => {
     switch (kind) {
@@ -81,39 +111,105 @@ export function BulkView() {
 
   const changes: Change[] = useMemo(() => {
     if (!ready) return [];
-    const items: Item[] = [
+    const local = [
       ...(useDrafts ? drafts.items.map((rec) => ({ col: 'drafts' as const, rec })) : []),
       ...(useTemplates ? templates.items.map((rec) => ({ col: 'templates' as const, rec })) : []),
     ].filter((i) => profileId === 'all' || (profileId === 'none' ? !i.rec.profileId : i.rec.profileId === profileId));
+    const items: Item[] = [...local, ...(useLive && live.data ? live.data.map((rec) => ({ col: 'live' as const, rec })) : [])];
     const re = op.kind === 'replace' ? findPattern(op) : null;
     const out: Change[] = [];
     for (const item of items) {
-      const next = applyBulk<Draft | Template>(item.rec, op);
+      const next = applyBulk<Draft | Template | OwnVideo>(item.rec, op);
       const f = changedFields(item.rec, next);
       if (!f.length) continue;
       const matches =
         op.kind === 'replace'
-          ? (op.fields.includes('title') && item.col === 'drafts' ? countMatches(item.rec.title, re) : 0) +
+          ? (op.fields.includes('title') && item.col !== 'templates' ? countMatches(item.rec.title, re) : 0) +
             (op.fields.includes('description') ? countMatches(item.rec.description, re) : 0) +
             (op.fields.includes('tags') ? item.rec.tags.reduce((n, tg) => n + countMatches(tg, re), 0) : 0)
           : 0;
       const overLimit =
-        item.col === 'drafts' ? checkDraft(next as Draft).some((c) => c.severity === 'error' && c.id !== 'title-missing') : tagsCharCount(next.tags) > LIMITS.tagsChars;
+        item.col === 'live'
+          ? breaksLimits(next as OwnVideo)
+          : item.col === 'drafts'
+            ? checkDraft(next as Draft).some((c) => c.severity === 'error' && c.id !== 'title-missing')
+            : tagsCharCount(next.tags) > LIMITS.tagsChars;
       out.push({ key: `${item.col}:${item.rec.id}`, item, next, fields: f, matches, overLimit });
     }
     return out;
-  }, [ready, op, useDrafts, useTemplates, drafts.items, templates.items, profileId]);
+  }, [ready, op, useDrafts, useTemplates, drafts.items, templates.items, profileId, useLive, live.data]);
 
   const selected = changes.filter((c) => !excluded.has(c.key));
+  const localSelected = selected.filter((c) => c.item.col !== 'live');
+  const liveSelected = selected.filter((c) => c.item.col === 'live' && !c.overLimit);
+
+  // Applies the operation to each video's live snippet (re-read just before writing), one at a time.
+  const applyLive = async () => {
+    if (!channel) return;
+    const entries: LiveUndoEntry[] = [];
+    const p: LiveProgress = { done: 0, total: liveSelected.length, changed: 0, skipped: 0, failed: [] };
+    setProgress({ ...p });
+    for (const c of liveSelected) {
+      try {
+        const r = await updateVideo(channel.channelId, c.item.rec.id, (cur) => {
+          const next = applyBulk(cur, op);
+          return breaksLimits(next) ? cur : next;
+        });
+        if (r) {
+          p.changed++;
+          entries.push({ channelId: channel.channelId, videoId: r.videoId, before: r.before, after: r.after });
+        } else p.skipped++;
+      } catch (e) {
+        p.failed.push({ title: nameOf(c.item), error: e });
+        if (e instanceof AuthError || (e instanceof YtError && (e.code === 'quota' || e.code === 'budget' || e.code === 'permission'))) {
+          p.stopped = e;
+          p.done++;
+          setProgress({ ...p });
+          break;
+        }
+      }
+      p.done++;
+      setProgress({ ...p });
+    }
+    if (entries.length) {
+      await pushLiveUndo({ at: new Date().toISOString(), label: kind === 'replace' ? `${find} → ${replace}` : t(`bulk.op.${kind}` as MessageKey), entries });
+      setUndo(await listLiveUndo());
+    }
+    void live.run(channel.channelId, channel.uploadsPlaylistId!, true);
+  };
+
+  const undoLive = async (batch: LiveUndoBatch) => {
+    const p: LiveProgress = { done: 0, total: batch.entries.length, changed: 0, skipped: 0, failed: [] };
+    setProgress({ ...p });
+    for (const e of batch.entries) {
+      try {
+        // Restore only when the video still has what TubeX wrote; later manual edits are kept.
+        const r = await updateVideo(e.channelId, e.videoId, (cur) =>
+          cur.title === e.after.title && cur.description === e.after.description && cur.tags.join('\n') === e.after.tags.join('\n') ? e.before : cur,
+        );
+        if (r) p.changed++;
+        else p.skipped++;
+      } catch (err) {
+        p.failed.push({ title: e.after.title, error: err });
+      }
+      p.done++;
+      setProgress({ ...p });
+    }
+    if (!p.failed.length) {
+      await dropLiveUndo(batch.at);
+      setUndo(await listLiveUndo());
+    }
+    if (channel?.uploadsPlaylistId) void live.run(channel.channelId, channel.uploadsPlaylistId, true);
+  };
   const num = new Intl.NumberFormat(lang === 'fa' ? 'fa-IR' : 'en-US');
 
   const apply = async () => {
     setApplying(true);
-    const done: Item[] = [];
+    const done: ({ col: 'drafts'; rec: Draft } | { col: 'templates'; rec: Template })[] = [];
     let conflicts = 0;
-    for (const c of selected) {
+    for (const c of localSelected) {
       const r = c.item.col === 'drafts' ? await save('drafts', c.next as Draft) : await save('templates', c.next as Template);
-      if (r.ok) done.push(c.item);
+      if (r.ok) done.push(c.item as (typeof done)[number]);
       else conflicts++;
     }
     setApplying(false);
@@ -152,6 +248,10 @@ export function BulkView() {
           <label className="check">
             <input type="checkbox" checked={useTemplates} onChange={(e) => setUseTemplates(e.target.checked)} />
             <span>{t('nav.templates')}</span>
+          </label>
+          <label className="check">
+            <input type="checkbox" checked={useLive} disabled={!channel} onChange={(e) => setUseLive(e.target.checked)} data-testid="bulk-live" />
+            <span>{channel ? t('bulk.liveScope', { name: channel.title }) : t('bulk.liveNeedsSignIn')}</span>
           </label>
           <Field label={t('draft.channel')}>
             {({ id }) => (
@@ -229,13 +329,62 @@ export function BulkView() {
         )}
       </div>
 
+      {useLive && live.loading && <p className="muted">{t('bulk.loadingLive')}</p>}
+      <ErrorNotice error={live.error} />
+      {progress && (
+        <Notice tone={progress.failed.length ? 'warning' : progress.done === progress.total ? 'success' : 'info'}>
+          <p role="status">{t('bulk.liveProgress', { done: num.format(progress.done), total: num.format(progress.total), changed: num.format(progress.changed), skipped: num.format(progress.skipped), failed: num.format(progress.failed.length) })}</p>
+          {progress.failed.slice(0, 5).map((f, i) => (
+            <div key={i} className="small">
+              <bdi>{f.title}</bdi>
+              <ErrorNotice error={f.error} />
+            </div>
+          ))}
+          {!!progress.stopped && <p className="small">{t('bulk.liveStopped')}</p>}
+        </Notice>
+      )}
+      {undo.length > 0 && (
+        <div className="card stack-s">
+          <h2>{t('bulk.liveHistory')}</h2>
+          <ul className="list">
+            {undo.map((b) => (
+              <li key={b.at} className="list-item row-between">
+                <span className="small">
+                  <bdi>{b.label}</bdi> · {t('bulk.videosCount', { n: num.format(b.entries.length) })} · {new Date(b.at).toLocaleString(lang === 'fa' ? 'fa-IR' : 'en-GB')}
+                </span>
+                <ConfirmButton
+                  size="s"
+                  danger={false}
+                  label={t('bulk.undoLive')}
+                  question={t('bulk.undoLiveConfirm', { n: num.format(b.entries.length) })}
+                  confirmLabel={t('bulk.undoLive')}
+                  onConfirm={() => undoLive(b)}
+                />
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
       {ready && (
         <div className="card stack-s" data-testid="bulk-preview">
           <div className="row-between">
             <h2>{t('bulk.preview', { n: num.format(changes.length) })}</h2>
-            <Button variant="primary" disabled={!selected.length || applying} onClick={() => void apply()} data-testid="bulk-apply">
-              {t('bulk.apply', { n: num.format(selected.length) })}
-            </Button>
+            <div className="row">
+              {localSelected.length > 0 && (
+                <Button variant="primary" disabled={applying} onClick={() => void apply()} data-testid="bulk-apply">
+                  {t('bulk.apply', { n: num.format(localSelected.length) })}
+                </Button>
+              )}
+              {liveSelected.length > 0 && !(progress && progress.done < progress.total) && (
+                <ConfirmButton
+                  danger={false}
+                  label={t('bulk.applyLive', { n: num.format(liveSelected.length) })}
+                  question={t('bulk.applyLiveConfirm', { n: num.format(liveSelected.length), units: num.format(liveSelected.length * UPDATE_COST + 1) })}
+                  confirmLabel={t('bulk.applyLiveGo')}
+                  onConfirm={() => applyLive()}
+                />
+              )}
+            </div>
           </div>
           {changes.length === 0 ? (
             <Empty>{t('bulk.noChanges')}</Empty>
@@ -259,10 +408,12 @@ export function BulkView() {
                     <span dir="auto" style={{ fontWeight: 600 }}>
                       {nameOf(c.item) || t('draft.untitled')}
                     </span>
-                    <span className="badge">{c.item.col === 'drafts' ? t('bulk.kind.draft') : t('bulk.kind.template')}</span>
+                    <span className={`badge ${c.item.col === 'live' ? 'badge-accent' : ''}`}>
+                      {c.item.col === 'drafts' ? t('bulk.kind.draft') : c.item.col === 'live' ? t('bulk.kind.video') : t('bulk.kind.template')}
+                    </span>
                     {c.matches > 0 && <span className="badge">{t('bulk.matches', { n: num.format(c.matches) })}</span>}
                   </label>
-                  {c.overLimit && <Notice tone="warning">{t('bulk.overLimit')}</Notice>}
+                  {c.overLimit && <Notice tone="warning">{t(c.item.col === 'live' ? 'bulk.overLimitLive' : 'bulk.overLimit')}</Notice>}
                   {c.fields.includes('title') && <Diff label={t('draft.title')} before={(c.item.rec as Draft).title} after={(c.next as Draft).title} />}
                   {c.fields.includes('description') && <Diff label={t('draft.description')} before={c.item.rec.description} after={c.next.description} />}
                   {c.fields.includes('tags') && <Diff label={t('draft.tags')} before={c.item.rec.tags.join(', ')} after={c.next.tags.join(', ')} />}

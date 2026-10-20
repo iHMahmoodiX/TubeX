@@ -2,15 +2,16 @@ import { Button, Notice } from '../../components/ui';
 import { useI18n } from '../../i18n';
 import { AiError } from '../../integrations/ai/provider';
 import { YtError } from '../../integrations/youtube/client';
+import { AuthError } from '../../integrations/google/auth';
 import { openWorkspace } from '../../platform/navigation';
 import { errorDetail, errorKey } from './useConnections';
 
-const SETUP_CODES = new Set(['disabled', 'permission', 'no-key', 'bad-key', 'unauthorized', 'budget']);
+const SETUP_CODES = new Set(['disabled', 'permission', 'no-key', 'bad-key', 'unauthorized', 'budget', 'expired', 'no-channel']);
 
 export function ErrorNotice({ error }: { error: unknown }) {
   const { t } = useI18n();
   if (!error) return null;
-  const code = error instanceof AiError || error instanceof YtError ? error.code : '';
+  const code = error instanceof AiError || error instanceof YtError || error instanceof AuthError ? error.code : '';
   const detail = errorDetail(error);
   return (
     <Notice tone={code === 'canceled' ? 'info' : 'error'}>

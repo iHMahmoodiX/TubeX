@@ -1,6 +1,6 @@
 // Settings for the optional AI provider and YouTube Data API key. Keys stay in this browser profile.
 import { useEffect, useState } from 'react';
-import { Button, Field, Notice } from '../../components/ui';
+import { Button, ConfirmButton, Field, Notice } from '../../components/ui';
 import { useToast } from '../../components/toasts';
 import { useI18n } from '../../i18n';
 import { AI_PRESETS, AiError, listModels, presetOf, type AiPreset } from '../../integrations/ai/provider';
@@ -10,7 +10,8 @@ import { hasOrigin, originPattern, requestOrigin } from '../../platform/permissi
 import { cacheClear } from '../../storage/cache';
 import { saveIntegrations, type AiSettings, type YouTubeSettings } from '../../storage/integrations';
 import { ErrorNotice } from './ErrorNotice';
-import { useIntegrations, useUsage } from './useConnections';
+import { useGoogle, useIntegrations, useUsage } from './useConnections';
+import { setActiveChannel, signIn, signOut } from '../../integrations/google/auth';
 
 function SecretInput({ id, value, onChange, describedBy }: { id: string; value: string; onChange: (v: string) => void; describedBy?: string }) {
   const { t } = useI18n();
@@ -308,6 +309,74 @@ function YouTubeSection() {
   );
 }
 
+function GoogleSection() {
+  const { t } = useI18n();
+  const toast = useToast();
+  const g = useGoogle();
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<unknown>(null);
+  const connect = async () => {
+    setError(null);
+    setBusy(true);
+    try {
+      const ch = await signIn();
+      toast(t('auth.connected', { name: ch.title }));
+    } catch (e) {
+      setError(e);
+    } finally {
+      setBusy(false);
+    }
+  };
+  return (
+    <section className="stack" aria-labelledby="g-h" data-testid="google-settings">
+      <div className="row-between">
+        <h3 id="g-h">{t('settings.youtube')}</h3>
+        <span className={`badge ${g.channels.length ? 'badge-accent' : ''}`}>{g.channels.length ? t('conn.on') : t('conn.off')}</span>
+      </div>
+      <p className="small muted">{t('auth.intro')}</p>
+      {g.channels.length > 0 && (
+        <ul className="list">
+          {g.channels.map((c) => (
+            <li key={c.channelId} className="list-item" data-active={c.channelId === g.activeChannelId ? 'true' : undefined}>
+              <div className="row-between">
+                <span className="row">
+                  {c.thumbnail && <img src={c.thumbnail} alt="" width={28} height={28} style={{ borderRadius: '50%' }} />}
+                  <strong dir="auto">{c.title}</strong>
+                  <span className="small muted ltr">{c.handle}</span>
+                </span>
+                <span className="row">
+                  {c.channelId !== g.activeChannelId ? (
+                    <Button size="s" onClick={() => void setActiveChannel(c.channelId)}>
+                      {t('auth.makeActive')}
+                    </Button>
+                  ) : (
+                    <span className="badge badge-accent">{t('auth.active')}</span>
+                  )}
+                  <ConfirmButton
+                    size="s"
+                    label={t('auth.signOut')}
+                    question={t('auth.signOutConfirm', { name: c.title })}
+                    confirmLabel={t('auth.signOut')}
+                    onConfirm={() => signOut(c.channelId)}
+                  />
+                </span>
+              </div>
+            </li>
+          ))}
+        </ul>
+      )}
+      <div className="row">
+        <Button variant="primary" disabled={busy} onClick={() => void connect()} data-testid="google-signin">
+          {busy ? t('auth.signingIn') : g.channels.length ? t('auth.addChannel') : t('auth.signIn')}
+        </Button>
+      </div>
+      <p className="small muted">{t('auth.multiHelp')}</p>
+      <ErrorNotice error={error} />
+      <p className="small muted">{t('auth.writesNote')}</p>
+    </section>
+  );
+}
+
 export function ConnectionsSettings() {
   const { t } = useI18n();
   return (
@@ -317,14 +386,7 @@ export function ConnectionsSettings() {
       <hr className="divider" />
       <YouTubeSection />
       <hr className="divider" />
-      <section className="stack-s">
-        <h3>{t('settings.youtube')}</h3>
-        <p className="small muted">{t('settings.youtubeState')}</p>
-      </section>
-      <section className="stack-s">
-        <h3>{t('settings.writes')}</h3>
-        <p className="small muted">{t('settings.writesState')}</p>
-      </section>
+      <GoogleSection />
     </div>
   );
 }
