@@ -246,5 +246,18 @@ Owner asked to complete every buildable feature (all but the 10 "workaround only
 | Default Upload Profiles | Templates in Studio editor/upload and Bulk | Templates; Studio; Bulk |
 | (in-page) Videolytics, Channelytics, Quick Links, SEO Studio | Inside YouTube and Studio pages | youtube.com, studio.youtube.com |
 
-Deferred by the owner: End Screen Templates, Card Templates, Bulk End Screen Editor, Bulk Cards Editor, Related Video Manager, Quick-Edit Toolbar, A/B Testing, Search Explorer, Channel Valuation, Channel Access.
+## Delivered in 0.5.0 (2026-10-21, owner issues #2–#7)
+
+| TubeBuddy item | TubeX | Where |
+|---|---|---|
+| Bulk & Misc Tools menu (Studio Content) | Same grouping; cards/end screens disabled (no API) | Studio → Content, next to the tabs |
+| Selection toolbar action | Related video, made for kids, bulk edit, thumbnails, schedule for selected rows | Studio → Content selection bar |
+| Related Video Manager (Shorts) | Studio handoff: fills Studio's field per Short on click; user saves | Studio → Short edit page |
+| COPPA Center | Bulk "made for kids" with preview, confirmation, undo | Workspace → Made for kids; Studio menu |
+| Tag tools in Tags field | Double-click research, rank badges, copy/clear, Copy/Sort/Import/Translate/Keyword Explorer, recommended tags, video switcher | Studio → video details |
+| Channelytics + Channel Insights | Lifetime/30-day, chart, keywords, niche growth benchmark, calendar, feed, outliers, topics | YouTube channel page; drawer |
+| Edge tab + top-bar button + drawer | Page-aware drawer | YouTube and Studio |
+| Videolytics | Summary, SEO, ranked tags, channel, best practices (honest unknowns), tags, compare, tools | YouTube watch page, right column |
+
+Deferred by the owner: End Screen Templates, Card Templates, Bulk End Screen Editor, Bulk Cards Editor, Related Video Manager (for long videos; Shorts handoff built in 0.5.0), Quick-Edit Toolbar, A/B Testing, Search Explorer, Channel Valuation, Channel Access.
 

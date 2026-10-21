@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.5.0 — 2026-10-21 (TubeBuddy-style tools inside YouTube and Studio, issues #2–#7)
+- Studio Content page: TubeX "Bulk & tools" menu next to the tabs, grouped like TubeBuddy (bulk processing, cards, end screens, misc tools); a TubeX action in Studio's selection toolbar for the selected rows (#2, #3). Cards and end screens are listed but disabled: YouTube has no API for them.
+- Related video for Shorts: queue of selected Shorts; on each Short's edit page TubeX fills Studio's own related-video field on a click and the user saves (no API exists for it).
+- Made for kids (COPPA) center: new workspace page; review and bulk-set "made for kids" on your videos with preview, cost, confirmation and undo.
+- Studio video details: tag tools inside the Tags field (#4): double-click a tag to research it, rank badges on tags (cost shown first), copy/clear all, Copy · Sort · Import · Translate · Keyword Explorer, recommended tags from a target keyword (sort by relevance, keyword score or your own search traffic), and a video switcher on the page edge.
+- Channel pages (#5): Channelytics section (lifetime and 30-day figures, compare chart, channel keywords with copy, channel ID) and Channel Insights: niche, growth benchmark vs your channel and niche, content calendar, activity feed, outlier distribution, topics × channels analysis. Growth of other channels comes from TubeX's own daily snapshots (no history exists in the API).
+- Launchers (#6): floating TubeX tab on the page edge and a TubeX button in the top bar on YouTube and Studio, both opening a page-aware TubeX drawer (this page's tools, all tools, alerts, in-page switches). Measured cost on a mock page: about 6 ms scripting and 4 DOM nodes for both.
+- Watch page (#7): Videolytics panel in the right column (summary, SEO score, ranked tags on demand, channel block, best-practices checklist with honest "unknown" items, tags with ranks, compare to the channel's recent average, tools menu).
+- Every new tool has its own switch in Settings → In-page tools.
+
 ## 0.4.0 — 2026-10-21 (every buildable TubeBuddy feature, tools inside YouTube, new design)
 - New design language chosen by the owner (Spotify-inspired, dark by default): black-framed workspace with grouped navigation (Create, Research, Analyze, Manage, Engage), channel library, global keyword search, alerts bell, thumbnail-led track lists, pill buttons, content-tinted page headers. Ideas, drafts (tag chips, readiness ring), templates, channels, settings (sub-navigation, provider cards, usage meters), side panel and popup redesigned.
 - Home: channel hero, period comparison, daily views, latest uploads shelf, top videos, search terms, traffic sources, countries.

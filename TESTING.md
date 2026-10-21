@@ -3,7 +3,7 @@
 | Command | Covers | Last result |
 |---|---|---|
 | `npm run typecheck` | TypeScript strict | Pass, 2026-10-21 |
-| `npm test` | 235 unit tests: background RPC/scheduler/snapshots, reports scoring (health, audit, retention, best time, click magnet, opportunities, ad-friendliness), SEO (keyword score, language detection, rank parsing, leaderboard), engage (comment filters, moderation, playlists planning, schedule diff, writes with mocked fetch, thumbnails, shorts), in-page DOM readers on fixtures and pure logic, core readiness score; plus Google auth/writes, bulk edit, research, chapters, AI, YouTube client, settings, DB upgrades, Persian text, URL context, metadata, backup, repository, prefs, i18n parity | 235/235 pass, 2026-10-21 |
+| `npm test` | 339 unit tests (0.5.0 adds Studio content/COPPA, tag tools, channel insights, launchers/Videolytics: domain logic, RPC validation, DOM helpers on fixtures): background RPC/scheduler/snapshots, reports scoring (health, audit, retention, best time, click magnet, opportunities, ad-friendliness), SEO (keyword score, language detection, rank parsing, leaderboard), engage (comment filters, moderation, playlists planning, schedule diff, writes with mocked fetch, thumbnails, shorts), in-page DOM readers on fixtures and pure logic, core readiness score; plus Google auth/writes, bulk edit, research, chapters, AI, YouTube client, settings, DB upgrades, Persian text, URL context, metadata, backup, repository, prefs, i18n parity | 339/339 pass, 2026-10-21 |
 | `npm run build` | WXT production build | Pass, 2026-10-21 |
 | `npm run e2e` | Loads the real unpacked build in Chromium; YouTube URLs served from local fixtures | 16/16 steps pass, 2026-10-21, Chromium 141.0.7390.37 headless, Linux |
 
@@ -21,4 +21,4 @@ Screenshots are written to `tests/e2e/artifacts/` (git-ignored).
 Install Chrome or Chromium and set `CHROMIUM_PATH` to its executable, `npm run build`, then `npm run e2e`. `HEADED=1` shows the browser.
 
 ## Design review screenshots
-`node tests/e2e/shots.mjs <outDir> <route…>` (workspace/side panel/popup; env LANG_UI, THEME, WIDTH, PAGE, FULL) and `node tests/e2e/inpage-shots.mjs <outDir> [scenario…]` (in-page islands on synthetic YouTube/Studio fixtures with mocked APIs). Not part of the gate.
+`node tests/e2e/shots.mjs <outDir> <route…>` (workspace/side panel/popup; env LANG_UI, THEME, WIDTH, PAGE, FULL) and `node tests/e2e/inpage-shots.mjs <outDir> [scenario…]` (in-page islands on synthetic YouTube/Studio fixtures with mocked APIs). Per-area in-page screens (0.5.0): `node tests/e2e/{studioContent,tagTools,channelInsights,launchers}-shots.mjs <outDir>`; launcher cost: `node tests/e2e/launchers-perf.mjs [runs]`. Not part of the gate.
