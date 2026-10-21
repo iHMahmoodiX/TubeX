@@ -56,22 +56,119 @@ export function contentTabList(doc: Document): Element | null {
   return first(doc, TABLIST_SEL, (el) => !inDialog(el) && !el.closest('[data-tubex]') && el.querySelectorAll(TAB_SEL).length >= 2 && shown(el));
 }
 
-/** Where the tools button goes: right after the tab strip (same row when Studio lays the row out as flex). */
+/** True when the page has a real layout (a browser), false in DOM-only environments (unit tests). */
+export function hasLayout(doc: Document): boolean {
+  const r = doc.documentElement.getBoundingClientRect?.();
+  return !!r && (r.width > 0 || r.height > 0);
+}
+
+/** Rendered with a size: judged by layout when there is one (catches CSS-hidden bars), else by attributes only. */
+export function rendered(el: Element | null): boolean {
+  if (!el || !shown(el)) return false;
+  const doc = el.ownerDocument;
+  if (!hasLayout(doc)) return true;
+  const r = el.getBoundingClientRect();
+  if (r.width <= 0 && r.height <= 0) return false;
+  const st = doc.defaultView?.getComputedStyle(el);
+  return !st || (st.visibility !== 'hidden' && st.display !== 'none');
+}
+
+/** Our own island hosts (tubex-*) or anything inside them / marked data-tubex. */
+function isOurs(el: Element): boolean {
+  for (let e: Element | null = el; e; e = e.parentElement) if (e.tagName.toLowerCase().startsWith('tubex-') || e.hasAttribute('data-tubex')) return true;
+  return false;
+}
+
+/** The last visible tab of the strip (today "Ideas"), skipping our own UI. */
+export function lastTab(tabs: Element): Element | null {
+  return (
+    Array.from(tabs.querySelectorAll(TAB_SEL))
+      .filter((t) => !isOurs(t) && shown(t))
+      .at(-1) ?? null
+  );
+}
+
+/** Room for the full pill (logo + label + chevron, with its start margin). */
+export const PILL_ROOM = 190;
+/** Room for the compact pill (logo + chevron); below this the pill sits after the whole strip. */
+export const PILL_MIN = 76;
+export const TOOLS_HOST = 'tubex-sc-tools';
+
+/**
+ * Free px between the last tab's end edge and the strip's visible end edge (the tab strip, or a tighter
+ * overflow-clipping box between them, e.g. paper-tabs' #tabsContainer). When our pill currently sits right after
+ * the strip, its width is counted back in, so moving it inside cannot flip the answer (no ping-pong).
+ * Undefined without layout (unit tests) or when the last tab has no size.
+ */
+export function tabsRoom(doc: Document, tabs: Element, last: Element): number | undefined {
+  if (!hasLayout(doc)) return undefined;
+  const view = doc.defaultView;
+  const r = last.getBoundingClientRect();
+  if (r.width <= 0) return undefined;
+  const rtl = view?.getComputedStyle(tabs).direction === 'rtl';
+  const box = tabs.getBoundingClientRect();
+  let start = box.left;
+  let end = box.right;
+  for (let e = last.parentElement; e && e !== tabs; e = e.parentElement) {
+    const ov = view?.getComputedStyle(e).overflowX;
+    if (ov && ov !== 'visible') {
+      const c = e.getBoundingClientRect();
+      start = Math.max(start, c.left);
+      end = Math.min(end, c.right);
+    }
+  }
+  const after = tabs.nextElementSibling;
+  if (after?.tagName.toLowerCase() === TOOLS_HOST) {
+    const w = after.getBoundingClientRect().width + 12;
+    if (rtl) start -= w;
+    else end += w;
+  }
+  return Math.round(rtl ? r.left - start : end - r.right);
+}
+
+/**
+ * Where the tools button goes: inline right after the last tab (same row, same height). Falls back to right after
+ * the tab strip when no last tab is found or the strip is too full even for the compact pill (on narrow windows
+ * Studio scrolls the tabs inside an overflow-hidden box, which would clip a pill placed there).
+ */
 export function toolsSpot(doc: Document): AnchorSpot | null {
   const tabs = contentTabList(doc);
-  return tabs ? { el: tabs, append: 'after' } : null;
+  if (!tabs) return null;
+  const last = lastTab(tabs);
+  if (!last?.parentElement) return { el: tabs, append: 'after' };
+  const room = tabsRoom(doc, tabs, last);
+  if (room !== undefined && room < PILL_MIN) return { el: tabs, append: 'after' };
+  return { el: last, append: 'after' };
+}
+
+/** True when the pill sits among the tabs but only the compact form fits. */
+export function toolsCompact(doc: Document): boolean {
+  const tabs = contentTabList(doc);
+  const last = tabs && lastTab(tabs);
+  if (!tabs || !last) return false;
+  const host = doc.querySelector(TOOLS_HOST);
+  if (!host || host.parentElement !== last.parentElement) return false;
+  const room = tabsRoom(doc, tabs, last);
+  return room !== undefined && room < PILL_ROOM;
 }
 
 // ---------------------------------------------------------------- selection bar and rows
 
-const BAR_SEL = ['ytcp-bulk-actions', '#bulk-actions-toolbar', 'ytcp-video-list-bulk-actions', '#bulk-actions', '.bulk-actions', 'ytcp-video-section-content [role="toolbar"]', '#main [role="toolbar"]'];
+// Only Studio's own selection-toolbar elements. No generic [role="toolbar"] fallback: it also matches the filter bar,
+// which is how the dropdown showed up above the table with nothing selected (#8).
+const BAR_SEL = ['ytcp-bulk-actions', 'ytcp-video-list-bulk-actions', '#bulk-actions-toolbar', '#bulk-actions'];
 const MORE_SEL = ['#more-actions', 'ytcp-select#more-actions', '[aria-label="More actions"]', '[aria-label*="More actions"]', '[aria-label*="اقدامات بیشتر"]'];
 const CLOSE_SEL = ['#close-button', 'ytcp-icon-button#close', '[aria-label="Close"]', '[aria-label*="Deselect"]', '[aria-label*="Close"]', '[aria-label="بستن"]'];
-const COUNT_SEL = ['#selection-count', '.selection-count', '#count', '[id*="selected-count"]', '[class*="selection-count"]'];
+const COUNT_SEL = ['#selection-count', '.selection-count', '[id*="selected-count"]', '[class*="selection-count"]', '#count'];
 
-/** Studio's selection toolbar, only while it is shown. */
+/** Something in the bar besides our own island is rendered (the bar is not an empty, collapsed shell). */
+function barHasOwnContent(bar: Element): boolean {
+  return Array.from(bar.children).some((c) => !isOurs(c) && rendered(c));
+}
+
+/** Studio's selection toolbar, only while it is rendered with its own controls. */
 export function selectionBar(doc: Document): Element | null {
-  return first(doc, BAR_SEL, (el) => !el.closest('[data-tubex]') && shown(el));
+  return first(doc, BAR_SEL, (el) => !el.closest('[data-tubex]') && !inDialog(el) && rendered(el) && barHasOwnContent(el));
 }
 
 /** "N selected" as Studio shows it (may include rows on other pages after "select all"). */
@@ -80,9 +177,23 @@ export function selectionCount(bar: Element): number | undefined {
   return firstInt(clean(c ? c.textContent : bar.textContent, 80));
 }
 
+/** Count from Studio's explicit counter element only (never from the bar's free text). */
+function explicitCount(bar: Element): number | undefined {
+  const c = first(bar, COUNT_SEL, rendered);
+  return c ? firstInt(clean(c.textContent, 80)) : undefined;
+}
+
+/** The selection toolbar, only while at least one row is selected (ticked rows, or Studio's own counter >= 1). */
+export function activeSelectionBar(doc: Document): Element | null {
+  const bar = selectionBar(doc);
+  if (!bar) return null;
+  if (readSelectedRows(doc).length > 0) return bar;
+  return (explicitCount(bar) ?? 0) > 0 ? bar : null;
+}
+
 /** Our dropdown goes right after Studio's "More actions", else before the close button, else at the bar's end. */
 export function selectionSpot(doc: Document): AnchorSpot | null {
-  const bar = selectionBar(doc);
+  const bar = activeSelectionBar(doc);
   if (!bar) return null;
   const more = first(bar, MORE_SEL);
   if (more) return { el: topChild(bar, more), append: 'after' };

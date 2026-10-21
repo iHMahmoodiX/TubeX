@@ -1,6 +1,6 @@
 // Design review screenshots of the Studio Content page tools (#2, #3) on synthetic Studio fixtures. Usage:
 //   npm run build && node tests/e2e/studioContent-shots.mjs [outDir] [scenario ...]
-// Scenarios: menu selection related kids edit coppa panel-less (see SCENES). Env: LANG_UI=fa|en (default fa), THEME=dark|light, WIDTH.
+// Scenarios: menu selection related kids kids-confirm edit coppa, and the #8 placement scenes live-* (see SCENES). Env: LANG_UI=fa|en (default fa), THEME=dark|light, WIDTH.
 // No network: studio.youtube.com is served from tests/fixtures/studioContent-*.html and the YouTube Data API from
 // canned JSON below. A temporary copy of the build gets the googleapis host permission; the real build is not changed.
 import { cpSync, mkdirSync, mkdtempSync, readFileSync, writeFileSync } from 'node:fs';
@@ -48,13 +48,22 @@ function api(url) {
 }
 
 const CONTENT = 'https://studio.youtube.com/channel/UCownownownownownownown1/videos/short?filter=%5B%5D';
+const LIVE = 'https://studio.youtube.com/channel/UCownownownownownownown1/videos/upload';
 const SCENES = {
   menu: { url: CONTENT, fixture: 'studioContent-shorts.html', host: 'tubex-sc-tools', clicks: [['tubex-sc-tools', '.sc-tools-btn']] },
   selection: { url: CONTENT, fixture: 'studioContent-shorts.html', host: 'tubex-sc-select', clicks: [['tubex-sc-select', '.sc-sel-btn']] },
-  related: { url: CONTENT, fixture: 'studioContent-shorts.html', host: 'tubex-sc-select', clicks: [['tubex-sc-select', '.sc-sel-btn'], ['tubex-sc-select', '[role="menuitem"] >> nth=0'], ['tubex-sc-tools', '.sc-pick >> nth=1']] },
-  kids: { url: CONTENT, fixture: 'studioContent-shorts.html', host: 'tubex-sc-select', clicks: [['tubex-sc-select', '.sc-sel-btn'], ['tubex-sc-select', '[role="menuitem"] >> nth=2']] },
-  'kids-confirm': { url: CONTENT, fixture: 'studioContent-shorts.html', host: 'tubex-sc-select', clicks: [['tubex-sc-select', '.sc-sel-btn'], ['tubex-sc-select', '[role="menuitem"] >> nth=2'], ['tubex-sc-tools', '.sc-sheet .btn-primary']] },
+  related: { url: CONTENT, fixture: 'studioContent-shorts.html', host: 'tubex-sc-select', clicks: [['tubex-sc-select', '.sc-sel-btn'], ['tubex-sc-layer', '[role="menuitem"] >> nth=0'], ['tubex-sc-layer', '.sc-pick >> nth=1']] },
+  kids: { url: CONTENT, fixture: 'studioContent-shorts.html', host: 'tubex-sc-select', clicks: [['tubex-sc-select', '.sc-sel-btn'], ['tubex-sc-layer', '[role="menuitem"] >> nth=2']] },
+  'kids-confirm': { url: CONTENT, fixture: 'studioContent-shorts.html', host: 'tubex-sc-select', clicks: [['tubex-sc-select', '.sc-sel-btn'], ['tubex-sc-layer', '[role="menuitem"] >> nth=2'], ['tubex-sc-layer', '.sc-sheet .btn-primary']] },
   edit: { url: 'https://studio.youtube.com/video/bbbbbbbbbb2/edit', fixture: 'studioContent-edit.html', host: 'tubex-sc-related', queue: true },
+  // #8 placement checks on a fixture that reproduces Studio's scroll/transform containers. `measure` prints the
+  // geometry (button vs menu) and fails loudly when the menu is not directly under its button and fully on screen.
+  'live-menu': { url: `${LIVE}?sel=0`, fixture: 'studioContent-live.html', host: 'tubex-sc-tools', clicks: [['tubex-sc-tools', '.sc-tools-btn']], measure: 'tubex-sc-tools' },
+  'live-menu-rtl': { url: `${LIVE}?sel=0&dir=rtl`, fixture: 'studioContent-live.html', host: 'tubex-sc-tools', clicks: [['tubex-sc-tools', '.sc-tools-btn']], measure: 'tubex-sc-tools' },
+  'live-scrolled': { url: `${LIVE}?sel=0`, fixture: 'studioContent-live.html', host: 'tubex-sc-tools', scroll: 60, clicks: [['tubex-sc-tools', '.sc-tools-btn']], measure: 'tubex-sc-tools' },
+  'live-nosel': { url: `${LIVE}?sel=0`, fixture: 'studioContent-live.html', host: 'tubex-sc-tools', expectNo: 'tubex-sc-select' },
+  'live-sel': { url: LIVE, fixture: 'studioContent-live.html', host: 'tubex-sc-select', clicks: [['tubex-sc-select', '.sc-sel-btn']], measure: 'tubex-sc-select' },
+  'live-kids': { url: LIVE, fixture: 'studioContent-live.html', host: 'tubex-sc-select', clicks: [['tubex-sc-select', '.sc-sel-btn'], ['tubex-sc-layer', '[role="menuitem"] >> nth=2']] },
   coppa: { workspace: `kids/${encodeURIComponent('ids=aaaaaaaaaa1,bbbbbbbbbb2&tab=shorts')}` },
 };
 const names = asked.length ? asked : Object.keys(SCENES);
@@ -88,6 +97,7 @@ await setup.evaluate(
   { lang, theme, OWN },
 );
 
+let failures = 0;
 const p = await ctx.newPage();
 p.on('console', (m) => m.type() === 'error' && console.error('[page]', m.text()));
 for (const name of names) {
@@ -129,6 +139,11 @@ for (const name of names) {
     continue;
   }
   await p.waitForTimeout(1200);
+  if (s.expectNo) {
+    const n = await p.locator(s.expectNo).count();
+    console.log(`${name}: ${s.expectNo} count = ${n}${n ? '  <-- FAIL: should not be mounted' : '  ok'}`);
+    if (n) failures++;
+  }
   for (const [host, sel] of s.clicks ?? []) {
     try {
       await p.locator(host).first().locator(sel).first().click({ timeout: 5000 });
@@ -137,7 +152,36 @@ for (const name of names) {
     }
     await p.waitForTimeout(900);
   }
+  // Scroll Studio's own scroll box while the menu is open: the menu must follow its button.
+  if (s.scroll) {
+    const top = await p.evaluate((y) => {
+      const m = document.querySelector('#main');
+      m?.scrollBy(0, y);
+      return m?.scrollTop;
+    }, s.scroll);
+    console.log(`${name}: #main scrollTop = ${top}`);
+    await p.waitForTimeout(300);
+  }
+  if (s.measure) {
+    const g = await p.evaluate((hostName) => {
+      const host = document.querySelector(hostName);
+      const b = host?.shadowRoot?.querySelector('button[aria-haspopup]')?.getBoundingClientRect();
+      const m = document.querySelector('tubex-sc-layer')?.shadowRoot?.querySelector('[role="menu"]')?.getBoundingClientRect();
+      const tabs = [...document.querySelectorAll('tp-yt-paper-tab')];
+      const last = tabs.at(-1)?.getBoundingClientRect();
+      const r = (x) => x && { top: Math.round(x.top), bottom: Math.round(x.bottom), left: Math.round(x.left), right: Math.round(x.right) };
+      return { button: r(b), menu: r(m), lastTab: r(last), hostParent: host?.parentElement?.id || host?.parentElement?.tagName, vw: innerWidth, vh: innerHeight };
+    }, s.measure);
+    const { button: b, menu: m, vw, vh } = g;
+    const ok = !!b && !!m && m.top >= b.bottom && m.top - b.bottom <= 12 && m.left >= 0 && m.right <= vw && m.bottom <= vh && m.right > b.left && m.left < b.right;
+    console.log(`${name}: ${JSON.stringify(g)} ${ok ? 'ok' : '<-- FAIL: menu not directly under its button / not fully visible'}`);
+    if (!ok) failures++;
+  }
   await p.screenshot({ path: file, fullPage: process.env.FULL === '1' });
   console.log(file);
 }
 await ctx.close();
+if (failures) {
+  console.error(`${failures} placement check(s) failed`);
+  process.exitCode = 1;
+}

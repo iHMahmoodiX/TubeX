@@ -65,11 +65,11 @@ describe('Studio content DOM', () => {
     document.body.innerHTML = CONTENT;
   });
 
-  it('finds the tabs row and puts the tools button after it', () => {
+  it('finds the tabs row and puts the tools button right after its last tab', () => {
     expect(contentTabList(document)?.id).toBe('tabs');
     const spot = toolsSpot(document);
     expect(spot?.append).toBe('after');
-    expect(spot?.el.id).toBe('tabs');
+    expect(spot?.el.textContent).toBe('Live');
   });
 
   it('ignores tab lists inside dialogs', () => {

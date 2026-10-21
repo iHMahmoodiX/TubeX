@@ -11,6 +11,7 @@ import { InError } from '../../common';
 import { useHref, useInpageEnabled } from '../../InpageRoot';
 import { mountIsland } from '../../mount';
 import { readSelectedRows, relatedSpot, selectionSpot, toolsSpot } from './dom';
+import { Layer } from './layer';
 import { ContentTools, FEATURE, SelectionActions, useToolRunner } from './Menus';
 import { onStudioEdit, RelatedEditor } from './RelatedEditor';
 import { TOOL_GROUPS } from './tools';
@@ -95,7 +96,7 @@ function Panel() {
         </div>
       ))}
       {runner.error !== undefined && <InError error={runner.error} />}
-      {runner.sheet}
+      {runner.sheet && <Layer>{runner.sheet}</Layer>}
     </section>
   );
 }

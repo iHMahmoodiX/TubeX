@@ -1,16 +1,17 @@
 /* Studio Content page tools (#2, #3). Lives in the islands' shadow roots; reuses tokens from base.css/inpage.css. */
 
-/* Hosts: the tools button sits at the end of the tabs row (row parent: pushed to the end; block parent: its own
-   right-aligned line). The selection dropdown sits inline among Studio's selection actions. */
-:host(tubex-sc-tools) { display: flex !important; justify-content: flex-end !important; align-items: center !important; margin-inline-start: auto !important; padding-inline: 8px !important; flex: 0 0 auto !important; }
+/* Hosts: the tools pill sits inline right after the last tab (#8), vertically centred on the tab row; when the
+   strip has no room it sits right after the whole strip instead. Never pushed to the row's far end. The selection
+   dropdown sits inline among Studio's selection actions. Menus and sheets render in the overlay layer (layer.tsx). */
+:host(tubex-sc-tools) { display: inline-flex !important; align-items: center !important; align-self: center !important; flex: 0 0 auto !important; margin-inline-start: 12px !important; margin-inline-end: 0 !important; padding: 0 !important; vertical-align: middle !important; }
 :host(tubex-sc-select) { display: inline-flex !important; align-items: center !important; margin-inline: 8px !important; flex: 0 0 auto !important; }
 :host(tubex-sc-related) { display: block !important; margin-block: 12px !important; }
 
 .sc-tools, .sc-sel { position: relative; display: inline-flex; align-items: center; }
 .sc-tools-btn, .sc-sel-btn {
   all: unset; box-sizing: border-box; cursor: pointer; display: inline-flex; align-items: center; gap: 8px;
-  min-height: 36px; padding-block: 4px; padding-inline: 6px 12px; border-radius: 9999px;
-  background: var(--surface-2); color: var(--text); font-size: 14px; font-weight: 700; white-space: nowrap;
+  min-height: 32px; padding-block: 3px; padding-inline: 4px 10px; border-radius: 9999px;
+  background: var(--surface-2); box-shadow: inset 0 0 0 1px var(--surface-3); color: var(--text); font-size: 14px; font-weight: 700; white-space: nowrap;
 }
 .sc-tools-btn:hover, .sc-sel-btn:hover { background: var(--hover); }
 .sc-tools-btn:focus-visible, .sc-sel-btn:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
@@ -18,9 +19,11 @@
 .sc-tools-btn .tx-round-mark, .sc-sel-btn .tx-round-mark { width: 24px; height: 24px; }
 .sc-chev { width: 16px !important; height: 16px !important; color: var(--text-2); transition: transform 150ms; }
 [aria-expanded='true'] > .sc-chev { transform: rotate(180deg); }
+.sc-tools-btn[data-compact] { gap: 2px; padding-inline: 4px 6px; }
 
 /* Mega menu: two columns like TubeBuddy's (bulk/cards/end screens | misc), one column when narrow. */
-.tx-menu.sc-mega { width: min(560px, calc(100vw - 16px)); padding: 0; }
+.tx-menu.sc-mega { width: min(560px, calc(100vw - 16px)); padding: 0; overscroll-behavior: contain; }
+.tx-menu.sc-selmenu { overscroll-behavior: contain; }
 .sc-mega-head { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; padding: 12px 16px; border-block-end: 1px solid var(--border); }
 .sc-mega-cols { display: grid; grid-template-columns: 1fr 1fr; gap: 0; }
 .sc-mega-col + .sc-mega-col { border-inline-start: 1px solid var(--border); }
@@ -38,7 +41,7 @@
 .tx-menu-item[aria-disabled='true']:hover { background: transparent; }
 .sc-badge { font-size: 11px; padding: 0 6px; font-weight: 700; }
 .tx-menu.sc-selmenu { width: min(340px, calc(100vw - 16px)); }
-.sc-float-err { position: absolute; inset-block-start: calc(100% + 6px); inset-inline-end: 0; width: 320px; z-index: 2300; }
+.sc-float-err { position: fixed; z-index: 2300; width: 320px; }
 
 /* Floating flow panel */
 .sc-sheet {
