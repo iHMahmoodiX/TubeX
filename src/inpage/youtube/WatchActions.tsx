@@ -1,8 +1,8 @@
-// Actions tab of the watch card: save as idea, add the channel to competitors, export comments as CSV,
+// Actions of the watch page (tiles in the bar's Actions tab, and the Videolytics Tools menu): save as idea, add the channel to competitors, export comments as CSV,
 // embed code builder, open in Studio, and (own videos) inline title/description/tags edit with a diff and
 // an explicit confirmation before anything is written to YouTube.
 import { useId, useMemo, useState } from 'react';
-import { Icon } from '../../components/icons';
+import { Icon, type IconName } from '../../components/icons';
 import { Button, Switch } from '../../components/ui';
 import { useToast } from '../../components/toasts';
 import { commentsCsv, embedCode, parseStart, snippetDiff, studioVideoUrl, UPDATE_UNITS, type CsvComment, type SnippetFields } from '../../domain/inpage';
@@ -13,86 +13,122 @@ import { useI18n } from '../../i18n';
 import { rpc } from '../../platform/rpc';
 import { copyText, downloadFile, forgetRpc, InError, useAsync, useFmt } from '../common';
 
-export function WatchActions({ v, own, activeChannelId, onUpdated }: { v: VideoInfo; own: boolean; activeChannelId?: string; onUpdated: () => void }) {
+export type WatchActionId = 'idea' | 'competitor' | 'csv' | 'embed' | 'studio' | 'edit';
+export interface WatchAction {
+  id: WatchActionId;
+  icon: IconName;
+  title: string;
+  sub: string;
+  href?: string;
+  disabled?: boolean;
+  /** Opens an inline panel (embed builder, editor) instead of running right away. */
+  panel?: 'embed' | 'edit';
+  run?: () => Promise<void>;
+}
+
+export interface WatchActionsProps {
+  v: VideoInfo;
+  own: boolean;
+  activeChannelId?: string;
+  onUpdated: () => void;
+}
+
+/** The watch page's actions, shared by the tiles in the bar under the video and the Tools menu of Videolytics. */
+export function useWatchActions({ v, own, activeChannelId, onUpdated }: WatchActionsProps) {
   const { t } = useI18n();
   const toast = useToast();
   const [error, setError] = useState<unknown>();
-  const [busy, setBusy] = useState<string | null>(null);
+  const [busy, setBusy] = useState<WatchActionId | null>(null);
   const [panel, setPanel] = useState<'embed' | 'edit' | null>(null);
+  const canEdit = own && activeChannelId === v.channelId;
 
-  const act = async (name: string, fn: () => Promise<void>) => {
-    setBusy(name);
+  const actions: WatchAction[] = [
+    {
+      id: 'idea',
+      icon: 'bulb',
+      title: t('inpage.act.idea'),
+      sub: t('inpage.act.ideaSub'),
+      run: async () => {
+        const r = await rpc<unknown>('ideas.capture', v.title, `https://www.youtube.com/watch?v=${v.id}`, v.title);
+        toast(r ? t('inpage.act.ideaDone') : t('error.generic'));
+      },
+    },
+  ];
+  if (!own)
+    actions.push({
+      id: 'competitor',
+      icon: 'users',
+      title: t('inpage.act.competitor'),
+      sub: t('inpage.act.competitorSub', { name: v.channelTitle }),
+      run: async () => {
+        const existed = await rpc<boolean>('watch.add', v.channelId);
+        toast(existed ? t('inpage.act.competitorExists') : t('inpage.act.competitorDone'));
+      },
+    });
+  actions.push(
+    {
+      id: 'csv',
+      icon: 'download',
+      title: t('inpage.act.csv'),
+      sub: t('inpage.act.csvSub'),
+      run: async () => {
+        const r = await rpc<{ comments: CsvComment[]; disabled: boolean }>('yt.comments', v.id, 500);
+        if (r.disabled) return void toast(t('inpage.act.csvDisabled'));
+        if (!r.comments.length) return void toast(t('inpage.act.csvEmpty'));
+        downloadFile(`comments-${v.id}.csv`, commentsCsv(r.comments), 'text/csv;charset=utf-8');
+        toast(t('inpage.act.csvDone', { n: r.comments.length }));
+      },
+    },
+    { id: 'embed', icon: 'link', title: t('inpage.act.embed'), sub: t('inpage.act.embedSub'), panel: 'embed' },
+  );
+  if (own) {
+    actions.push({ id: 'studio', icon: 'external', title: t('inpage.act.studio'), sub: t('inpage.act.studioSub'), href: studioVideoUrl(v.id) });
+    actions.push({ id: 'edit', icon: 'edit', title: t('inpage.act.edit'), sub: canEdit ? t('inpage.act.editSub') : t('inpage.act.editSwitch'), disabled: !canEdit, panel: 'edit' });
+  }
+
+  const trigger = async (a: WatchAction) => {
+    if (a.disabled) return;
+    if (a.panel) return setPanel(panel === a.panel ? null : a.panel);
+    if (!a.run) return;
+    setBusy(a.id);
     setError(undefined);
     try {
-      await fn();
+      await a.run();
     } catch (e) {
       setError(e);
     }
     setBusy(null);
   };
 
-  const canEdit = own && activeChannelId === v.channelId;
+  const panelNode =
+    panel === 'embed' ? (
+      <EmbedBuilder videoId={v.id} />
+    ) : panel === 'edit' && canEdit ? (
+      <FreshEditor
+        videoId={v.id}
+        onClose={() => setPanel(null)}
+        onSaved={() => {
+          setPanel(null);
+          forgetRpc('yt.videos');
+          onUpdated();
+        }}
+      />
+    ) : null;
+
+  return { actions, trigger, busy, error, panel, setPanel, panelNode };
+}
+
+export function WatchActions(props: WatchActionsProps) {
+  const { actions, trigger, busy, error, panel, panelNode } = useWatchActions(props);
   return (
     <div className="stack">
       <div className="tx-actions">
-        <ActionTile
-          icon="bulb"
-          title={t('inpage.act.idea')}
-          sub={t('inpage.act.ideaSub')}
-          busy={busy === 'idea'}
-          onClick={() =>
-            act('idea', async () => {
-              const r = await rpc<unknown>('ideas.capture', v.title, `https://www.youtube.com/watch?v=${v.id}`, v.title);
-              toast(r ? t('inpage.act.ideaDone') : t('error.generic'));
-            })
-          }
-        />
-        {!own && (
-          <ActionTile
-            icon="users"
-            title={t('inpage.act.competitor')}
-            sub={t('inpage.act.competitorSub', { name: v.channelTitle })}
-            busy={busy === 'watch'}
-            onClick={() =>
-              act('watch', async () => {
-                const existed = await rpc<boolean>('watch.add', v.channelId);
-                toast(existed ? t('inpage.act.competitorExists') : t('inpage.act.competitorDone'));
-              })
-            }
-          />
-        )}
-        <ActionTile
-          icon="download"
-          title={t('inpage.act.csv')}
-          sub={t('inpage.act.csvSub')}
-          busy={busy === 'csv'}
-          onClick={() =>
-            act('csv', async () => {
-              const r = await rpc<{ comments: CsvComment[]; disabled: boolean }>('yt.comments', v.id, 500);
-              if (r.disabled) return toast(t('inpage.act.csvDisabled'));
-              if (!r.comments.length) return toast(t('inpage.act.csvEmpty'));
-              downloadFile(`comments-${v.id}.csv`, commentsCsv(r.comments), 'text/csv;charset=utf-8');
-              toast(t('inpage.act.csvDone', { n: r.comments.length }));
-            })
-          }
-        />
-        <ActionTile icon="link" title={t('inpage.act.embed')} sub={t('inpage.act.embedSub')} pressed={panel === 'embed'} onClick={() => setPanel(panel === 'embed' ? null : 'embed')} />
-        {own && <ActionTile icon="external" title={t('inpage.act.studio')} sub={t('inpage.act.studioSub')} href={studioVideoUrl(v.id)} />}
-        {own && <ActionTile icon="edit" title={t('inpage.act.edit')} sub={canEdit ? t('inpage.act.editSub') : t('inpage.act.editSwitch')} disabled={!canEdit} pressed={panel === 'edit'} onClick={() => setPanel(panel === 'edit' ? null : 'edit')} />}
+        {actions.map((a) => (
+          <ActionTile key={a.id} icon={a.icon} title={a.title} sub={a.sub} href={a.href} disabled={a.disabled} busy={busy === a.id} pressed={a.panel ? panel === a.panel : undefined} onClick={() => void trigger(a)} />
+        ))}
       </div>
       {error !== undefined && <InError error={error} />}
-      {panel === 'embed' && <EmbedBuilder videoId={v.id} />}
-      {panel === 'edit' && canEdit && (
-        <FreshEditor
-          videoId={v.id}
-          onClose={() => setPanel(null)}
-          onSaved={() => {
-            setPanel(null);
-            forgetRpc('yt.videos');
-            onUpdated();
-          }}
-        />
-      )}
+      {panelNode}
     </div>
   );
 }
