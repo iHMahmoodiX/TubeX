@@ -1,14 +1,17 @@
-// The Content page islands: the "Bulk & tools" button at the end of the tabs row (two-column mega menu), the
-// TubeX dropdown in Studio's selection toolbar, and the runner both use to open tools and flows.
-import { useEffect, useLayoutEffect, useRef, useState, type KeyboardEvent, type ReactNode, type RefObject } from 'react';
+// The Content page islands: the "Bulk & tools" pill right after the last tab (two-column mega menu), the TubeX
+// dropdown in Studio's selection toolbar, and the runner both use to open tools and flows. Menus, sheets and errors
+// render in the overlay layer (layer.tsx) so Studio's scroll containers can't clip or misplace them (#8).
+import { useEffect, useLayoutEffect, useRef, useState, type CSSProperties, type KeyboardEvent, type ReactNode, type RefObject } from 'react';
 import { Icon, type IconName } from '../../../components/icons';
 import { contentTab, VIDEO_TABS, type ContentTab } from '../../../domain/coppa';
 import { useI18n } from '../../../i18n';
 import type { MessageKey } from '../../../i18n/en';
 import { InError, useFmt } from '../../common';
 import { useHref, useInpageEnabled } from '../../InpageRoot';
-import { readSelectedRows, selectionBar, selectionCount, type RowRef } from './dom';
+import { contentTabList, readSelectedRows, selectionBar, selectionCount, toolsCompact, type RowRef } from './dom';
 import { KidsFlow, RelatedSetup } from './flows';
+import { Layer } from './layer';
+import { onScreen, placeMenu, type Placement } from './place';
 import { openTool, TOOL_GROUPS, type Tool, type ToolAction, type ToolGroup } from './tools';
 
 export const FEATURE = 'studioContent';
@@ -60,18 +63,27 @@ export function useToolRunner() {
 
 function usePopover(btn: RefObject<HTMLButtonElement | null>, width: number) {
   const [open, setOpen] = useState(false);
-  const [pos, setPos] = useState<{ top: number; left: number } | null>(null);
+  const [pos, setPos] = useState<Placement | null>(null);
   const menu = useRef<HTMLDivElement>(null);
   useLayoutEffect(() => {
-    if (!open || !btn.current) return;
+    if (!open || !btn.current) {
+      setPos(null);
+      return;
+    }
+    // The menu renders in the overlay layer (position: fixed against the viewport), so viewport coordinates are
+    // exact whatever Studio's scroll containers and transforms do.
     const place = () => {
-      const r = btn.current!.getBoundingClientRect();
-      const w = Math.min(width, window.innerWidth - 16);
-      // Align with the page's own direction (Studio is usually LTR even when TubeX speaks Persian).
-      const host = (btn.current!.getRootNode() as ShadowRoot).host as Element | undefined;
+      const b = btn.current;
+      if (!b) return;
+      const r = b.getBoundingClientRect();
+      const vp = { w: window.innerWidth, h: window.innerHeight };
+      if (!b.isConnected || !onScreen(r, vp)) return setOpen(false);
+      // Start at the button's start edge in the page's own direction (Studio is usually LTR even when TubeX speaks Persian).
+      const host = (b.getRootNode() as ShadowRoot).host as Element | undefined;
       const rtl = getComputedStyle(host?.parentElement ?? document.documentElement).direction === 'rtl';
-      const want = rtl ? r.left : r.right - w;
-      setPos({ top: r.bottom + 6, left: Math.min(Math.max(8, want), window.innerWidth - w - 8) });
+      const h = menu.current?.scrollHeight ?? 480;
+      const next = placeMenu(r, { w: width, h }, vp, rtl);
+      setPos((p) => (p && p.top === next.top && p.left === next.left && p.maxHeight === next.maxHeight && p.width === next.width ? p : next));
     };
     place();
     window.addEventListener('resize', place);
@@ -86,7 +98,8 @@ function usePopover(btn: RefObject<HTMLButtonElement | null>, width: number) {
     requestAnimationFrame(() => (menu.current?.querySelector('[role="menuitem"]:not([aria-disabled="true"])') as HTMLElement | null)?.focus());
     const host = btn.current?.getRootNode() instanceof ShadowRoot ? (btn.current.getRootNode() as ShadowRoot).host : null;
     const away = (e: PointerEvent) => {
-      if (host && e.composedPath().includes(host)) return;
+      const path = e.composedPath();
+      if ((host && path.includes(host)) || (menu.current && path.includes(menu.current))) return;
       setOpen(false);
     };
     document.addEventListener('pointerdown', away, true);
@@ -112,6 +125,24 @@ function usePopover(btn: RefObject<HTMLButtonElement | null>, width: number) {
     } else if (e.key === 'Tab') close(false);
   };
   return { open, setOpen, pos, menu, close, onKey };
+}
+
+/** Fixed-position style from a placement; hidden (but measurable) until the first placement. */
+function menuStyle(p: Placement | null): CSSProperties {
+  return p ? { top: p.top, left: p.left, width: p.width, maxHeight: p.maxHeight } : { top: 0, left: 0, visibility: 'hidden' };
+}
+
+/** An error from a tool, floating under its button in the overlay layer. */
+function FloatError({ btn, error }: { btn: RefObject<HTMLButtonElement | null>; error: unknown }) {
+  const r = btn.current?.getBoundingClientRect();
+  const host = btn.current ? ((btn.current.getRootNode() as ShadowRoot).host as Element | undefined) : undefined;
+  const rtl = getComputedStyle(host?.parentElement ?? document.documentElement).direction === 'rtl';
+  const p = r ? placeMenu(r, { w: 320, h: 160 }, { w: window.innerWidth, h: window.innerHeight }, rtl) : null;
+  return (
+    <div className="sc-float-err" style={p ? { top: p.top, left: p.left, width: p.width } : undefined}>
+      <InError error={error} />
+    </div>
+  );
 }
 
 function MenuItem({ icon, label, reason, badge, onPick }: { icon: IconName; label: string; reason?: string; badge?: string; onPick?: () => void }) {
@@ -148,6 +179,38 @@ function GroupBlock({ g, onRun, tab }: { g: ToolGroup; onRun: (t: Tool) => void;
 
 // ---------------------------------------------------------------- header button
 
+/** Compact (logo + chevron) when the pill sits among the tabs but the full label would not fit; follows resizes. */
+function useCompactPill(): boolean {
+  const [compact, setCompact] = useState(false);
+  useEffect(() => {
+    const check = () => setCompact(toolsCompact(document));
+    check();
+    const tabs = contentTabList(document);
+    const ro = typeof ResizeObserver === 'function' ? new ResizeObserver(check) : null;
+    if (tabs) ro?.observe(tabs);
+    ro?.observe(document.documentElement);
+    return () => ro?.disconnect();
+  }, []);
+  return compact;
+}
+
+// The pill sits among Studio's tabs. Studio's tab strip selects a tab from pointer/click/tap events that bubble up to
+// it; stopping them at our host keeps a click on the pill from being read as a tab change. Our own React handlers
+// (inside the shadow root) have already run by then; the outside-click closers listen in the capture phase.
+const HOST_EVENTS = ['click', 'mousedown', 'mouseup', 'pointerdown', 'pointerup', 'touchstart', 'touchend', 'tap'];
+function useIsolatedHost(btn: RefObject<HTMLButtonElement | null>) {
+  useEffect(() => {
+    const root = btn.current?.getRootNode();
+    const host = root instanceof ShadowRoot ? root.host : null;
+    if (!host) return;
+    const stop = (e: Event) => e.stopPropagation();
+    for (const ev of HOST_EVENTS) host.addEventListener(ev, stop);
+    return () => {
+      for (const ev of HOST_EVENTS) host.removeEventListener(ev, stop);
+    };
+  }, [btn]);
+}
+
 export function ContentTools() {
   const on = useInpageEnabled(FEATURE);
   if (!on) return null;
@@ -161,6 +224,8 @@ function ToolsButton() {
   const pop = usePopover(btn, 560);
   const runner = useToolRunner();
   useFlowHost(runner.setFlow);
+  useIsolatedHost(btn);
+  const compact = useCompactPill();
   const [rows, setRows] = useState<RowRef[]>([]);
   const pick = (tool: Tool) => {
     pop.close(false);
@@ -173,6 +238,9 @@ function ToolsButton() {
         ref={btn}
         type="button"
         className="sc-tools-btn"
+        data-compact={compact || undefined}
+        aria-label={compact ? t('sc.tools.button') : undefined}
+        title={compact ? t('sc.tools.button') : undefined}
         aria-haspopup="menu"
         aria-expanded={pop.open}
         onClick={() => {
@@ -183,11 +251,12 @@ function ToolsButton() {
         <span className="tx-round-mark" aria-hidden="true">
           <Icon name="logo" />
         </span>
-        <span>{t('sc.tools.button')}</span>
+        {!compact && <span>{t('sc.tools.button')}</span>}
         <Icon name="down" className="icon sc-chev" />
       </button>
-      {pop.open && pop.pos && (
-        <div ref={pop.menu} className="tx-menu sc-mega" role="menu" aria-label={t('sc.tools.button')} style={{ top: pop.pos.top, left: pop.pos.left }} onKeyDown={pop.onKey}>
+      {pop.open && (
+        <Layer>
+        <div ref={pop.menu} className="tx-menu sc-mega" role="menu" aria-label={t('sc.tools.button')} data-side={pop.pos?.side} style={menuStyle(pop.pos)} onKeyDown={pop.onKey}>
           <div className="sc-mega-head">
             <span className="tx-mark">
               <i aria-hidden="true">
@@ -209,13 +278,14 @@ function ToolsButton() {
             ))}
           </div>
         </div>
+        </Layer>
       )}
       {runner.error !== undefined && (
-        <div className="sc-float-err">
-          <InError error={runner.error} />
-        </div>
+        <Layer>
+          <FloatError btn={btn} error={runner.error} />
+        </Layer>
       )}
-      {runner.sheet}
+      {runner.sheet && <Layer>{runner.sheet}</Layer>}
     </div>
   );
 }
@@ -274,8 +344,9 @@ function SelectionButton() {
         <span>{t('sc.sel.button')}</span>
         <Icon name="down" className="icon sc-chev" />
       </button>
-      {pop.open && pop.pos && (
-        <div ref={pop.menu} className="tx-menu sc-selmenu" role="menu" aria-label={t('sc.sel.button')} style={{ top: pop.pos.top, left: pop.pos.left }} onKeyDown={pop.onKey}>
+      {pop.open && (
+        <Layer>
+        <div ref={pop.menu} className="tx-menu sc-selmenu" role="menu" aria-label={t('sc.sel.button')} data-side={pop.pos?.side} style={menuStyle(pop.pos)} onKeyDown={pop.onKey}>
           <div className="tx-menu-head">
             <span className="small bold">{t('sc.sel.count', { n: f.int(rows.length) })}</span>
             {studioCount !== undefined && studioCount > rows.length && <span className="xsmall tx-warn">{t('sc.sel.partial', { n: f.int(studioCount), seen: f.int(rows.length) })}</span>}
@@ -297,13 +368,14 @@ function SelectionButton() {
             {item('calendar', 'sc.sel.schedule', () => runner.run({ kind: 'open', route: 'schedule' }, rows))}
           </div>
         </div>
+        </Layer>
       )}
       {runner.error !== undefined && (
-        <div className="sc-float-err">
-          <InError error={runner.error} />
-        </div>
+        <Layer>
+          <FloatError btn={btn} error={runner.error} />
+        </Layer>
       )}
-      {runner.sheet}
+      {runner.sheet && <Layer>{runner.sheet}</Layer>}
     </div>
   );
 }
