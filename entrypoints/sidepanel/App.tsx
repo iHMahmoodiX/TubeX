@@ -14,6 +14,7 @@ import { PageInsights } from '../../src/features/insights/PageInsights';
 import { ProfileSelect } from '../../src/features/profiles/ProfilesView';
 import { useI18n } from '../../src/i18n';
 import { openWorkspace } from '../../src/platform/navigation';
+import { ReconnectBanner } from '../../src/features/connections/Reconnect';
 import '../../src/features/core/core.css';
 
 export function App() {
@@ -68,6 +69,7 @@ export function App() {
         )}
         <IconButton icon="external" label={t('popup.openWorkspace')} onClick={() => void openWorkspace('mychannel')} />
       </header>
+      <ReconnectBanner />
 
       <ContextCard ctx={ctx} />
       <PageInsights ctx={ctx} draftId={draftId} />

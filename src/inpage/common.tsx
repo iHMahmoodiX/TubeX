@@ -70,6 +70,8 @@ export interface Status {
   activeChannelId?: string;
   ytUnits: number;
   dailyCap: number;
+  /** Channels whose silent sign-in renewal failed; one Reconnect click fixes them. */
+  reconnect?: string[];
 }
 
 /** TubeX connection status (API key, Google channels, AI). Cached for a minute. */
@@ -204,7 +206,9 @@ export function InError({ error, onRetry }: { error: unknown; onRetry?: () => vo
   const unknown = isUnknownMethod(error);
   const key: MessageKey = unknown ? 'inpage.notAvailable' : errorKey(error);
   const detail = unknown ? undefined : errorDetail(error);
-  const setup = /no-key|permission|bad-key|budget|disabled|unauthorized|not signed in|expired|no-channel/.test(`${(error as { code?: string }).code ?? ''} ${(error as Error).message ?? ''}`);
+  const code = String((error as { code?: string }).code ?? '');
+  const reconnect = code === 'expired' || code === 'wrong-channel';
+  const setup = reconnect || /no-key|permission|bad-key|budget|disabled|unauthorized|not signed in|expired|no-channel/.test(`${(error as { code?: string }).code ?? ''} ${(error as Error).message ?? ''}`);
   return (
     <div className="tx-err" role="alert">
       <Icon name="alert" />
@@ -216,7 +220,12 @@ export function InError({ error, onRetry }: { error: unknown; onRetry?: () => vo
           </p>
         )}
       </div>
-      {setup && (
+      {setup && reconnect && (
+        <Button size="s" onClick={() => void rpc('auth.reconnect').catch(() => rpc('ui.openWorkspace', 'settings'))}>
+          {t('auth.reconnectShort')}
+        </Button>
+      )}
+      {setup && !reconnect && (
         <Button size="s" onClick={() => void rpc('ui.openWorkspace', 'settings')}>
           {t('conn.openSettings')}
         </Button>

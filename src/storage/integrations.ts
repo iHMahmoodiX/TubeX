@@ -1,5 +1,5 @@
 // Connection settings for optional services. Stored in chrome.storage.local, which is NOT encrypted:
-// anyone with access to this browser profile can read these keys. Never included in backups.
+// anyone with access to this browser profile can read these keys. Backups include them only when the owner ticks it (D-018).
 import { browser } from 'wxt/browser';
 
 export interface AiSettings {

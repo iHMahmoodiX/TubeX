@@ -38,7 +38,7 @@ export const studioContent = definePart(
     'sc.t.schedule': 'View schedule',
     'sc.t.clickmagnet': 'Click Magnet',
     'sc.badge.handoff': 'Studio hand-off',
-    'sc.noApi': 'No YouTube API — decision pending',
+    'sc.noApi': 'YouTube offers no API for this (no extension can change it)',
 
     'sc.sel.button': 'TubeX',
     'sc.sel.count': '{n} selected rows on this page',
@@ -194,7 +194,7 @@ export const studioContent = definePart(
     'sc.t.schedule': 'دیدن زمان‌بندی',
     'sc.t.clickmagnet': 'آهنربای کلیک',
     'sc.badge.handoff': 'انجام در استودیو',
-    'sc.noApi': 'API یوتیوب ندارد؛ منتظر تصمیم',
+    'sc.noApi': 'یوتیوب برای این کار API ارائه نمی‌کند (هیچ افزونه‌ای نمی‌تواند تغییرش دهد)',
 
     'sc.sel.button': 'TubeX',
     'sc.sel.count': '{n} ردیف انتخاب‌شده در این صفحه',

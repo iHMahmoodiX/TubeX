@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.5.1 — 2026-10-21 (fixes from the owner's live test, issue #8)
+- Font: the owner's Estedad build (variable, Persian digits) everywhere, including the tools inside YouTube and Studio.
+- Studio Content: the bulk-tools menu opens under its button, fully visible (overlay layer), and the button sits right after the last tab; the TubeX selection menu shows only when rows are selected.
+- Videolytics best practices: chapters and pinned/hearted comments, cards, end screens and captions are read from the page when YouTube shows them; tolerant chapter parsing (RTL marks, Persian digits, timestamps at line end); every item says where its answer comes from. The SEO checklist under the video uses the same chapter rule.
+- Click Magnet: no more unsupported Analytics query (400). Impressions and CTR now come from the official YouTube Reporting API after one click ("Start collecting CTR data"; first data after about 1–2 days). New optional host `youtubereporting.googleapis.com` (D-017). Report errors are plain sentences with details folded.
+- Staying signed in: silent renewal per channel (login_hint), proactive renewal before expiry and after a browser restart, one-click Reconnect when Google asks for confirmation (D-018).
+- Bulk edit explains that editing needs Google sign-in (an API key only reads public data) and signs in from there.
+- Backups: format 2 with an optional settings section (keys only when ticked); older backups import with defaults filled instead of being rejected; per-collection import report. Settings → Data explains how to update without losing data.
+
 ## 0.5.0 — 2026-10-21 (TubeBuddy-style tools inside YouTube and Studio, issues #2–#7)
 - Studio Content page: TubeX "Bulk & tools" menu next to the tabs, grouped like TubeBuddy (bulk processing, cards, end screens, misc tools); a TubeX action in Studio's selection toolbar for the selected rows (#2, #3). Cards and end screens are listed but disabled: YouTube has no API for them.
 - Related video for Shorts: queue of selected Shorts; on each Short's edit page TubeX fills Studio's own related-video field on a click and the user saves (no API exists for it).

@@ -18,6 +18,7 @@ import { UPDATE_COST, updateVideo, type OwnVideo, type SnippetEdit } from '../..
 import { AuthError } from '../../integrations/google/auth';
 import { YtError } from '../../integrations/youtube/client';
 import { ErrorNotice } from '../connections/ErrorNotice';
+import { ReconnectBanner, ReconnectButton } from '../connections/Reconnect';
 import { useFormat } from '../research/shared';
 import { Cost, Step, useOwnChannel, useOwnUploads, VideoPicker } from './engageKit';
 
@@ -105,7 +106,7 @@ export function BulkView() {
   const [tagsMode, setTagsMode] = useState<BlockMode>('append');
   const [excluded, setExcluded] = useState<Set<string>>(new Set());
   const [applying, setApplying] = useState(false);
-  const { channel } = useOwnChannel();
+  const { channel, loaded } = useOwnChannel();
   const [useLive, setUseLive] = useState(pre.ids.length > 0);
   const live = useOwnUploads(useLive);
   const [liveIds, setLiveIds] = useState<string[]>(pre.ids);
@@ -286,6 +287,7 @@ export function BulkView() {
   return (
     <div className="stack-l" data-testid="bulk-view">
       <PageHeader kicker={t('shell.group.manage')} title={t('bulk.heading')} desc={t('bulk.scopeNote')} />
+      <ReconnectBanner />
 
       <div className="engage-flow">
         <Step n={1} title={t('engage.bulk2.step1')} sub={t('engage.bulk2.step1Sub', { n: f.int(scopeCount) })} done={scopeCount > 0}>
@@ -318,7 +320,18 @@ export function BulkView() {
               </select>
             )}
           </div>
-          {useLive && (
+          {(useLive || pre.ids.length > 0) && loaded && !channel && (
+            <div data-testid="bulk-needs-google">
+              <Notice tone="info">
+                <p className="bold">{t('bulk.needsGoogleTitle')}</p>
+                <p>{t('bulk.needsGoogle')}</p>
+                <div>
+                  <ReconnectButton />
+                </div>
+              </Notice>
+            </div>
+          )}
+          {useLive && channel && (
             <>
               {pre.ids.length > 0 && <Notice tone="info">{t('sc.preselected', { n: f.int(pre.ids.length) })}</Notice>}
               <ErrorNotice error={live.error} />

@@ -25,6 +25,7 @@ import { TemplatesView } from '../../src/features/templates/TemplatesView';
 import { ThumbsView } from '../../src/features/thumbs/ThumbsView';
 import { CoppaView } from '../../src/features/coppa/CoppaView';
 import { setActiveChannel } from '../../src/integrations/google/auth';
+import { ReconnectBanner } from '../../src/features/connections/Reconnect';
 import { useI18n } from '../../src/i18n';
 import type { MessageKey } from '../../src/i18n/en';
 import type { WorkspaceRoute } from '../../src/platform/navigation';
@@ -247,6 +248,7 @@ export function App() {
               </a>
             )}
           </div>
+          <ReconnectBanner />
           {view}
         </div>
       </main>

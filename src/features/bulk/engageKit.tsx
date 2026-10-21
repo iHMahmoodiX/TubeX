@@ -11,6 +11,7 @@ import { AuthError } from '../../integrations/google/auth';
 import { ownVideos, type OwnVideo } from '../../integrations/google/own';
 import { YtError } from '../../integrations/youtube/client';
 import { ErrorNotice } from '../connections/ErrorNotice';
+import { ReconnectButton } from '../connections/Reconnect';
 import { useGoogle } from '../connections/useConnections';
 import { useAsync, useFormat } from '../research/shared';
 import './engage.css';
@@ -41,7 +42,7 @@ export function isFatal(e: unknown): boolean {
   return e instanceof AuthError || (e instanceof YtError && ['quota', 'budget', 'permission', 'unreachable'].includes(e.code));
 }
 
-/** Signed-out state: says why sign-in is needed and links to Settings. */
+/** Signed-out state: says why sign-in is needed, signs in right here, and links to Settings. */
 export function SignInEmpty({ icon, why }: { icon: IconName; why: MessageKey }) {
   const { t } = useI18n();
   return (
@@ -49,9 +50,12 @@ export function SignInEmpty({ icon, why }: { icon: IconName; why: MessageKey }) 
       icon={icon}
       title={t('engage.signIn.title')}
       action={
-        <a className="btn btn-primary" href="#settings">
-          {t('conn.openSettings')}
-        </a>
+        <span className="row" style={{ justifyContent: 'center' }}>
+          <ReconnectButton />
+          <a className="btn btn-s" href="#settings">
+            {t('conn.openSettings')}
+          </a>
+        </span>
       }
     >
       {t(why)}

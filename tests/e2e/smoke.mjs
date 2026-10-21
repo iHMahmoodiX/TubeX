@@ -261,7 +261,7 @@ await step('export backup downloads every record', async () => {
   backupPath = join(userDir, 'backup.json');
   await download.saveAs(backupPath);
   const b = JSON.parse(readFileSync(backupPath, 'utf8'));
-  assert(b.app === 'tubex' && b.format === 1, 'bad header');
+  assert(b.app === 'tubex' && b.format === 2, 'bad header');
   assert(b.data.profiles.length === 1 && b.data.ideas.length === 1 && b.data.drafts.length === 1, 'record counts');
   assert(b.data.drafts[0].description.includes('#فیگما'), 'draft text missing from backup');
 });

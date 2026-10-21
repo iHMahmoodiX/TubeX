@@ -1,6 +1,8 @@
 import { useEffect, useState } from 'react';
 import { browser } from 'wxt/browser';
-import { createBackup, countRecords, parseBackup, type ImportPreview } from '../../domain/backup';
+import { BACKUP_FORMAT, createBackup, countRecords, parseBackup, type ImportPreview } from '../../domain/backup';
+import { COLLECTIONS } from '../../domain/models';
+import { REJECT_REASONS } from '../../domain/records';
 import type { Lang } from '../../domain/models';
 import { usePrefs } from '../../components/AppShell';
 import { Icon, type IconName } from '../../components/icons';
@@ -14,6 +16,9 @@ import { InpageSettings } from './InpageSettings';
 import { downloadText } from '../../platform/files';
 import type { ThemePref } from '../../storage/prefs';
 import { deleteAllData, exportAll, hasImportSnapshot, importData, undoLastImport } from '../../storage/db';
+import { GOOGLE_ORIGINS } from '../../integrations/google/auth';
+import { originPattern } from '../../platform/permissions';
+import { collectSettings, restoreSettings } from './settingsBackup';
 
 const SECTIONS: { id: string; label: MessageKey; icon: IconName }[] = [
   { id: 'set-general', label: 'core.set.general', icon: 'settings' },
@@ -41,12 +46,17 @@ function useSectionInView(ids: string[]): [string, (id: string) => void] {
 }
 
 export function SettingsView() {
-  const { t } = useI18n();
+  const { t, lang } = useI18n();
+  const sep = lang === 'fa' ? '، ' : ', ';
   const toast = useToast();
   const { prefs, setPrefs } = usePrefs();
   const [preview, setPreview] = useState<ImportPreview | null>(null);
   const [importError, setImportError] = useState<string | null>(null);
   const [snapshotAt, setSnapshotAt] = useState<string | undefined>();
+  const [withSettings, setWithSettings] = useState(true);
+  const [withAiKey, setWithAiKey] = useState(false);
+  const [withYtKey, setWithYtKey] = useState(false);
+  const [restoreSet, setRestoreSet] = useState(true);
   const [current, setCurrent] = useSectionInView(SECTIONS.map((s) => s.id));
   const version = browser.runtime.getManifest().version;
 
@@ -55,7 +65,8 @@ export function SettingsView() {
   }, []);
 
   const exportBackup = async () => {
-    const backup = createBackup(await exportAll(), version);
+    const settings = withSettings ? await collectSettings({ includeAiKey: withAiKey, includeYtKey: withYtKey }) : undefined;
+    const backup = createBackup(await exportAll(), version, settings);
     downloadText(`tubex-backup-${backup.exportedAt.slice(0, 10)}.json`, JSON.stringify(backup, null, 2), 'application/json');
     toast(t('settings.exported'));
   };
@@ -68,14 +79,25 @@ export function SettingsView() {
     const result = parseBackup(await file.text());
     if (!result.ok) return setImportError(t(`settings.importError.${result.error}`));
     setPreview(result);
+    setRestoreSet(true);
   };
 
   const runImport = async (mode: 'merge' | 'replace') => {
     if (!preview) return;
+    const s = restoreSet ? preview.settings : undefined;
+    // Host access for a restored YouTube key, connected channels or AI server is asked first, while the
+    // click still counts as a user gesture. Declining keeps the import going; Settings shows "Allow access".
+    const origins = [
+      ...(s?.youtube?.apiKey || s?.channels?.length ? GOOGLE_ORIGINS : []),
+      ...(s?.ai?.enabled && s.ai.baseUrl && originPattern(s.ai.baseUrl) ? [originPattern(s.ai.baseUrl)!] : []),
+    ];
+    if (origins.length) await browser.permissions.request({ origins }).catch(() => false);
     const r = await importData(preview.data, mode);
+    const restored = s ? await restoreSettings(s) : null;
     setPreview(null);
     setSnapshotAt(await hasImportSnapshot());
     toast(t('settings.importDone', { added: r.added, updated: r.updated, kept: r.keptLocal }));
+    if (restored) toast(restored.channelsAdded ? t('backup.channelsRestored', { n: restored.channelsAdded }) : t('backup.settingsRestored'));
   };
 
   const rejected = preview ? Object.values(preview.rejected).reduce((a, b) => a + b, 0) : 0;
@@ -153,6 +175,22 @@ export function SettingsView() {
 
           <Section id="set-data" title={t('core.set.data')} desc={t('settings.dataHelp')} icon="shield">
             <Card title={t('settings.backup')} sub={t('settings.exportHelp')}>
+              <div className="stack-s">
+                <Switch checked={withSettings} onChange={setWithSettings} label={<strong>{t('backup.includeSettings')}</strong>} />
+                <span className="small muted">{t('backup.includeSettingsHelp')}</span>
+                {withSettings && (
+                  <div className="stack-s" style={{ paddingInlineStart: 16 }}>
+                    <label className="check">
+                      <input type="checkbox" checked={withAiKey} onChange={(e) => setWithAiKey(e.target.checked)} />
+                      <span>{t('backup.includeAiKey')}</span>
+                    </label>
+                    <label className="check">
+                      <input type="checkbox" checked={withYtKey} onChange={(e) => setWithYtKey(e.target.checked)} data-testid="backup-yt-key" />
+                      <span>{t('backup.includeYtKey')}</span>
+                    </label>
+                  </div>
+                )}
+              </div>
               <div className="row">
                 <Button variant="primary" onClick={() => void exportBackup()}>
                   <Icon name="download" />
@@ -190,6 +228,47 @@ export function SettingsView() {
               {preview && (
                 <Notice>
                   <p>{t('settings.importPreview', { n: countRecords(preview.data), rejected })}</p>
+                  {preview.format < BACKUP_FORMAT && <p className="small">{t('backup.older', { v: preview.appVersion ?? '—' })}</p>}
+                  <ul className="small" data-testid="import-collections" style={{ margin: 0, paddingInlineStart: 20 }}>
+                    {COLLECTIONS.filter((c) => preview.data[c].length > 0 || preview.rejected[c] > 0).map((c) => (
+                      <li key={c}>
+                        {t('backup.colLine', { name: t(`backup.col.${c}` as MessageKey), n: preview.data[c].length })}
+                        {preview.rejected[c] > 0 && (
+                          <>
+                            {' · '}
+                            {t('backup.colSkipped', {
+                              n: preview.rejected[c],
+                              why: REJECT_REASONS.filter((w) => preview.reasons[c][w])
+                                .map((w) => `${t(`backup.why.${w}` as MessageKey)} (${preview.reasons[c][w]})`)
+                                .join(sep),
+                            })}
+                          </>
+                        )}
+                      </li>
+                    ))}
+                  </ul>
+                  {preview.settings && (
+                    <div className="stack-s">
+                      <label className="check">
+                        <input type="checkbox" checked={restoreSet} onChange={(e) => setRestoreSet(e.target.checked)} data-testid="import-settings" />
+                        <span>{t('backup.restoreSettings')}</span>
+                      </label>
+                      <span className="small muted">
+                        {t('backup.settingsParts', {
+                          parts: [
+                            preview.settings.prefs && t('backup.part.prefs'),
+                            preview.settings.ai && t('backup.part.ai'),
+                            preview.settings.youtube && t('backup.part.youtube'),
+                            preview.settings.channels?.length && t('backup.part.channels', { n: preview.settings.channels.length }),
+                            (preview.settings.ai?.apiKey || preview.settings.youtube?.apiKey) &&
+                              t('backup.part.keys', { n: (preview.settings.ai?.apiKey ? 1 : 0) + (preview.settings.youtube?.apiKey ? 1 : 0) }),
+                          ]
+                            .filter(Boolean)
+                            .join(sep),
+                        })}
+                      </span>
+                    </div>
+                  )}
                   <div className="row">
                     <Button variant="primary" onClick={() => void runImport('merge')}>
                       {t('settings.importMerge')}
@@ -220,6 +299,11 @@ export function SettingsView() {
                   }}
                 />
               </div>
+            </Card>
+            <Card title={t('settings.updateTitle')}>
+              <p className="small muted" data-testid="update-note">
+                {t('settings.updateNote')}
+              </p>
             </Card>
             <p className="small faint">{t('settings.about', { v: version })}</p>
           </Section>
