@@ -15,7 +15,7 @@ export default defineConfig({
     permissions: ['storage', 'sidePanel', 'identity', 'alarms', 'notifications'],
     host_permissions: YOUTUBE_MATCHES,
     // Requested at runtime, per exact origin, when the owner connects a service in Settings.
-    optional_host_permissions: ['https://www.googleapis.com/*', 'https://youtubeanalytics.googleapis.com/*', 'https://i.ytimg.com/*', 'http://localhost/*', 'http://127.0.0.1/*', 'https://*/*'],
+    optional_host_permissions: ['https://www.googleapis.com/*', 'https://youtubeanalytics.googleapis.com/*', 'https://youtubereporting.googleapis.com/*', 'https://i.ytimg.com/*', 'http://localhost/*', 'http://127.0.0.1/*', 'https://*/*'],
     action: { default_title: 'TubeX' },
     content_security_policy: {
       extension_pages: "script-src 'self'; object-src 'self'",

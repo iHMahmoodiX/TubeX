@@ -1,6 +1,8 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { fakeBrowser } from 'wxt/testing/fake-browser';
-import { computeHealth, toRVideo, tryCtr } from '../../src/features/reports/data';
+import { computeHealth, toRVideo } from '../../src/features/reports/data';
+import { reachRef } from '../../src/features/reports/reach';
+import { put } from '../../src/storage/stores';
 import { healthDue } from '../../src/background/jobs/reports';
 import * as db from '../../src/storage/db';
 
@@ -22,18 +24,21 @@ describe('reports data', () => {
     expect(toRVideo({ id: 'v2', contentDetails: {} }).caption).toBeNull();
   });
 
-  it('treats rejected CTR metrics as unavailable, not zero', async () => {
-    vi.stubGlobal('fetch', vi.fn(async () => json({ error: { message: 'Unknown identifier (videoThumbnailImpressions)', errors: [{ reason: 'badRequest' }] } }, 400)));
-    const r = await tryCtr(CH, { startDate: '2026-01-01', endDate: '2026-01-28' });
-    expect(r.ctr).toBeNull();
-    expect(r.error).toBeTruthy();
+  it('never asks the Analytics API for impressions or CTR (400 "query not supported")', async () => {
+    const fetchMock = vi.fn(async (_url: string) => json({ columnHeaders: [{ name: 'views' }], rows: [[1]] }));
+    vi.stubGlobal('fetch', fetchMock);
+    const h = await computeHealth(CH, [], false, Date.parse('2026-10-20T12:00:00Z'));
+    const metrics = fetchMock.mock.calls.map((c) => new URL(c[0]).searchParams.get('metrics') ?? '');
+    expect(metrics.some((m) => /Thumbnail|Impression/i.test(m))).toBe(false);
+    // No stored reach days: CTR is left out (null), not zero.
+    expect(h.ctrDays).toBe(0);
+    expect(h.health.parts.find((p) => p.id === 'ctr')!.score).toBeNull();
   });
 
   it('computes health from Analytics with CTR when available', async () => {
     const fetchMock = vi.fn(async (url: string) => {
       const u = new URL(url);
       const m = u.searchParams.get('metrics') ?? '';
-      if (m.startsWith('videoThumbnail')) return json({ columnHeaders: [{ name: 'videoThumbnailImpressions' }, { name: 'videoThumbnailImpressionsClickRate' }], rows: [[10000, 5]] });
       if (m === 'views') return json({ columnHeaders: [{ name: 'views' }], rows: [[1000]] });
       return json({
         columnHeaders: ['views', 'estimatedMinutesWatched', 'averageViewDuration', 'averageViewPercentage', 'subscribersGained', 'subscribersLost', 'likes', 'comments', 'shares'].map((name) => ({ name })),
@@ -41,10 +46,15 @@ describe('reports data', () => {
       });
     });
     vi.stubGlobal('fetch', fetchMock);
+    // 10 stored reach days at 5% CTR (YouTube Reporting API data kept locally).
+    for (let d = 1; d <= 10; d++) {
+      const date = `2026-10-${String(d + 5).padStart(2, '0')}`;
+      await put('snapshots', { id: `${reachRef(CH)}:${date}`, ref: reachRef(CH), at: `${date}T00:00:00.000Z`, data: { date, createTime: '2026-10-19T00:00:00Z', reportId: 'r', v: { aaaaaaaaaaa: [1000, 50] } } });
+    }
     const h = await computeHealth(CH, [], false, Date.parse('2026-10-20T12:00:00Z'));
     const s = Object.fromEntries(h.health.parts.map((p) => [p.id, p.score]));
     expect(s).toMatchObject({ trend: 70, engagement: 60, watch: 80, subscribers: 100, metadata: null, ctr: 50 });
-    expect(h.ctrError).toBeUndefined();
+    expect(h.ctrDays).toBe(10);
     // Analytics requests are made with the OAuth token and the 28-day ranges.
     const urls = fetchMock.mock.calls.map((c) => new URL(c[0] as string));
     expect(urls.some((u) => u.searchParams.get('startDate') === '2026-09-23' && u.searchParams.get('endDate') === '2026-10-20')).toBe(true);

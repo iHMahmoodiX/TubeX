@@ -4,12 +4,11 @@ import { newBase, type Draft } from '../../domain/models';
 import { firstValue, healthScore, periods, type Health } from '../../domain/reports';
 import { auditAll, passesAudit } from '../../domain/reportsAudit';
 import { firstWeekRange, sumViews } from '../../domain/reportsBestTime';
-import { toShare } from '../../domain/reportsClick';
-import { AuthError } from '../../integrations/google/auth';
 import { report, ownRead, type OwnVideo, type Report } from '../../integrations/google/own';
 import { toVideo } from '../../integrations/youtube/api';
 import { cacheGet, cacheSet, hashKey } from '../../storage/cache';
 import { create, list } from '../../storage/db';
+import { loadReach } from './reach';
 
 type Obj = Record<string, any>;
 const TTL = 30 * 60_000;
@@ -118,25 +117,13 @@ export type { Report };
 
 export const TOTAL_METRICS = 'views,estimatedMinutesWatched,averageViewDuration,averageViewPercentage,subscribersGained,subscribersLost,likes,comments,shares';
 
-/**
- * Channel-wide thumbnail CTR for a period, or null when the API rejects these metrics (their availability
- * through the Analytics API is Inferred, not verified). Sign-in errors are rethrown.
- */
-export async function tryCtr(channelId: string, range: { startDate: string; endDate: string }, fresh = false): Promise<{ ctr: number | null; impressions: number | null; error?: unknown }> {
-  try {
-    const r = await report(channelId, { ...range, metrics: 'videoThumbnailImpressions,videoThumbnailImpressionsClickRate' }, fresh);
-    const imp = firstValue(r, 'videoThumbnailImpressions');
-    const rate = firstValue(r, 'videoThumbnailImpressionsClickRate');
-    return { impressions: imp, ctr: rate === null ? null : toShare([rate])[0]! };
-  } catch (error) {
-    if (error instanceof AuthError) throw error;
-    return { ctr: null, impressions: null, error };
-  }
-}
+/** Minimum stored reach days in the 28-day window before CTR counts toward the health score. */
+export const HEALTH_CTR_MIN_DAYS = 7;
 
 export interface HealthData {
   health: Health;
-  ctrError?: unknown;
+  /** Days of locally stored reach data (YouTube Reporting API) behind the CTR part; 0 when there is none. */
+  ctrDays: number;
   audited: number;
   computedAt: string;
 }
@@ -147,7 +134,7 @@ export async function computeHealth(channelId: string, videos: RVideo[], fresh =
   const [cur, prev, ctr, keywords] = await Promise.all([
     report(channelId, { ...p.cur, metrics: TOTAL_METRICS }, fresh),
     report(channelId, { ...p.prev, metrics: 'views' }, fresh),
-    tryCtr(channelId, p.cur, fresh),
+    loadReach(channelId, p.cur).catch(() => null),
     draftKeywords().catch(() => new Map<string, string>()),
   ]);
   const pub = videos.filter((v) => v.privacy === 'public');
@@ -165,9 +152,9 @@ export async function computeHealth(channelId: string, videos: RVideo[], fresh =
     subsGained28: firstValue(cur, 'subscribersGained'),
     subsLost28: firstValue(cur, 'subscribersLost'),
     auditPassShare: audits.length ? audits.filter(passesAudit).length / audits.length : null,
-    ctr: ctr.ctr,
+    ctr: ctr && ctr.days >= HEALTH_CTR_MIN_DAYS ? ctr.ctr : null,
   });
-  return { health, ctrError: ctr.error, audited: audits.length, computedAt: new Date(now).toISOString() };
+  return { health, ctrDays: ctr?.days ?? 0, audited: audits.length, computedAt: new Date(now).toISOString() };
 }
 
 export const healthRef = (channelId: string) => `reports.health:${channelId}`;

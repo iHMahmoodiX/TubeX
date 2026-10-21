@@ -9,7 +9,7 @@ import { matchesQuery } from '../../domain/text';
 import { useI18n } from '../../i18n';
 import type { MessageKey } from '../../i18n/en';
 import { report } from '../../integrations/google/own';
-import { ErrorNotice } from '../connections/ErrorNotice';
+import { ReportError } from './errors';
 import { useAsync, useFormat } from '../research/shared';
 import type { RVideo } from './data';
 import { RetentionChart } from './RetentionChart';
@@ -95,7 +95,7 @@ export function RetentionTab({ channelId, videos }: { channelId: string; videos:
       </aside>
 
       <div className="stack-l" style={{ minWidth: 0 }}>
-        <ErrorNotice error={error} />
+        <ReportError error={error} what="retention" />
         {va && (
           <div className="row-between">
             <div className="row-nowrap" style={{ minWidth: 0 }}>

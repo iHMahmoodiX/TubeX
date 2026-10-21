@@ -8,7 +8,7 @@ import { periods } from '../../domain/reports';
 import { bestTime, firstWeekComplete, mapLimit, viewsByWeekday, type Cell } from '../../domain/reportsBestTime';
 import { useI18n } from '../../i18n';
 import { report } from '../../integrations/google/own';
-import { ErrorNotice } from '../connections/ErrorNotice';
+import { ReportError } from './errors';
 import { useAsync, useFormat } from '../research/shared';
 import { firstWeekViews, type RVideo } from './data';
 import { DirBarChart, EstimateBadge, Section, StatSkeleton } from './shared';
@@ -69,7 +69,7 @@ export function BestTimeTab({ channelId, videos }: { channelId: string; videos: 
           <span>{t('reports.besttime.honest', { tz })}</span>
         </p>
       </Notice>
-      <ErrorNotice error={samples.error} />
+      <ReportError error={samples.error} what="besttime" />
 
       {samples.loading && (
         <div className="rp-progress" aria-live="polite">
@@ -188,7 +188,7 @@ export function BestTimeTab({ channelId, videos }: { channelId: string; videos: 
         <div className="card">
           <h3>{t('reports.besttime.channelDays')}</h3>
           <p className="small muted">{t('reports.besttime.channelDaysSub')}</p>
-          <ErrorNotice error={daily.error} />
+          <ReportError error={daily.error} what="besttime" />
           {daily.data ? (
             byDay.some((d) => d.mean !== null) ? (
               <>
