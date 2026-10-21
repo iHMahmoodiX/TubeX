@@ -12,7 +12,8 @@ import { hasOrigin, originPattern, requestOrigin } from '../../platform/permissi
 import { cacheClear } from '../../storage/cache';
 import { saveIntegrations, type AiSettings, type YouTubeSettings } from '../../storage/integrations';
 import { ErrorNotice } from './ErrorNotice';
-import { useGoogle, useIntegrations, useUsage } from './useConnections';
+import { useAuthStatus, useGoogle, useIntegrations, useUsage } from './useConnections';
+import { ReconnectButton } from './Reconnect';
 import { setActiveChannel, signIn, signOut } from '../../integrations/google/auth';
 import '../core/core.css';
 
@@ -355,7 +356,26 @@ function YouTubeSection() {
       <p className="xsmall faint" data-testid="yt-usage">
         {t('conn.ytUsage', { n: num.format(usage.ytUnits), cap: saved.youtube.dailyUnitCap ? num.format(saved.youtube.dailyUnitCap) : '∞' })}
       </p>
-      {granted === false && hasKey && <Notice tone="warning">{t('conn.needsPermission')}</Notice>}
+      <p className="xsmall faint">{t('conn.keyReadOnly')}</p>
+      {granted === false && hasKey && (
+        <Notice tone="warning">
+          <p>{t('conn.ytKeyNoPermission')}</p>
+          <div>
+            <Button
+              size="s"
+              variant="primary"
+              data-testid="yt-allow"
+              onClick={async () => {
+                const ok = await requestOrigin(YT_BASE);
+                setGranted(await hasOrigin(YT_BASE));
+                if (ok) toast(t('conn.allowed'));
+              }}
+            >
+              {t('conn.allowAccess')}
+            </Button>
+          </div>
+        </Notice>
+      )}
       <div className="row">
         <Button variant="primary" onClick={() => void save()} disabled={!dirty && granted !== false}>
           {t('conn.saveAndAllow')}
@@ -385,6 +405,7 @@ function GoogleSection() {
   const { t } = useI18n();
   const toast = useToast();
   const g = useGoogle();
+  const status = useAuthStatus();
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<unknown>(null);
   const connect = async () => {
@@ -400,6 +421,7 @@ function GoogleSection() {
     }
   };
   const n = g.channels.length;
+  const needN = g.channels.filter((c) => status[c.channelId]?.reconnect).length;
   return (
     <Card
       data-testid="google-settings"
@@ -412,9 +434,12 @@ function GoogleSection() {
           <span id="g-h">{t('settings.youtube')}</span>
         </span>
       }
-      actions={<StatusPill on={n > 0}>{n ? t('core.conn.channelsN', { n }) : t('core.conn.signedOut')}</StatusPill>}
+      actions={
+        <StatusPill on={n > 0 ? (needN ? 'warn' : true) : false}>{n ? (needN ? t('auth.needsReconnect') : t('core.conn.channelsN', { n })) : t('core.conn.signedOut')}</StatusPill>
+      }
     >
       <p className="small muted">{t('core.conn.googleIntro')}</p>
+      {n > 0 && <p className="xsmall faint">{t('auth.keepAlive')}</p>}
       {n > 0 && (
         <div className="stack-s">
           {g.channels.map((c) => {
@@ -427,7 +452,9 @@ function GoogleSection() {
                     {c.title}
                   </strong>
                   <span className="small muted ltr truncate">{c.handle}</span>
+                  {status[c.channelId]?.reconnect && <span className="small">{t('auth.needsReconnectHelp')}</span>}
                 </div>
+                {status[c.channelId]?.reconnect && <ReconnectButton channelId={c.channelId} />}
                 {active ? (
                   <span className="badge badge-accent">{t('auth.active')}</span>
                 ) : (

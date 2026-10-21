@@ -5,6 +5,7 @@ import { browser } from 'wxt/browser';
 import { addAlert, all, newId, one, put, type Job } from '../storage/stores';
 import { serializeError } from '../platform/rpc';
 import { JOB_HANDLERS, TICKS } from './jobs';
+import { AUTH_ALARM, renewDue } from '../integrations/google/auth';
 
 export const TICK = 'tubex-tick';
 const PREFIX = 'job:';
@@ -79,7 +80,13 @@ async function runJob(job: Job): Promise<void> {
 }
 
 export async function onAlarm(name: string): Promise<void> {
+  if (name === AUTH_ALARM) {
+    await renewDue();
+    return;
+  }
   if (name === TICK) {
+    // Safety net for Google sign-in renewal (the one-shot auth alarm can be lost when the browser closes).
+    await renewDue().catch(() => undefined);
     await runDue();
     for (const tick of TICKS) await tick(new Date()).catch((e) => console.warn('[TubeX] tick failed', e));
     return;
@@ -87,6 +94,18 @@ export async function onAlarm(name: string): Promise<void> {
   if (name.startsWith(PREFIX)) await runDue();
 }
 
+const AUTH_BOOT = 'authBootDone';
+
 export async function ensureTick(): Promise<void> {
   if (!(await browser.alarms.get(TICK))) await browser.alarms.create(TICK, { periodInMinutes: 15, delayInMinutes: 1 });
+  // First worker start of a browser session (session storage is empty after a restart): renew every
+  // connected channel's Google sign-in silently, so tools never start with an expired token.
+  try {
+    if (!(await browser.storage.session.get(AUTH_BOOT))[AUTH_BOOT]) {
+      await browser.storage.session.set({ [AUTH_BOOT]: true });
+      void renewDue().catch(() => undefined);
+    }
+  } catch {
+    /* session storage unavailable: the tick renews */
+  }
 }

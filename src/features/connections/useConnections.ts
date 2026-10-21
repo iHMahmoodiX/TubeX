@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { AiError } from '../../integrations/ai/provider';
 import { YtError } from '../../integrations/youtube/client';
-import { AuthError, loadGoogleState, onGoogleStateChanged, type GoogleState } from '../../integrations/google/auth';
+import { AuthError, loadAuthStatus, loadGoogleState, onAuthStatusChanged, onGoogleStateChanged, type ChannelAuth, type GoogleState } from '../../integrations/google/auth';
 import type { MessageKey } from '../../i18n/en';
 import { DEFAULT_INTEGRATIONS, loadIntegrations, loadUsage, onIntegrationsChanged, onUsageChanged, rollUsage, type Integrations, type Usage } from '../../storage/integrations';
 
@@ -40,6 +40,18 @@ export function useGoogle(): GoogleState & { loaded: boolean } {
   useEffect(() => {
     void loadGoogleState().then((g) => setS({ ...g, loaded: true }));
     return onGoogleStateChanged((g) => setS({ ...g, loaded: true }));
+  }, []);
+  return s;
+}
+
+/** Channels whose silent sign-in renewal failed in this browser session (they need one Reconnect click). */
+export function useAuthStatus(): Record<string, ChannelAuth> {
+  const [s, setS] = useState<Record<string, ChannelAuth>>({});
+  useEffect(() => {
+    void loadAuthStatus()
+      .then(setS)
+      .catch(() => undefined);
+    return onAuthStatusChanged(setS);
   }, []);
   return s;
 }

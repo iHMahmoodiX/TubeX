@@ -7,7 +7,7 @@ import { addWatched } from '../../features/competitors/watchActions';
 import { runAiJson, type JsonAiRequest } from '../../integrations/ai/custom';
 import { runAiTask } from '../../integrations/ai/run';
 import type { AiTask, TaskContext } from '../../integrations/ai/tasks';
-import { loadGoogleState } from '../../integrations/google/auth';
+import { channelsNeedingReconnect, loadGoogleState, reconnect } from '../../integrations/google/auth';
 import { ownVideos, report, updateVideo, type SnippetEdit } from '../../integrations/google/own';
 import { getChannel, getVideos, searchSample, channelUploads, videoComments } from '../../integrations/youtube/api';
 import { list, pushLiveUndo } from '../../storage/db';
@@ -37,15 +37,26 @@ async function activeChannel(): Promise<{ channelId: string; uploadsPlaylistId?:
 export const coreMethods: Record<string, (...args: any[]) => Promise<unknown>> = {
   // ---- status ----
   'status.get': async () => {
-    const [i, g, u] = await Promise.all([loadIntegrations(), loadGoogleState(), loadUsage()]);
+    const [i, g, u, rc] = await Promise.all([loadIntegrations(), loadGoogleState(), loadUsage(), channelsNeedingReconnect().catch(() => [] as string[])]);
     return {
       hasKey: !!i.youtube.apiKey,
+      /** Connected channels whose silent sign-in renewal failed: offer "Reconnect". */
+      reconnect: rc.filter((id) => g.channels.some((c) => c.channelId === id)),
       ai: i.ai.enabled,
       channels: g.channels.map((c) => ({ channelId: c.channelId, title: c.title, handle: c.handle, thumbnail: c.thumbnail })),
       activeChannelId: g.activeChannelId,
       ytUnits: u.ytUnits,
       dailyCap: i.youtube.dailyUnitCap,
     };
+  },
+
+  // ---- Google sign-in ----
+  /** One-click reconnect from an in-page button: Google's window opens pre-selected for the channel's account. */
+  'auth.reconnect': async (channelId?: unknown) => {
+    const id = channelId === undefined ? (await activeChannel())?.channelId : str(channelId, 64);
+    if (!id || !/^UC[\w-]{22}$/.test(id)) throw new Error('not signed in');
+    const ch = await reconnect(id, false);
+    return { channelId: ch.channelId, title: ch.title };
   },
 
   // ---- public YouTube data ----

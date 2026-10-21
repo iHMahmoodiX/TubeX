@@ -1,6 +1,11 @@
 // Google sign-in for the owner's own channels (OAuth 2.0 token flow through chrome.identity.launchWebAuthFlow).
-// The client ID is public by design; there is no client secret in the extension. Access tokens live only in
-// chrome.storage.session (cleared when the browser closes) and are never logged, backed up or sent elsewhere.
+// The client ID is public by design; there is no client secret in the extension, so there are no refresh
+// tokens. Access tokens live only in chrome.storage.session (cleared when the browser closes) and are never
+// logged, backed up or sent elsewhere. To keep the owner signed in, each channel remembers the Google account
+// identifier (`sub`) its token belongs to, and tokens are renewed silently with `login_hint=<sub>` and
+// `prompt=none` a few minutes before they expire and again after a browser restart (D-018). When Google needs
+// the owner (signed out of Google, consent changed), the channel is marked "reconnect" and the UI offers a
+// one-click interactive flow pre-selected for that account.
 import { browser } from 'wxt/browser';
 
 export const GOOGLE_CLIENT_ID = '49141970502-mffpqb3pg8mp9fu8knpetd4s6ej56ipr.apps.googleusercontent.com';
@@ -11,6 +16,13 @@ export const SCOPES = [
   'https://www.googleapis.com/auth/youtube.force-ssl',
 ];
 export const GOOGLE_ORIGINS = ['https://www.googleapis.com/*', 'https://youtubeanalytics.googleapis.com/*'];
+/** Token info endpoints (documented). The first is covered by the www.googleapis.com host permission. */
+const TOKENINFO = ['https://www.googleapis.com/oauth2/v3/tokeninfo', 'https://oauth2.googleapis.com/tokeninfo'];
+
+/** Renew this long before a token expires. */
+export const RENEW_MARGIN_MS = 5 * 60_000;
+/** One-shot alarm for the next proactive renewal (rescheduled after every renewal). */
+export const AUTH_ALARM = 'tubex-auth-renew';
 
 export interface GoogleChannel {
   channelId: string;
@@ -19,22 +31,33 @@ export interface GoogleChannel {
   thumbnail?: string;
   uploadsPlaylistId?: string;
   connectedAt: string;
+  /** Google account id (OpenID `sub`) the channel's tokens belong to; used as login_hint. Not a secret. */
+  sub?: string;
 }
 export interface GoogleState {
   channels: GoogleChannel[];
   activeChannelId?: string;
 }
-interface Token {
+export interface Token {
   accessToken: string;
   expiresAt: number;
   scopes: string[];
 }
+/** Per-channel sign-in health, kept in session storage. */
+export interface ChannelAuth {
+  /** Silent renewal failed: the owner must click Reconnect. */
+  reconnect: boolean;
+  at: string;
+  detail?: string;
+}
 
-export type AuthErrorCode = 'canceled' | 'denied' | 'permission' | 'state-mismatch' | 'no-channel' | 'expired' | 'network';
+export type AuthErrorCode = 'canceled' | 'denied' | 'permission' | 'state-mismatch' | 'no-channel' | 'expired' | 'network' | 'wrong-channel';
 export class AuthError extends Error {
   constructor(
     public code: AuthErrorCode,
     public detail?: string,
+    /** The channel the error is about, when known (lost over RPC; callers fall back to the active channel). */
+    public channelId?: string,
   ) {
     super(code);
   }
@@ -42,22 +65,27 @@ export class AuthError extends Error {
 
 const STATE_KEY = 'google';
 const TOKENS_KEY = 'googleTokens';
+const STATUS_KEY = 'googleAuthStatus';
 
 const isObj = (v: unknown): v is Record<string, unknown> => typeof v === 'object' && v !== null;
+const SUB_RE = /^[\w.-]{1,128}$/;
+
+export function coerceGoogleChannel(c: unknown): GoogleChannel | null {
+  if (!isObj(c) || typeof c.channelId !== 'string' || !/^UC[\w-]{22}$/.test(c.channelId)) return null;
+  return {
+    channelId: c.channelId,
+    title: String(c.title ?? '').slice(0, 200),
+    handle: String(c.handle ?? '').slice(0, 200),
+    thumbnail: typeof c.thumbnail === 'string' && c.thumbnail.startsWith('https://') ? c.thumbnail : undefined,
+    uploadsPlaylistId: typeof c.uploadsPlaylistId === 'string' && /^[\w-]{2,64}$/.test(c.uploadsPlaylistId) ? c.uploadsPlaylistId : undefined,
+    connectedAt: String(c.connectedAt ?? '').slice(0, 40),
+    sub: typeof c.sub === 'string' && SUB_RE.test(c.sub) ? c.sub : undefined,
+  };
+}
 
 export function coerceGoogleState(raw: unknown): GoogleState {
   if (!isObj(raw) || !Array.isArray(raw.channels)) return { channels: [] };
-  const channels = raw.channels
-    .filter(isObj)
-    .filter((c) => typeof c.channelId === 'string' && /^UC[\w-]{22}$/.test(c.channelId))
-    .map((c) => ({
-      channelId: c.channelId as string,
-      title: String(c.title ?? '').slice(0, 200),
-      handle: String(c.handle ?? '').slice(0, 200),
-      thumbnail: typeof c.thumbnail === 'string' && c.thumbnail.startsWith('https://') ? c.thumbnail : undefined,
-      uploadsPlaylistId: typeof c.uploadsPlaylistId === 'string' ? c.uploadsPlaylistId : undefined,
-      connectedAt: String(c.connectedAt ?? ''),
-    }));
+  const channels = raw.channels.map(coerceGoogleChannel).filter((c): c is GoogleChannel => !!c);
   const active = typeof raw.activeChannelId === 'string' && channels.some((c) => c.channelId === raw.activeChannelId) ? raw.activeChannelId : channels[0]?.channelId;
   return { channels, activeChannelId: active };
 }
@@ -80,6 +108,27 @@ export async function setActiveChannel(channelId: string): Promise<void> {
   if (s.channels.some((c) => c.channelId === channelId)) await saveGoogleState({ ...s, activeChannelId: channelId });
 }
 
+/**
+ * Adds channels from a backup (no tokens). Existing channels keep their data; a missing `sub` is filled in.
+ * Restored channels show "Reconnect" until their first renewal succeeds.
+ */
+export async function mergeChannels(list: GoogleChannel[]): Promise<number> {
+  const s = await loadGoogleState();
+  let added = 0;
+  const channels = s.channels.map((c) => {
+    const inc = list.find((x) => x.channelId === c.channelId);
+    return inc && !c.sub && inc.sub ? { ...c, sub: inc.sub } : c;
+  });
+  for (const c of list) {
+    if (channels.some((x) => x.channelId === c.channelId)) continue;
+    channels.push(c);
+    added++;
+  }
+  await saveGoogleState({ channels, activeChannelId: s.activeChannelId ?? channels[0]?.channelId });
+  return added;
+}
+
+// ---- tokens (session storage) ----
 async function tokens(): Promise<Record<string, Token>> {
   const raw = (await browser.storage.session.get(TOKENS_KEY))[TOKENS_KEY];
   return isObj(raw) ? (raw as Record<string, Token>) : {};
@@ -91,7 +140,42 @@ async function setToken(channelId: string, t: Token | null): Promise<void> {
   await browser.storage.session.set({ [TOKENS_KEY]: all });
 }
 
-export function buildAuthUrl(redirectUri: string, state: string, interactive: boolean): string {
+// ---- sign-in health (session storage) ----
+export async function loadAuthStatus(): Promise<Record<string, ChannelAuth>> {
+  const raw = (await browser.storage.session.get(STATUS_KEY))[STATUS_KEY];
+  return isObj(raw) ? (raw as Record<string, ChannelAuth>) : {};
+}
+async function setAuthStatus(channelId: string, st: ChannelAuth | null): Promise<void> {
+  const all = await loadAuthStatus();
+  if (st) all[channelId] = st;
+  else if (!(channelId in all)) return;
+  else delete all[channelId];
+  await browser.storage.session.set({ [STATUS_KEY]: all });
+}
+export function onAuthStatusChanged(cb: (s: Record<string, ChannelAuth>) => void): () => void {
+  const l = (changes: Record<string, { newValue?: unknown }>, area: string) => {
+    if (area === 'session' && changes[STATUS_KEY]) cb(isObj(changes[STATUS_KEY].newValue) ? (changes[STATUS_KEY].newValue as Record<string, ChannelAuth>) : {});
+  };
+  browser.storage.onChanged.addListener(l);
+  return () => browser.storage.onChanged.removeListener(l);
+}
+/** Channel ids whose silent renewal failed in this browser session. */
+export async function channelsNeedingReconnect(): Promise<string[]> {
+  const st = await loadAuthStatus();
+  return Object.entries(st)
+    .filter(([, v]) => v?.reconnect)
+    .map(([k]) => k);
+}
+
+// ---- the token flow ----
+export interface FlowOptions {
+  interactive: boolean;
+  /** Google account id or email; pre-selects the account (documented `login_hint`). */
+  loginHint?: string;
+}
+
+export function buildAuthUrl(redirectUri: string, state: string, opts: FlowOptions | boolean): string {
+  const o: FlowOptions = typeof opts === 'boolean' ? { interactive: opts } : opts;
   const u = new URL('https://accounts.google.com/o/oauth2/v2/auth');
   u.searchParams.set('client_id', GOOGLE_CLIENT_ID);
   u.searchParams.set('redirect_uri', redirectUri);
@@ -99,8 +183,11 @@ export function buildAuthUrl(redirectUri: string, state: string, interactive: bo
   u.searchParams.set('scope', SCOPES.join(' '));
   u.searchParams.set('include_granted_scopes', 'true');
   u.searchParams.set('state', state);
-  // select_account shows the account and Brand Account (channel) chooser.
-  u.searchParams.set('prompt', interactive ? 'select_account' : 'none');
+  if (o.loginHint) u.searchParams.set('login_hint', o.loginHint);
+  // Silent: never show UI. Interactive with a known account: let Google decide (usually no chooser, or the
+  // account's own sign-in page). Interactive without one: the account and Brand Account (channel) chooser.
+  if (!o.interactive) u.searchParams.set('prompt', 'none');
+  else if (!o.loginHint) u.searchParams.set('prompt', 'select_account');
   return u.toString();
 }
 
@@ -117,16 +204,51 @@ export function parseAuthResponse(responseUrl: string, expectedState: string, no
   return { accessToken, expiresAt: now + Math.max(60, expiresIn - 60) * 1000, scopes: (p.get('scope') ?? '').split(' ').filter(Boolean) };
 }
 
-async function runFlow(interactive: boolean): Promise<Token> {
+async function launch(url: string, interactive: boolean): Promise<string | undefined> {
+  if (interactive) return browser.identity.launchWebAuthFlow({ url, interactive });
+  // Google's prompt=none answer can pass through an intermediate page; let the hidden flow follow it
+  // (Chrome/Edge 113+ options). Older builds reject unknown keys, so retry without them.
+  try {
+    return await browser.identity.launchWebAuthFlow({ url, interactive, abortOnLoadForNonInteractive: false, timeoutMsForNonInteractive: 20_000 } as Parameters<typeof browser.identity.launchWebAuthFlow>[0]);
+  } catch (e) {
+    if (/unexpected property|abortOnLoad|timeoutMs/i.test(e instanceof Error ? e.message : String(e))) return browser.identity.launchWebAuthFlow({ url, interactive });
+    throw e;
+  }
+}
+
+async function runFlow(opts: FlowOptions): Promise<Token> {
   const state = crypto.randomUUID();
   let responseUrl: string | undefined;
   try {
-    responseUrl = await browser.identity.launchWebAuthFlow({ url: buildAuthUrl(browser.identity.getRedirectURL(), state, interactive), interactive });
+    responseUrl = await launch(buildAuthUrl(browser.identity.getRedirectURL(), state, opts), opts.interactive);
   } catch (e) {
-    throw new AuthError(interactive ? 'canceled' : 'expired', e instanceof Error ? e.message : String(e));
+    throw new AuthError(opts.interactive ? 'canceled' : 'expired', e instanceof Error ? e.message : String(e));
   }
   if (!responseUrl) throw new AuthError('canceled');
   return parseAuthResponse(responseUrl, state);
+}
+
+/**
+ * The Google account id behind an access token, after checking the token was issued to TubeX's client
+ * (a token for another app is refused). Undefined when the endpoint cannot be reached; the flow still works,
+ * only without a login_hint for the next renewal.
+ */
+export async function tokenSubject(accessToken: string, fetcher: typeof fetch = fetch): Promise<string | undefined> {
+  for (const base of TOKENINFO) {
+    let res: Response;
+    try {
+      res = await fetcher(`${base}?access_token=${encodeURIComponent(accessToken)}`, { signal: AbortSignal.timeout(10_000) });
+    } catch {
+      continue;
+    }
+    const body = (await res.json().catch(() => null)) as Record<string, unknown> | null;
+    if (!res.ok || !body) continue;
+    const aud = body.aud ?? body.azp ?? body.audience ?? body.issued_to;
+    if (aud !== undefined && aud !== GOOGLE_CLIENT_ID) throw new AuthError('state-mismatch', 'token audience');
+    const sub = body.sub ?? body.user_id;
+    return typeof sub === 'string' && SUB_RE.test(sub) ? sub : undefined;
+  }
+  return undefined;
 }
 
 async function fetchOwnChannel(t: Token): Promise<GoogleChannel> {
@@ -151,35 +273,126 @@ async function fetchOwnChannel(t: Token): Promise<GoogleChannel> {
   };
 }
 
+/**
+ * Stores a fresh token and the channel it belongs to (title, avatar and `sub` refreshed). Silent renewals pass
+ * `allowNew: false`: a token for a channel the owner never connected is dropped, never added.
+ */
+async function adopt(t: Token, opts: { makeActive: boolean; allowNew: boolean }): Promise<GoogleChannel> {
+  const ch = await fetchOwnChannel(t);
+  if (!opts.allowNew && !(await loadGoogleState()).channels.some((c) => c.channelId === ch.channelId)) return ch;
+  const sub = await tokenSubject(t.accessToken).catch((e) => {
+    if (e instanceof AuthError && e.code === 'state-mismatch') throw e;
+    return undefined;
+  });
+  await setToken(ch.channelId, t);
+  await setAuthStatus(ch.channelId, null);
+  const s = await loadGoogleState();
+  const prev = s.channels.find((c) => c.channelId === ch.channelId);
+  const next: GoogleChannel = { ...ch, connectedAt: prev?.connectedAt || ch.connectedAt, sub: sub ?? prev?.sub };
+  const channels = prev ? s.channels.map((c) => (c.channelId === ch.channelId ? next : c)) : [...s.channels, next];
+  await saveGoogleState({ channels, activeChannelId: opts.makeActive ? ch.channelId : (s.activeChannelId ?? ch.channelId) });
+  await scheduleRenewal();
+  return next;
+}
+
 /** Interactive sign-in from a click. Adds (or refreshes) the chosen channel and makes it active. */
 export async function signIn(): Promise<GoogleChannel> {
   // Ask for API host access first, while the click still counts as a user gesture.
   const granted = await browser.permissions.request({ origins: GOOGLE_ORIGINS });
   if (!granted) throw new AuthError('permission');
-  const t = await runFlow(true);
-  const ch = await fetchOwnChannel(t);
-  await setToken(ch.channelId, t);
-  const s = await loadGoogleState();
-  await saveGoogleState({ channels: [...s.channels.filter((c) => c.channelId !== ch.channelId), ch], activeChannelId: ch.channelId });
-  return ch;
+  return adopt(await runFlow({ interactive: true }), { makeActive: true, allowNew: true });
 }
 
 /**
- * A valid access token for the channel. Tries a silent refresh when expired; the silent flow may return a
- * token for a different channel of the same account, so the channel is checked before the token is used.
+ * One-click reconnect of a channel whose silent renewal failed: the interactive flow pre-selected for the
+ * channel's Google account. `fromGesture` asks for the API host permission first (extension pages); the
+ * background (called from an in-page button) can only check it.
+ */
+export async function reconnect(channelId: string, fromGesture = true): Promise<GoogleChannel> {
+  const granted = fromGesture ? await browser.permissions.request({ origins: GOOGLE_ORIGINS }) : await browser.permissions.contains({ origins: GOOGLE_ORIGINS });
+  if (!granted) throw new AuthError('permission', undefined, channelId);
+  const s = await loadGoogleState();
+  const known = s.channels.find((c) => c.channelId === channelId);
+  const got = await adopt(await runFlow({ interactive: true, loginHint: known?.sub }), { makeActive: !known, allowNew: true });
+  if (known && got.channelId !== channelId) throw new AuthError('wrong-channel', got.title, channelId);
+  return got;
+}
+
+const inflight = new Map<string, Promise<string>>();
+
+/**
+ * Silent renewal for one channel (no UI). Uses the channel's Google account as login_hint so Brand Account
+ * channels get their own token instead of the default identity's. On an auth failure the channel is marked
+ * "reconnect"; network failures are not, so they are retried later.
+ */
+export function renewSilently(channelId: string): Promise<string> {
+  const running = inflight.get(channelId);
+  if (running) return running;
+  const p = (async () => {
+    const known = (await loadGoogleState()).channels.find((c) => c.channelId === channelId);
+    try {
+      const fresh = await runFlow({ interactive: false, loginHint: known?.sub });
+      const got = await adopt(fresh, { makeActive: false, allowNew: false });
+      if (got.channelId === channelId) return fresh.accessToken;
+      throw new AuthError('wrong-channel', got.title, channelId);
+    } catch (e) {
+      const err = e instanceof AuthError ? e : new AuthError('expired', e instanceof Error ? e.message : String(e));
+      if (err.code === 'network') throw new AuthError('network', err.detail, channelId);
+      await setAuthStatus(channelId, { reconnect: true, at: new Date().toISOString(), detail: err.detail?.slice(0, 200) });
+      throw new AuthError('expired', err.detail, channelId);
+    }
+  })().finally(() => inflight.delete(channelId));
+  inflight.set(channelId, p);
+  return p;
+}
+
+/**
+ * A valid access token for the channel. Renews silently when missing or about to expire; the channel check
+ * stays, so a token for another channel of the same account is never used for this one.
  */
 export async function getToken(channelId: string): Promise<string> {
   const t = (await tokens())[channelId];
-  if (t && t.expiresAt > Date.now()) return t.accessToken;
+  if (t && t.expiresAt > Date.now() + 30_000) return t.accessToken;
+  return renewSilently(channelId);
+}
+
+/** When the next proactive renewal is due (ms epoch), or undefined when no channel has a token. */
+export function nextRenewalAt(all: Record<string, Token>, channelIds: string[], now = Date.now()): number | undefined {
+  const due = channelIds.map((id) => all[id]?.expiresAt).filter((x): x is number => typeof x === 'number');
+  if (!due.length) return undefined;
+  return Math.max(now + 30_000, Math.min(...due) - RENEW_MARGIN_MS);
+}
+
+/** Channels whose token is missing or expires within the margin, skipping ones already marked "reconnect". */
+export function channelsToRenew(all: Record<string, Token>, channelIds: string[], status: Record<string, ChannelAuth>, now = Date.now()): string[] {
+  return channelIds.filter((id) => !status[id]?.reconnect && !((all[id]?.expiresAt ?? 0) - RENEW_MARGIN_MS > now));
+}
+
+export async function scheduleRenewal(): Promise<void> {
   try {
-    const fresh = await runFlow(false);
-    const ch = await fetchOwnChannel(fresh);
-    await setToken(ch.channelId, fresh);
-    if (ch.channelId === channelId) return fresh.accessToken;
+    const at = nextRenewalAt(await tokens(), (await loadGoogleState()).channels.map((c) => c.channelId));
+    if (at === undefined) await browser.alarms.clear(AUTH_ALARM);
+    else await browser.alarms.create(AUTH_ALARM, { when: at });
   } catch {
-    /* fall through */
+    /* alarms unavailable in this context; the 15-minute tick renews as well */
   }
-  throw new AuthError('expired');
+}
+
+let renewing: Promise<void> | null = null;
+/**
+ * Background: renews every channel that needs it (after a browser restart, all of them), one at a time,
+ * then schedules the next renewal. Safe to call often.
+ */
+export function renewDue(): Promise<void> {
+  if (renewing) return renewing;
+  renewing = (async () => {
+    const ids = (await loadGoogleState()).channels.map((c) => c.channelId);
+    for (const id of channelsToRenew(await tokens(), ids, await loadAuthStatus())) await renewSilently(id).catch(() => undefined);
+    await scheduleRenewal();
+  })().finally(() => {
+    renewing = null;
+  });
+  return renewing;
 }
 
 export async function forgetToken(channelId: string): Promise<void> {
@@ -190,8 +403,10 @@ export async function forgetToken(channelId: string): Promise<void> {
 export async function signOut(channelId: string): Promise<void> {
   const t = (await tokens())[channelId];
   await setToken(channelId, null);
+  await setAuthStatus(channelId, null);
   if (t) void fetch(`https://oauth2.googleapis.com/revoke?token=${encodeURIComponent(t.accessToken)}`, { method: 'POST', mode: 'no-cors' }).catch(() => undefined);
   const s = await loadGoogleState();
   const channels = s.channels.filter((c) => c.channelId !== channelId);
   await saveGoogleState({ channels, activeChannelId: channels[0]?.channelId });
+  await scheduleRenewal();
 }
