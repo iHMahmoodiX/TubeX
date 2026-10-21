@@ -1,6 +1,6 @@
 // Videolytics (#7): a panel at the top of the watch page's right column (switch 'videolytics'), also shown in the
 // TubeX drawer on watch pages. Summary, SEO (tags, ranked tags on request, TubeX score), channel block, an honest
-// best-practices checklist (no API → "unknown", never ✗), tags with copy and search ranks, a Compare toggle
+// best-practices checklist (API + the visible page; can't tell → "unknown", never ✗), tags with copy and search ranks, a Compare toggle
 // (this video vs the channel's recent uploads) and a Tools menu with the watch page's actions.
 // The bar under the video keeps the derived rates (views/day, engagement, like rate, age) and the SEO checklist,
 // so the two never show the same numbers twice.
@@ -19,6 +19,7 @@ import { cachedRpc, canReadYt, copyText, InError, SetupNeeded, useAsync, useFmt,
 import { useInpageEnabled } from '../InpageRoot';
 import { requestWatchSeo, setVideolyticsShown } from '../launch/bus';
 import { bestPractices, rankedCount, rankPlan, ratioTo, recentAverage, type ChannelAverage, type Practice, type VideoFacts } from '../launch/logic';
+import { useWatchSignals } from '../launch/signals';
 import { useWatchVideoId } from './hooks';
 import { useWatchActions } from './WatchActions';
 
@@ -299,25 +300,40 @@ const PRACTICE_MARK: Record<Practice['state'], string> = { ok: '✓', fail: '×'
 
 function Practices({ v, facts, factsError, own }: { v: VideoInfo; facts: VideoFacts | null | undefined; factsError: unknown; own: boolean }) {
   const { t } = useI18n();
-  const items = bestPractices(v.description, facts);
+  const f = useFmt();
+  const page = useWatchSignals(v.id);
+  const items = bestPractices(v.description, facts, page);
   const stateLabel = (s: Practice['state']) => t(`ln.bp.state.${s}` as MessageKey);
+  const hintOf = (p: Practice) => `${t(`ln.bp.src.${p.source}` as MessageKey)} ${t(`ln.bp.${p.id}.${p.reason}` as MessageKey, Object.fromEntries(Object.entries(p.values ?? {}).map(([k, n]) => [k, f.int(n)])))}`;
+  // Fixable problems and "scroll to check" are worth a visible line, not only a tooltip.
+  const notes = items.filter((p) => p.state === 'warn' || p.state === 'fail' || (p.id === 'pinned' && p.reason === 'notLoaded'));
   return (
     <Block title={t('ln.vl.practices')}>
       <ul className="tx-vl-bp">
         {items.map((p) => {
-          const hint = t(`ln.bp.${p.id}.${p.state === 'unknown' ? 'unknown' : 'hint'}` as MessageKey);
+          const hint = hintOf(p);
           return (
-            <li key={p.id} data-state={p.state} title={hint}>
+            <li key={p.id} data-state={p.state} data-source={p.source} title={hint}>
               <span className="tx-vl-bp-mark" aria-hidden="true">
                 {PRACTICE_MARK[p.state]}
               </span>
               <span className="sr-only">{stateLabel(p.state)}: </span>
-              <span>{t(`ln.bp.${p.id}` as MessageKey)}</span>
+              <span className="tx-vl-bp-name">{t(`ln.bp.${p.id}` as MessageKey)}</span>
+              {p.state === 'ok' && (p.reason === 'auto' || p.reason === 'uploaded') && <span className="tx-vl-bp-tag">{t(`ln.bp.captions.tag.${p.reason}` as MessageKey)}</span>}
               <span className="sr-only">. {hint}</span>
             </li>
           );
         })}
       </ul>
+      {notes.length > 0 && (
+        <ul className="tx-vl-bp-notes" aria-hidden="true">
+          {notes.map((p) => (
+            <li key={p.id} data-state={p.state}>
+              <b>{t(`ln.bp.${p.id}` as MessageKey)}:</b> {t(`ln.bp.${p.id}.${p.reason}` as MessageKey, Object.fromEntries(Object.entries(p.values ?? {}).map(([k, n]) => [k, f.int(n)])))}
+            </li>
+          ))}
+        </ul>
+      )}
       {factsError !== undefined && <InError error={factsError} />}
       <p className="xsmall faint">
         {t('ln.bp.noApi')}{' '}
