@@ -4,9 +4,10 @@ import { reportsJobs, reportsTicks } from './reports';
 import { seoJobs, seoTicks } from './seo';
 import { engageJobs, engageTicks } from './engage';
 import { channelInsightsJobs, channelInsightsTicks } from './channelInsights';
+import { bulkJobs, bulkTicks } from './bulk';
 
 export type JobHandler = (job: Job) => Promise<string>;
 export type Tick = (now: Date) => Promise<void>;
 
-export const JOB_HANDLERS: Record<string, JobHandler> = { ...reportsJobs, ...seoJobs, ...engageJobs, ...channelInsightsJobs };
-export const TICKS: Tick[] = [...reportsTicks, ...seoTicks, ...engageTicks, ...channelInsightsTicks];
+export const JOB_HANDLERS: Record<string, JobHandler> = { ...reportsJobs, ...seoJobs, ...engageJobs, ...channelInsightsJobs, ...bulkJobs };
+export const TICKS: Tick[] = [...reportsTicks, ...seoTicks, ...engageTicks, ...channelInsightsTicks, ...bulkTicks];

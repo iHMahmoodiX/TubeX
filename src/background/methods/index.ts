@@ -8,5 +8,6 @@ import { studioContentMethods } from './studioContent';
 import { tagToolsMethods } from './tagTools';
 import { channelInsightsMethods } from './channelInsights';
 import { launchersMethods } from './launchers';
+import { bulkMethods } from './bulk';
 
-export const METHODS: Record<string, (...args: any[]) => Promise<unknown>> = { ...coreMethods, ...reportsMethods, ...seoMethods, ...engageMethods, ...inpageMethods, ...studioContentMethods, ...tagToolsMethods, ...channelInsightsMethods, ...launchersMethods };
+export const METHODS: Record<string, (...args: any[]) => Promise<unknown>> = { ...coreMethods, ...reportsMethods, ...seoMethods, ...engageMethods, ...inpageMethods, ...studioContentMethods, ...tagToolsMethods, ...channelInsightsMethods, ...launchersMethods, ...bulkMethods };

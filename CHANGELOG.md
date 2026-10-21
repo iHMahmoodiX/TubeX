@@ -1,5 +1,14 @@
 # Changelog
 
+## Unreleased — find & replace on YouTube (owner's top priority)
+- Bulk edit is now a full find & replace for the descriptions, titles and tags of all your uploads (every page of the uploads list), with filters for visibility, date range, text, Shorts vs videos (by duration, up to 3 minutes) and playlist; Studio's selection still preselects videos.
+- Matching: Persian-aware by default (ي/ی, ك/ک, ة/ه, Persian/Arabic/Latin digits, half-space vs space and repeated spaces count as the same; the new text is inserted exactly as typed), case-insensitive Latin, whole word, regex with $1 and a live validity check, multi-line blocks with CRLF and trailing-space tolerance.
+- Operations: replace text, replace between two markers, add a block at the start or end (never twice), remove lines containing a text, change links safely, add/remove tags, default upload profile.
+- Preview: a real word-level diff for every video with unchanged lines folded, match counts, totals, untick any video, and items that would break a YouTube limit (5,000-byte description, 100-character title, 500-character tags, angle brackets) listed as skipped with the reason, never cut.
+- Run: a background job in the service worker, one video at a time, re-reading each video just before writing and writing back the full editable snippet (translations untouched). Live progress, pause, resume, cancel, toast and desktop notification. Retries with backoff on temporary errors; stops cleanly when the daily quota is used and continues by itself after the Pacific-midnight reset. Plans 51 units per video against TubeX's daily limit, which can be raised to 10,000 from the run step. "Test on 1 video first".
+- Undo: the exact previous text of every changed video is kept; undo a whole job or one video. Videos edited by hand after the change are not overwritten without asking, with a diff of what changed since.
+- Results: per-video list with filters, plain-sentence errors with details folded, Reconnect when Google sign-in needs it, CSV export.
+
 ## 0.5.1 — 2026-10-21 (fixes from the owner's live test, issue #8)
 - Font: the owner's Estedad build (variable, Persian digits) everywhere, including the tools inside YouTube and Studio.
 - Studio Content: the bulk-tools menu opens under its button, fully visible (overlay layer), and the button sits right after the last tab; the TubeX selection menu shows only when rows are selected.

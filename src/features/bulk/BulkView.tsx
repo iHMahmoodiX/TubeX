@@ -1,258 +1,287 @@
-// Bulk edit in three steps: choose items (drafts, templates, published videos), define the change, review and
-// apply. Local items save with an instant undo; YouTube videos are re-read and written one at a time with an
-// undo log (D-015).
-import { useEffect, useMemo, useState } from 'react';
-import { applyBulk, changedFields, changedLines, countMatches, findPattern, type BulkField, type BulkOp } from '../../domain/bulk';
-import { applyProfile, type BlockMode, type ProfileOp } from '../../domain/engageBulk';
+// Bulk find & replace in three steps: Find (what, where) → Preview (exact diff per item, include/exclude) →
+// Run. Drafts and templates save locally with an instant undo. Published videos are written by a persisted
+// background job (src/background/jobs/bulk.ts): fresh read before every write, limits checked, sequential with
+// backoff, waits for the daily quota reset and continues by itself, undo per job or per video (D-015).
+import { useCallback, useDeferredValue, useEffect, useMemo, useState } from 'react';
+import { changedFields, compileOp, isActive, nextPacificMidnight, planVideo, quotaPlan, PROJECT_QUOTA, UNITS_PER_VIDEO, type FrOp } from '../../domain/bulk';
 import { parseSelection } from '../../domain/coppa';
-import { checkDraft, LIMITS, parseTags, tagsCharCount } from '../../domain/metadata';
+import { checkDraft } from '../../domain/metadata';
 import type { Draft, Template } from '../../domain/models';
 import { useCollection } from '../../components/hooks';
 import { Icon } from '../../components/icons';
 import { useToast } from '../../components/toasts';
-import { Button, ConfirmButton, Empty, Field, Notice, PageHeader, Thumb } from '../../components/ui';
+import { Button, ConfirmButton, Empty, Notice, PageHeader, Stat } from '../../components/ui';
 import { useI18n } from '../../i18n';
 import type { MessageKey } from '../../i18n/en';
-import { dropLiveUndo, listLiveUndo, pushLiveUndo, put, save, type LiveUndoBatch, type LiveUndoEntry } from '../../storage/db';
-import { UPDATE_COST, updateVideo, type OwnVideo, type SnippetEdit } from '../../integrations/google/own';
-import { AuthError } from '../../integrations/google/auth';
-import { YtError } from '../../integrations/youtube/client';
+import { ownVideos, type OwnVideo } from '../../integrations/google/own';
+import { rpc } from '../../platform/rpc';
+import { dropLiveUndo, listLiveUndo, put, save, type LiveUndoBatch } from '../../storage/db';
+import { loadIntegrations, saveIntegrations } from '../../storage/integrations';
+import { updateVideo } from '../../integrations/google/own';
 import { ErrorNotice } from '../connections/ErrorNotice';
 import { ReconnectBanner, ReconnectButton } from '../connections/Reconnect';
-import { useFormat } from '../research/shared';
-import { Cost, Step, useOwnChannel, useOwnUploads, VideoPicker } from './engageKit';
+import { useAsync, useFormat } from '../research/shared';
+import { Cost, Step, useOwnChannel } from './engageKit';
+import { FindForm, INITIAL_FORM, opLabel, toOp, type FormState } from './FindForm';
+import { JobsSection, useJobToasts } from './JobPanel';
+import { applyFilters, LiveFilters, NO_FILTERS, type Filters } from './LiveFilters';
+import { PreviewList, SkippedList, type PreviewRow } from './Preview';
+import { useBulkJobs, useQuota } from './useBulk';
+import './bulk.css';
 
-type Kind = BulkOp['kind'] | 'profile';
-type Item = { col: 'drafts'; rec: Draft } | { col: 'templates'; rec: Template } | { col: 'live'; rec: OwnVideo };
-type Editable = { title?: string; description: string; tags: string[] };
+type Scope = 'live' | 'drafts' | 'templates';
 
-interface Change {
-  key: string;
-  item: Item;
-  next: Draft | Template | OwnVideo;
-  fields: BulkField[];
-  matches: number;
-  overLimit: boolean;
+/** Every upload of the signed-in channel (not capped), cached 30 minutes by ownVideos. */
+function useAllUploads(enabled: boolean) {
+  const { channel } = useOwnChannel();
+  const load = useCallback(
+    (fresh: boolean) => (channel?.uploadsPlaylistId ? ownVideos(channel.channelId, channel.uploadsPlaylistId, Infinity, fresh) : Promise.resolve([] as OwnVideo[])),
+    [channel?.channelId, channel?.uploadsPlaylistId],
+  );
+  const st = useAsync(load);
+  useEffect(() => {
+    if (enabled && channel) void st.run(false);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [enabled, channel?.channelId]);
+  return { videos: st.data, loading: st.loading, error: st.error, refresh: () => st.run(true) };
 }
 
-const nameOf = (i: Item) => (i.col === 'templates' ? i.rec.name : i.rec.title);
-const breaksLimits = (e: SnippetEdit) => checkDraft({ ...e, focusKeyword: '' }).some((c) => c.severity === 'error');
-
-interface LiveProgress {
-  done: number;
-  total: number;
-  changed: number;
-  skipped: number;
-  failed: { title: string; error: unknown }[];
-  stopped?: unknown;
-}
-
-function Diff({ before, after, label }: { before: string; after: string; label: string }) {
-  const { t } = useI18n();
-  const lines = before.length > 200 || after.length > 200 ? changedLines(before, after) : { before: [before], after: [after] };
+function RunPanel({ selected, op, busy, channelTitle }: { selected: PreviewRow[]; op: FrOp; busy: boolean; channelTitle: string }) {
+  const { t, formatDate } = useI18n();
+  const f = useFormat();
+  const toast = useToast();
+  const { usage, integrations } = useQuota();
+  const [error, setError] = useState<unknown>(null);
+  const [starting, setStarting] = useState(false);
+  const [asking, setAsking] = useState(false);
+  const cap = integrations?.youtube.dailyUnitCap ?? 0;
+  const used = usage?.ytUnits ?? 0;
+  const n = selected.length;
+  const plan = quotaPlan(n, cap, used);
+  const resetAt = new Date(nextPacificMidnight(Date.now())).toISOString();
+  const start = async (test: boolean) => {
+    setError(null);
+    setStarting(true);
+    try {
+      const videos = (test ? selected.slice(0, 1) : selected).map((r) => ({ id: r.id, title: r.title }));
+      await rpc('bulk.start', { label: opLabel(op, t), op, videos, test });
+      toast(t(test ? 'fr.startedTest' : 'fr.started', { n: f.int(videos.length) }));
+      requestAnimationFrame(() => document.getElementById('fr-jobs-h')?.scrollIntoView({ behavior: 'smooth', block: 'start' }));
+    } catch (e) {
+      setError(e instanceof Error && e.message === 'busy' ? new Error(t('fr.busy')) : e);
+    } finally {
+      setStarting(false);
+    }
+  };
+  const raise = async () => {
+    const i = await loadIntegrations();
+    await saveIntegrations({ ...i, youtube: { ...i.youtube, dailyUnitCap: PROJECT_QUOTA } });
+    toast(t('fr.capRaised', { n: f.int(PROJECT_QUOTA) }));
+  };
   return (
-    <div className="engage-diff">
-      <span className="xsmall muted bold">{label}</span>
-      {lines.before.map((l, i) => (
-        <del key={`b${i}`} dir="auto">
-          {l || t('engage.diff.empty')}
-        </del>
-      ))}
-      {lines.after.map((l, i) => (
-        <ins key={`a${i}`} dir="auto">
-          {l || t('engage.diff.empty')}
-        </ins>
-      ))}
+    <div className="stack" data-testid="bulk-run">
+      <div className="fr-plan">
+        <div className="stack-s grow" style={{ minWidth: 0 }}>
+          <p className="bold">
+            {t('fr.runSummary', { n: f.int(n), name: channelTitle })} <Cost units={n * UNITS_PER_VIDEO} />
+          </p>
+          <p className="small">
+            {plan.later === 0
+              ? t('fr.plan.allToday', { n: f.int(n) })
+              : plan.today === 0
+                ? t('fr.plan.noneToday', { n: f.int(n), time: formatDate(resetAt), days: f.int(plan.days - 1) })
+                : t('fr.plan.split', { today: f.int(plan.today), later: f.int(plan.later), time: formatDate(resetAt), days: f.int(plan.days) })}
+          </p>
+          <p className="xsmall muted">
+            {cap > 0 ? t('fr.cap', { cap: f.int(cap), used: f.int(used) }) : t('fr.capNone', { used: f.int(used) })} {t('fr.capWhy')}
+          </p>
+        </div>
+        {cap > 0 && cap < PROJECT_QUOTA && (
+          <Button size="s" onClick={() => void raise()}>
+            <Icon name="arrowUp" />
+            {t('fr.raiseCap', { n: f.int(PROJECT_QUOTA) })}
+          </Button>
+        )}
+      </div>
+      <p className="xsmall muted">{t('fr.bgNote')}</p>
+      {busy && <Notice tone="info">{t('fr.busy')}</Notice>}
+      <div className="row">
+        <Button disabled={busy || starting || n === 0} onClick={() => void start(true)} data-testid="bulk-test-one">
+          <Icon name="target" />
+          {t('fr.testOne')}
+        </Button>
+        {!busy && n > 0 && !asking && (
+          <Button variant="primary" disabled={starting} onClick={() => setAsking(true)} data-testid="bulk-run-all">
+            <Icon name="play" />
+            {t('bulk.applyLive', { n: f.int(n) })}
+          </Button>
+        )}
+      </div>
+      {asking && (
+        <div className="notice notice-warning" role="group" aria-label={t('bulk.applyLive', { n: f.int(n) })}>
+          <div className="grow stack-s">
+            <p>{t('fr.runConfirm', { n: f.int(n), units: f.int(n * UNITS_PER_VIDEO), today: f.int(plan.today), later: f.int(plan.later) })}</p>
+            <div className="row">
+              <Button
+                variant="primary"
+                autoFocus
+                onClick={() => {
+                  setAsking(false);
+                  void start(false);
+                }}
+              >
+                {t('bulk.applyLiveGo')}
+              </Button>
+              <Button onClick={() => setAsking(false)}>{t('common.cancel')}</Button>
+            </div>
+          </div>
+        </div>
+      )}
+      <ErrorNotice error={error} />
     </div>
   );
 }
 
-function Seg<T extends string>({ value, onChange, items, label }: { value: T; onChange: (v: T) => void; items: { id: T; label: string }[]; label: string }) {
+/** Older single-video and pre-0.5.2 batch changes (in-page editor, scheduled updates): undo as before. */
+function LegacyUndo() {
+  const { t, formatDate } = useI18n();
+  const f = useFormat();
+  const [undo, setUndo] = useState<LiveUndoBatch[]>([]);
+  const [msg, setMsg] = useState<{ ok: number; kept: number; failed: unknown[] } | null>(null);
+  useEffect(() => {
+    void listLiveUndo().then(setUndo);
+  }, []);
+  if (!undo.length) return null;
+  const run = async (batch: LiveUndoBatch) => {
+    const r = { ok: 0, kept: 0, failed: [] as unknown[] };
+    for (const e of batch.entries) {
+      try {
+        // Restore only when the video still has what TubeX wrote; later manual edits are kept.
+        const w = await updateVideo(e.channelId, e.videoId, (cur) =>
+          cur.title === e.after.title && cur.description === e.after.description && cur.tags.join('\n') === e.after.tags.join('\n') ? e.before : cur,
+        );
+        if (w) r.ok++;
+        else r.kept++;
+      } catch (err) {
+        r.failed.push(err);
+      }
+    }
+    setMsg(r);
+    if (!r.failed.length) await dropLiveUndo(batch.at);
+    setUndo(await listLiveUndo());
+  };
   return (
-    <div className="engage-seg" role="group" aria-label={label}>
-      {items.map((i) => (
-        <button key={i.id} type="button" aria-pressed={value === i.id} onClick={() => onChange(i.id)}>
-          {i.label}
-        </button>
-      ))}
-    </div>
+    <details className="card stack-s fr-legacy">
+      <summary className="bold">{t('bulk.liveHistory')}</summary>
+      <ul className="list">
+        {undo.map((b) => (
+          <li key={b.at} className="list-item row-between">
+            <span className="small">
+              <bdi className="bold">{b.label}</bdi> · {t('bulk.videosCount', { n: f.int(b.entries.length) })} · {formatDate(b.at)}
+            </span>
+            <ConfirmButton size="s" danger={false} label={t('bulk.undoLive')} question={t('bulk.undoLiveConfirm', { n: f.int(b.entries.length) })} confirmLabel={t('bulk.undoLive')} onConfirm={() => run(b)} />
+          </li>
+        ))}
+      </ul>
+      {msg && (
+        <Notice tone={msg.failed.length ? 'warning' : 'success'}>
+          <p role="status">{t('fr.legacyDone', { ok: f.int(msg.ok), kept: f.int(msg.kept), failed: f.int(msg.failed.length) })}</p>
+          {msg.failed.slice(0, 3).map((e, i) => (
+            <ErrorNotice key={i} error={e} />
+          ))}
+        </Notice>
+      )}
+    </details>
   );
 }
 
 export function BulkView() {
-  const { t, formatDate } = useI18n();
+  const { t } = useI18n();
   const f = useFormat();
   const toast = useToast();
   const drafts = useCollection('drafts');
   const templates = useCollection('templates');
   const profiles = useCollection('profiles').items;
+  const jobs = useBulkJobs() ?? [];
 
   // Videos selected on Studio's Content page arrive as `#bulk/ids=...` (studioContent.open).
   const [pre] = useState(() => parseSelection(location.hash.startsWith('#bulk/') ? location.hash : ''));
-  const [useDrafts, setUseDrafts] = useState(pre.ids.length === 0);
-  const [useTemplates, setUseTemplates] = useState(false);
+  const { channel, loaded } = useOwnChannel();
+  const [scope, setScopeRaw] = useState<Scope>(pre.ids.length ? 'live' : 'drafts');
+  const [touched, setTouched] = useState(false);
+  const setScope = (s: Scope) => {
+    setTouched(true);
+    setScopeRaw(s);
+  };
+  // Signed in: published videos are the default scope (drafts stay one click away).
+  useEffect(() => {
+    if (loaded && channel && !touched) setScopeRaw('live');
+  }, [loaded, channel, touched]);
+
+  const [form, setFormRaw] = useState<FormState>(INITIAL_FORM);
+  const setForm = (p: Partial<FormState>) => setFormRaw((s) => ({ ...s, ...p }));
+  const deferred = useDeferredValue(form);
   const [profileId, setProfileId] = useState('all');
-  const [kind, setKind] = useState<Kind>('replace');
-  const [find, setFind] = useState('');
-  const [replace, setReplace] = useState('');
-  const [matchCase, setMatchCase] = useState(false);
-  const [wholeWord, setWholeWord] = useState(false);
-  const [fields, setFields] = useState<BulkField[]>(['title', 'description', 'tags']);
-  const [tagText, setTagText] = useState('');
-  const [text, setText] = useState('');
-  const [position, setPosition] = useState<'start' | 'end'>('end');
-  const [templateId, setTemplateId] = useState('');
-  const [descMode, setDescMode] = useState<BlockMode>('append');
-  const [tagsMode, setTagsMode] = useState<BlockMode>('append');
+  const [filters, setFiltersRaw] = useState<Filters>(NO_FILTERS);
+  const setFilters = (p: Partial<Filters>) => setFiltersRaw((s) => ({ ...s, ...p }));
+  const [playlistIds, setPlaylistIds] = useState<Set<string> | null>(null);
   const [excluded, setExcluded] = useState<Set<string>>(new Set());
   const [applying, setApplying] = useState(false);
-  const { channel, loaded } = useOwnChannel();
-  const [useLive, setUseLive] = useState(pre.ids.length > 0);
-  const live = useOwnUploads(useLive);
-  const [liveIds, setLiveIds] = useState<string[]>(pre.ids);
-  const [progress, setProgress] = useState<LiveProgress | null>(null);
-  const [undo, setUndo] = useState<LiveUndoBatch[]>([]);
-  useEffect(() => {
-    void listLiveUndo().then(setUndo);
-  }, []);
 
-  const template = templates.items.find((x) => x.id === templateId);
-  const op: BulkOp | ({ kind: 'profile' } & ProfileOp) | null = useMemo(() => {
-    switch (kind) {
-      case 'replace':
-        return { kind, find, replace, matchCase, wholeWord, fields };
-      case 'addTags':
-      case 'removeTags':
-        return { kind, tags: parseTags(tagText) };
-      case 'addText':
-        return { kind, text, position };
-      case 'profile':
-        return template ? { kind, description: template.description, tags: template.tags, descriptionMode: descMode, tagsMode } : null;
-    }
-  }, [kind, find, replace, matchCase, wholeWord, fields, tagText, text, position, template, descMode, tagsMode]);
+  const live = useAllUploads(scope === 'live');
+  const scoped = useMemo(() => (scope === 'live' && live.videos ? applyFilters(live.videos, filters, pre.ids, playlistIds) : []), [scope, live.videos, filters, pre.ids, playlistIds]);
+  const localItems = useMemo(() => {
+    const keep = (p?: string) => profileId === 'all' || (profileId === 'none' ? !p : p === profileId);
+    if (scope === 'drafts') return drafts.items.filter((d) => keep(d.profileId)).map((rec) => ({ col: 'drafts' as const, rec }));
+    if (scope === 'templates') return templates.items.filter((d) => keep(d.profileId)).map((rec) => ({ col: 'templates' as const, rec }));
+    return [];
+  }, [scope, drafts.items, templates.items, profileId]);
 
-  const applyOp = <T extends Editable>(rec: T): T => (!op ? rec : op.kind === 'profile' ? applyProfile(rec, op) : applyBulk(rec, op));
+  const op = useMemo(() => toOp(deferred, templates.items), [deferred, templates.items]);
+  const compiled = useMemo(() => (op ? compileOp(op) : null), [op]);
+  const ready = !!compiled?.ok;
 
-  const ready =
-    kind === 'replace'
-      ? !!find && fields.length > 0
-      : kind === 'addText'
-        ? !!text.trim()
-        : kind === 'profile'
-          ? !!template && (descMode !== 'keep' || tagsMode !== 'keep')
-          : parseTags(tagText).length > 0;
-
-  const localItems = useMemo(
-    () =>
-      [
-        ...(useDrafts ? drafts.items.map((rec) => ({ col: 'drafts' as const, rec })) : []),
-        ...(useTemplates ? templates.items.map((rec) => ({ col: 'templates' as const, rec })) : []),
-      ].filter((i) => profileId === 'all' || (profileId === 'none' ? !i.rec.profileId : i.rec.profileId === profileId)),
-    [useDrafts, useTemplates, drafts.items, templates.items, profileId],
-  );
-  const liveChosen = useMemo(() => (useLive && live.videos ? live.videos.filter((v) => liveIds.includes(v.id)) : []), [useLive, live.videos, liveIds]);
-
-  const changes: Change[] = useMemo(() => {
-    if (!ready || !op) return [];
-    const items: Item[] = [...localItems, ...liveChosen.map((rec) => ({ col: 'live' as const, rec }))];
-    const re = op.kind === 'replace' ? findPattern(op) : null;
-    const out: Change[] = [];
-    for (const item of items) {
-      // A template applied to itself is not a change.
-      if (op.kind === 'profile' && item.col === 'templates' && item.rec.id === templateId) continue;
-      const next = applyOp<Draft | Template | OwnVideo>(item.rec);
-      const fl = changedFields(item.rec, next);
-      if (!fl.length) continue;
-      const matches =
-        op.kind === 'replace'
-          ? (op.fields.includes('title') && item.col !== 'templates' ? countMatches(item.rec.title, re) : 0) +
-            (op.fields.includes('description') ? countMatches(item.rec.description, re) : 0) +
-            (op.fields.includes('tags') ? item.rec.tags.reduce((n, tg) => n + countMatches(tg, re), 0) : 0)
-          : 0;
-      const overLimit =
-        item.col === 'live'
-          ? breaksLimits(next as OwnVideo)
-          : item.col === 'drafts'
-            ? checkDraft(next as Draft).some((c) => c.severity === 'error' && c.id !== 'title-missing')
-            : tagsCharCount(next.tags) > LIMITS.tagsChars;
-      out.push({ key: `${item.col}:${item.rec.id}`, item, next, fields: fl, matches, overLimit });
+  const rows: PreviewRow[] = useMemo(() => {
+    if (!compiled?.ok) return [];
+    const out: PreviewRow[] = [];
+    if (scope === 'live') {
+      for (const v of scoped) {
+        const p = planVideo({ title: v.title, description: v.description, tags: v.tags }, compiled.run);
+        if (p.status === 'none') continue;
+        out.push({ key: `live:${v.id}`, kind: 'video', id: v.id, title: v.title, thumbnail: v.thumbnail, privacy: v.privacy, before: v, next: p.next, count: p.count, fields: p.fields, status: p.status, problems: p.problems, localizations: v.localizations });
+      }
+    } else {
+      for (const it of localItems) {
+        // A template applied to itself is not a change.
+        if (op?.kind === 'profile' && it.col === 'templates' && it.rec.id === deferred.templateId) continue;
+        const r = compiled.run<Draft | Template>(it.rec);
+        const fields = changedFields(it.rec, r.next);
+        if (!fields.length) continue;
+        const warn = it.col === 'drafts' && checkDraft(r.next as Draft).some((c) => c.severity === 'error' && c.id !== 'title-missing');
+        const title = it.col === 'templates' ? it.rec.name : it.rec.title;
+        out.push({ key: `${it.col}:${it.rec.id}`, kind: it.col === 'drafts' ? 'draft' : 'template', id: it.rec.id, title, before: it.rec, next: r.next, count: r.count, fields, status: 'change', problems: [], warn });
+      }
     }
     return out;
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [ready, op, localItems, liveChosen, templateId]);
+  }, [compiled, scope, scoped, localItems, op?.kind, deferred.templateId]);
 
-  const selected = changes.filter((c) => !excluded.has(c.key));
-  const localSelected = selected.filter((c) => c.item.col !== 'live');
-  const liveSelected = selected.filter((c) => c.item.col === 'live' && !c.overLimit);
-  const liveRunning = !!progress && progress.done < progress.total && !progress.stopped;
-  const opLabel = kind === 'replace' ? `${find} → ${replace}` : kind === 'profile' ? t('engage.bulk2.profileLabel', { name: template?.name ?? '' }) : t(`bulk.op.${kind}` as MessageKey);
+  const changeRows = rows.filter((r) => r.status === 'change');
+  const skippedRows = rows.filter((r) => r.status === 'invalid' || r.status === 'end-missing');
+  const selected = changeRows.filter((r) => !excluded.has(r.key));
+  const occurrences = changeRows.reduce((n, r) => n + r.count, 0);
+  const scopeCount = scope === 'live' ? scoped.length : localItems.length;
+  const activeJob = jobs.find(isActive);
+  useJobToasts(jobs, () => void live.refresh());
 
-  // Applies the operation to each video's live snippet (re-read just before writing), one at a time.
-  const applyLive = async () => {
-    if (!channel) return;
-    const entries: LiveUndoEntry[] = [];
-    const p: LiveProgress = { done: 0, total: liveSelected.length, changed: 0, skipped: 0, failed: [] };
-    setProgress({ ...p });
-    for (const c of liveSelected) {
-      try {
-        const r = await updateVideo(channel.channelId, c.item.rec.id, (cur) => {
-          const next = applyOp(cur);
-          return breaksLimits(next) ? cur : next;
-        });
-        if (r) {
-          p.changed++;
-          entries.push({ channelId: channel.channelId, videoId: r.videoId, before: r.before, after: r.after });
-        } else p.skipped++;
-      } catch (e) {
-        p.failed.push({ title: nameOf(c.item), error: e });
-        if (e instanceof AuthError || (e instanceof YtError && (e.code === 'quota' || e.code === 'budget' || e.code === 'permission'))) {
-          p.stopped = e;
-          p.done++;
-          setProgress({ ...p });
-          break;
-        }
-      }
-      p.done++;
-      setProgress({ ...p });
-    }
-    if (entries.length) {
-      await pushLiveUndo({ at: new Date().toISOString(), label: opLabel, entries });
-      setUndo(await listLiveUndo());
-    }
-    void live.refresh();
-  };
-
-  const undoLive = async (batch: LiveUndoBatch) => {
-    const p: LiveProgress = { done: 0, total: batch.entries.length, changed: 0, skipped: 0, failed: [] };
-    setProgress({ ...p });
-    for (const e of batch.entries) {
-      try {
-        // Restore only when the video still has what TubeX wrote; later manual edits are kept.
-        const r = await updateVideo(e.channelId, e.videoId, (cur) =>
-          cur.title === e.after.title && cur.description === e.after.description && cur.tags.join('\n') === e.after.tags.join('\n') ? e.before : cur,
-        );
-        if (r) p.changed++;
-        else p.skipped++;
-      } catch (err) {
-        p.failed.push({ title: e.after.title, error: err });
-      }
-      p.done++;
-      setProgress({ ...p });
-    }
-    if (!p.failed.length) {
-      await dropLiveUndo(batch.at);
-      setUndo(await listLiveUndo());
-    }
-    if (useLive) void live.refresh();
-  };
-
-  const apply = async () => {
+  const applyLocal = async () => {
     setApplying(true);
     const done: ({ col: 'drafts'; rec: Draft } | { col: 'templates'; rec: Template })[] = [];
     let conflicts = 0;
-    for (const c of localSelected) {
-      const r = c.item.col === 'drafts' ? await save('drafts', c.next as Draft) : await save('templates', c.next as Template);
-      if (r.ok) done.push(c.item as (typeof done)[number]);
+    for (const r of selected) {
+      const it = localItems.find((x) => `${x.col}:${x.rec.id}` === r.key);
+      if (!it) continue;
+      const res = it.col === 'drafts' ? await save('drafts', r.next as Draft) : await save('templates', r.next as Template);
+      if (res.ok) done.push(it);
       else conflicts++;
     }
     setApplying(false);
@@ -269,58 +298,31 @@ export function BulkView() {
     });
   };
 
-  const toggleField = (fl: BulkField) => setFields((all) => (all.includes(fl) ? all.filter((x) => x !== fl) : [...all, fl]));
-  const ops: { k: Kind; label: MessageKey }[] = [
-    { k: 'replace', label: 'bulk.op.replace' },
-    { k: 'addTags', label: 'bulk.op.addTags' },
-    { k: 'removeTags', label: 'bulk.op.removeTags' },
-    { k: 'addText', label: 'bulk.op.addText' },
-    { k: 'profile', label: 'engage.bulk2.op.profile' },
+  const scopes: { id: Scope; label: string; icon: 'video' | 'edit' | 'file'; n?: number; disabled?: boolean; testId?: string }[] = [
+    { id: 'live', label: channel ? t('fr.scope.live') : t('bulk.liveNeedsSignIn'), icon: 'video', n: live.videos?.length, disabled: !channel, testId: 'bulk-live' },
+    { id: 'drafts', label: t('nav.drafts'), icon: 'edit', n: drafts.items.length },
+    { id: 'templates', label: t('nav.templates'), icon: 'file', n: templates.items.length },
   ];
-  const scopeCount = localItems.length + liveChosen.length;
-  const modes = (k: 'desc' | 'tags'): { id: BlockMode; label: string }[] => [
-    { id: 'append', label: t(k === 'desc' ? 'engage.bulk2.mode.appendDesc' : 'engage.bulk2.mode.appendTags') },
-    { id: 'replace', label: t('engage.bulk2.mode.replace') },
-    { id: 'keep', label: t('engage.bulk2.mode.keep') },
-  ];
+  const compileError = compiled && !compiled.ok && compiled.error !== 'empty' ? compiled : null;
 
   return (
     <div className="stack-l" data-testid="bulk-view">
-      <PageHeader kicker={t('shell.group.manage')} title={t('bulk.heading')} desc={t('bulk.scopeNote')} />
+      <PageHeader kicker={t('shell.group.manage')} title={t('fr.heading')} desc={t('fr.desc')} />
       <ReconnectBanner />
+      {activeJob && <JobsSection jobs={jobs} />}
 
       <div className="engage-flow">
-        <Step n={1} title={t('engage.bulk2.step1')} sub={t('engage.bulk2.step1Sub', { n: f.int(scopeCount) })} done={scopeCount > 0}>
-          <div className="row" style={{ gap: 'var(--space-4)' }}>
-            <label className="check">
-              <input type="checkbox" checked={useDrafts} onChange={(e) => setUseDrafts(e.target.checked)} />
-              <span>
-                {t('nav.drafts')} <small className="faint num-t">{f.int(drafts.items.length)}</small>
-              </span>
-            </label>
-            <label className="check">
-              <input type="checkbox" checked={useTemplates} onChange={(e) => setUseTemplates(e.target.checked)} />
-              <span>
-                {t('nav.templates')} <small className="faint num-t">{f.int(templates.items.length)}</small>
-              </span>
-            </label>
-            <label className="check">
-              <input type="checkbox" checked={useLive} disabled={!channel} onChange={(e) => setUseLive(e.target.checked)} data-testid="bulk-live" />
-              <span>{channel ? t('bulk.liveScope', { name: channel.title }) : t('bulk.liveNeedsSignIn')}</span>
-            </label>
-            {(useDrafts || useTemplates) && profiles.length > 0 && (
-              <select className="select" style={{ width: 'auto' }} aria-label={t('draft.channel')} value={profileId} onChange={(e) => setProfileId(e.target.value)}>
-                <option value="all">{t('bulk.allChannels')}</option>
-                <option value="none">{t('draft.noChannel')}</option>
-                {profiles.map((p) => (
-                  <option key={p.id} value={p.id}>
-                    {p.name}
-                  </option>
-                ))}
-              </select>
-            )}
+        <Step n={1} title={t('fr.step1')} sub={t('fr.step1Sub', { n: f.int(scopeCount) })} done={ready}>
+          <div className="fr-scope" role="group" aria-label={t('fr.scope')}>
+            {scopes.map((s) => (
+              <button key={s.id} type="button" className="fr-scope-btn" aria-pressed={scope === s.id} disabled={s.disabled} onClick={() => setScope(s.id)} data-testid={s.testId}>
+                <Icon name={s.icon} />
+                <span className="truncate">{s.label}</span>
+                {s.n !== undefined && !s.disabled && <small className="num-t">{f.int(s.n)}</small>}
+              </button>
+            ))}
           </div>
-          {(useLive || pre.ids.length > 0) && loaded && !channel && (
+          {(scope === 'live' || pre.ids.length > 0) && loaded && !channel && (
             <div data-testid="bulk-needs-google">
               <Notice tone="info">
                 <p className="bold">{t('bulk.needsGoogleTitle')}</p>
@@ -331,234 +333,74 @@ export function BulkView() {
               </Notice>
             </div>
           )}
-          {useLive && channel && (
+          {scope === 'live' && channel && (
             <>
-              {pre.ids.length > 0 && <Notice tone="info">{t('sc.preselected', { n: f.int(pre.ids.length) })}</Notice>}
               <ErrorNotice error={live.error} />
-              {live.loading && !live.videos && <p className="small muted">{t('bulk.loadingLive')}</p>}
-              <VideoPicker videos={live.videos} selected={liveIds} onChange={setLiveIds} label={t('engage.bulk2.pickVideos')} limit={40} />
-            </>
-          )}
-        </Step>
-
-        <Step n={2} title={t('engage.bulk2.step2')} sub={t('engage.bulk2.step2Sub')} done={ready}>
-          <div className="tabs" role="tablist" aria-label={t('bulk.operation')}>
-            {ops.map((o) => (
-              <button key={o.k} type="button" role="tab" aria-selected={kind === o.k} onClick={() => setKind(o.k)}>
-                {t(o.label)}
-              </button>
-            ))}
-          </div>
-
-          {kind === 'replace' && (
-            <>
-              <div className="grid-2">
-                <Field label={t('bulk.find')}>{({ id }) => <input id={id} className="input" dir="auto" value={find} onChange={(e) => setFind(e.target.value)} data-testid="bulk-find" />}</Field>
-                <Field label={t('bulk.replaceWith')} help={t('bulk.replaceHelp')}>
-                  {({ id, describedBy }) => <input id={id} aria-describedby={describedBy} className="input" dir="auto" value={replace} onChange={(e) => setReplace(e.target.value)} data-testid="bulk-replace" />}
-                </Field>
-              </div>
-              <div className="row" style={{ gap: 'var(--space-4)' }}>
-                {(['title', 'description', 'tags'] as BulkField[]).map((fl) => (
-                  <label key={fl} className="check">
-                    <input type="checkbox" checked={fields.includes(fl)} onChange={() => toggleField(fl)} />
-                    <span>{t(`draft.${fl}` as MessageKey)}</span>
-                  </label>
-                ))}
-                <label className="check">
-                  <input type="checkbox" checked={matchCase} onChange={(e) => setMatchCase(e.target.checked)} />
-                  <span>{t('bulk.matchCase')}</span>
-                </label>
-                <label className="check">
-                  <input type="checkbox" checked={wholeWord} onChange={(e) => setWholeWord(e.target.checked)} />
-                  <span>{t('bulk.wholeWord')}</span>
-                </label>
-              </div>
-            </>
-          )}
-          {(kind === 'addTags' || kind === 'removeTags') && (
-            <Field label={t('draft.tags')} help={t('draft.tagsHelp')}>
-              {({ id, describedBy }) => <textarea id={id} aria-describedby={describedBy} className="textarea" rows={2} dir="auto" value={tagText} onChange={(e) => setTagText(e.target.value)} />}
-            </Field>
-          )}
-          {kind === 'addText' && (
-            <>
-              <Field label={t('bulk.text')} help={t('bulk.textHelp')}>
-                {({ id, describedBy }) => <textarea id={id} aria-describedby={describedBy} className="textarea" rows={4} dir="auto" value={text} onChange={(e) => setText(e.target.value)} />}
-              </Field>
-              <Seg
-                label={t('engage.bulk2.position')}
-                value={position}
-                onChange={setPosition}
-                items={[
-                  { id: 'start', label: t('bulk.atStart') },
-                  { id: 'end', label: t('bulk.atEnd') },
-                ]}
-              />
-            </>
-          )}
-          {kind === 'profile' && (
-            <div className="stack">
-              <p className="small muted">{t('engage.bulk2.profileHelp')}</p>
-              {templates.items.length === 0 ? (
-                <Empty icon="file" title={t('engage.bulk2.noTemplates')} action={<a className="btn btn-s" href="#templates">{t('nav.templates')}</a>} />
-              ) : (
+              {live.loading && !live.videos && <p className="small muted">{t('fr.loadingAll')}</p>}
+              {live.videos && (
                 <>
-                  <Field label={t('engage.bulk2.template')}>
-                    {({ id }) => (
-                      <select id={id} className="select" style={{ maxWidth: 420 }} value={templateId} onChange={(e) => setTemplateId(e.target.value)}>
-                        <option value="">{t('engage.bulk2.pickTemplate')}</option>
-                        {templates.items.map((x) => (
-                          <option key={x.id} value={x.id}>
-                            {x.name}
-                          </option>
-                        ))}
-                      </select>
-                    )}
-                  </Field>
-                  {template && (
-                    <div className="grid-2">
-                      <div className="card card-2 stack-s">
-                        <span className="small bold">{t('draft.description')}</span>
-                        <Seg label={t('draft.description')} value={descMode} onChange={setDescMode} items={modes('desc')} />
-                        <p className="small muted clamp-2" dir="auto" style={{ whiteSpace: 'pre-wrap' }}>
-                          {template.description || t('engage.diff.empty')}
-                        </p>
-                      </div>
-                      <div className="card card-2 stack-s">
-                        <span className="small bold">{t('draft.tags')}</span>
-                        <Seg label={t('draft.tags')} value={tagsMode} onChange={setTagsMode} items={modes('tags')} />
-                        <p className="small muted clamp-2" dir="auto">
-                          {template.tags.join('، ') || t('engage.diff.empty')}
-                        </p>
-                      </div>
-                    </div>
-                  )}
+                  <LiveFilters videos={live.videos} filters={filters} set={setFilters} preIds={pre.ids} channelId={channel.channelId} onPlaylist={setPlaylistIds} />
+                  <p className="small muted">
+                    {t('fr.searching', { n: f.int(scoped.length), total: f.int(live.videos.length) })}{' '}
+                    <button type="button" className="link-btn" onClick={() => void live.refresh()} disabled={live.loading}>
+                      {live.loading ? t('fr.loading') : t('fr.reload')}
+                    </button>
+                  </p>
                 </>
               )}
+            </>
+          )}
+          {scope !== 'live' && profiles.length > 0 && (
+            <select className="select" style={{ width: 'auto' }} aria-label={t('draft.channel')} value={profileId} onChange={(e) => setProfileId(e.target.value)}>
+              <option value="all">{t('bulk.allChannels')}</option>
+              <option value="none">{t('draft.noChannel')}</option>
+              {profiles.map((p) => (
+                <option key={p.id} value={p.id}>
+                  {p.name}
+                </option>
+              ))}
+            </select>
+          )}
+          <hr className="fr-sep" />
+          <FindForm s={form} set={setForm} templates={templates.items} live={scope === 'live'} />
+          {compileError && compileError.error !== 'regex' && !compileError.error.startsWith('url-') && <p className="small fr-bad">{t(`fr.err.${compileError.error}` as MessageKey)}</p>}
+        </Step>
+
+        <Step n={2} title={ready ? t('bulk.preview', { n: f.int(changeRows.length) }) : t('fr.step2')} sub={ready ? t('fr.step2Sub') : t('engage.bulk2.step3Wait')} done={ready && selected.length > 0}>
+          {ready && (
+            <div className="stack" data-testid="bulk-preview">
+              <div className="stats fr-stats">
+                <Stat label={scope === 'live' ? t('fr.tot.videos') : t('fr.tot.items')} value={f.int(changeRows.length)} />
+                <Stat label={t('fr.tot.occurrences')} value={f.int(occurrences)} />
+                <Stat label={t('fr.tot.unchanged')} value={f.int(scopeCount - rows.length)} />
+                {skippedRows.length > 0 && <Stat label={t('fr.tot.skipped')} value={f.int(skippedRows.length)} />}
+              </div>
+              {changeRows.length === 0 ? <Empty icon="search">{t('bulk.noChanges')}</Empty> : <PreviewList rows={changeRows} excluded={excluded} setExcluded={setExcluded} />}
+              <SkippedList rows={skippedRows} />
             </div>
           )}
         </Step>
 
-        <Step n={3} title={ready ? t('bulk.preview', { n: f.int(changes.length) }) : t('engage.bulk2.step3')} sub={ready ? t('engage.bulk2.step3Sub') : t('engage.bulk2.step3Wait')}>
-          {ready && (
-            <div data-testid="bulk-preview">
-              {changes.length === 0 ? (
-                <Empty icon="search">{t('bulk.noChanges')}</Empty>
-              ) : (
-                <div className="engage-review">
-                  {changes.map((c) => {
-                    const off = excluded.has(c.key);
-                    return (
-                      <div key={c.key} className="engage-review-row" data-off={off}>
-                        <input
-                          type="checkbox"
-                          checked={!off}
-                          aria-label={nameOf(c.item) || t('draft.untitled')}
-                          onChange={(e) =>
-                            setExcluded((s) => {
-                              const n = new Set(s);
-                              if (e.target.checked) n.delete(c.key);
-                              else n.add(c.key);
-                              return n;
-                            })
-                          }
-                        />
-                        <div className="stack-s" style={{ minWidth: 0 }}>
-                          <div className="row-nowrap">
-                            {c.item.col === 'live' ? (
-                              <Thumb videoId={c.item.rec.id} src={c.item.rec.thumbnail} width={64} />
-                            ) : (
-                              <span className="thumb" style={{ width: 64, display: 'grid', placeItems: 'center', color: 'var(--text-3)' }}>
-                                <Icon name={c.item.col === 'drafts' ? 'edit' : 'file'} />
-                              </span>
-                            )}
-                            <span className="stack-s grow" style={{ gap: 2, minWidth: 0 }}>
-                              <span className="truncate bold" dir="auto">
-                                {nameOf(c.item) || t('draft.untitled')}
-                              </span>
-                              <span className="row" style={{ gap: 6 }}>
-                                <span className={`badge ${c.item.col === 'live' ? 'badge-accent' : ''}`}>
-                                  {c.item.col === 'drafts' ? t('bulk.kind.draft') : c.item.col === 'live' ? t('bulk.kind.video') : t('bulk.kind.template')}
-                                </span>
-                                {c.matches > 0 && <span className="badge">{t('bulk.matches', { n: f.int(c.matches) })}</span>}
-                              </span>
-                            </span>
-                          </div>
-                          {c.overLimit && <Notice tone="warning">{t(c.item.col === 'live' ? 'bulk.overLimitLive' : 'bulk.overLimit')}</Notice>}
-                          {c.fields.includes('title') && <Diff label={t('draft.title')} before={(c.item.rec as Draft).title} after={(c.next as Draft).title} />}
-                          {c.fields.includes('description') && <Diff label={t('draft.description')} before={c.item.rec.description} after={c.next.description} />}
-                          {c.fields.includes('tags') && <Diff label={t('draft.tags')} before={c.item.rec.tags.join(', ')} after={c.next.tags.join(', ')} />}
-                        </div>
-                      </div>
-                    );
-                  })}
+        <Step n={3} title={scope === 'live' ? t('fr.step3') : t('fr.step3Local')} sub={ready && selected.length ? t('engage.bulk2.selected', { n: f.int(selected.length) }) : t('fr.step3Wait')}>
+          {ready && selected.length > 0 && op && (
+            <>
+              {scope === 'live' && channel ? (
+                <RunPanel selected={selected} op={op} busy={!!activeJob} channelTitle={channel.title} />
+              ) : scope !== 'live' ? (
+                <div className="row">
+                  <Button variant="primary" disabled={applying} onClick={() => void applyLocal()} data-testid="bulk-apply">
+                    {t('bulk.apply', { n: f.int(selected.length) })}
+                  </Button>
+                  <span className="small muted">{t('fr.localUndo')}</span>
                 </div>
-              )}
-            </div>
+              ) : null}
+            </>
           )}
         </Step>
       </div>
 
-      {progress && (
-        <Notice tone={progress.failed.length ? 'warning' : progress.done === progress.total ? 'success' : 'info'}>
-          <p role="status">
-            {t('bulk.liveProgress', { done: f.int(progress.done), total: f.int(progress.total), changed: f.int(progress.changed), skipped: f.int(progress.skipped), failed: f.int(progress.failed.length) })}
-          </p>
-          {progress.failed.slice(0, 5).map((x, i) => (
-            <div key={i} className="small">
-              <bdi>{x.title}</bdi>
-              <ErrorNotice error={x.error} />
-            </div>
-          ))}
-          {!!progress.stopped && <p className="small">{t('bulk.liveStopped')}</p>}
-        </Notice>
-      )}
-
-      {undo.length > 0 && (
-        <section className="card stack-s" aria-labelledby="bulk-undo-h">
-          <h2 id="bulk-undo-h">{t('bulk.liveHistory')}</h2>
-          <ul className="list">
-            {undo.map((b) => (
-              <li key={b.at} className="list-item row-between">
-                <span className="small">
-                  <bdi className="bold">{b.label}</bdi> · {t('bulk.videosCount', { n: f.int(b.entries.length) })} · {formatDate(b.at)}
-                </span>
-                <ConfirmButton
-                  size="s"
-                  danger={false}
-                  label={t('bulk.undoLive')}
-                  question={t('bulk.undoLiveConfirm', { n: f.int(b.entries.length) })}
-                  confirmLabel={t('bulk.undoLive')}
-                  onConfirm={() => undoLive(b)}
-                />
-              </li>
-            ))}
-          </ul>
-        </section>
-      )}
-
-      {ready && selected.length > 0 && (
-        <div className="engage-bar" role="region" aria-label={t('engage.bulk2.bar')}>
-          <span className="engage-bar-count">{t('engage.bulk2.selected', { n: f.int(selected.length) })}</span>
-          {liveSelected.length > 0 && <Cost units={liveSelected.length * UPDATE_COST} />}
-          <span className="grow" />
-          {localSelected.length > 0 && (
-            <Button variant="primary" disabled={applying} onClick={() => void apply()} data-testid="bulk-apply">
-              {t('bulk.apply', { n: f.int(localSelected.length) })}
-            </Button>
-          )}
-          {liveSelected.length > 0 && !liveRunning && (
-            <ConfirmButton
-              danger={false}
-              label={t('bulk.applyLive', { n: f.int(liveSelected.length) })}
-              question={t('bulk.applyLiveConfirm', { n: f.int(liveSelected.length), units: f.int(liveSelected.length * UPDATE_COST) })}
-              confirmLabel={t('bulk.applyLiveGo')}
-              onConfirm={() => applyLive()}
-            />
-          )}
-        </div>
-      )}
+      {!activeJob && <JobsSection jobs={jobs} />}
+      {scope === 'live' && channel && <LegacyUndo />}
     </div>
   );
 }
