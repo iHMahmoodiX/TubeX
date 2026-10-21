@@ -1,7 +1,7 @@
 // Pure rules for TubeX's in-page tools on YouTube and Studio: per-video stats, the video SEO checklist score,
 // search-result badges, channel summary, Studio links, template insertion, canned-reply filling, CSV and embed
 // code. No browser APIs here; the islands in src/inpage call these with data from background RPC.
-import { chapterProblems, extractChapters } from './chapters';
+import { scanChapters } from './chapters';
 import { checkDraft, dedupeTags, extractHashtags, LIMITS, tagsCharCount } from './metadata';
 import { charCount, normalizeForSearch, utf8Bytes } from './text';
 
@@ -107,8 +107,10 @@ export function videoSeo(input: { title: string; description: string; tags: stri
   const hashtags = extractHashtags(`${title}\n${description}`).length;
   items.push({ id: 'hashtags', weight: 5, values: { count: hashtags, max: LIMITS.hashtagsIgnoredAbove }, state: hashtags === 0 ? 'warn' : hashtags > LIMITS.hashtagsIgnoredAbove ? 'fail' : 'ok' });
 
-  const chapters = extractChapters(description).length;
-  items.push({ id: 'chapters', weight: 5, values: { count: chapters }, state: chapters === 0 ? 'warn' : chapterProblems(description).length ? 'warn' : 'ok' });
+  // Tolerant scan (RTL marks, Persian digits, timestamps at line end), the same one Videolytics uses.
+  const scan = scanChapters(description);
+  const chapters = scan.chapters.length;
+  items.push({ id: 'chapters', weight: 5, values: { count: chapters }, state: chapters === 0 || scan.problems.length ? 'warn' : 'ok' });
 
   const tagChars = tagsCharCount(tags);
   items.push({ id: 'tags-count', weight: 10, values: { count: tags.length }, state: tags.length === 0 ? 'fail' : tags.length < 5 ? 'warn' : 'ok' });
