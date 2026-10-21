@@ -4,6 +4,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { DEFAULT_DESIGN, THUMB_COST, type BannerPosition, type Corner, type OverlayDesign } from '../../domain/engageThumbs';
 import { runSequential, type RunProgress } from '../../domain/engageRun';
+import { parseSelection } from '../../domain/coppa';
 import { Icon } from '../../components/icons';
 import { useToast } from '../../components/toasts';
 import { Button, ConfirmButton, Empty, Field, Notice, PageHeader, Skeleton } from '../../components/ui';
@@ -230,12 +231,12 @@ function History({ channelId }: { channelId: string }) {
   );
 }
 
-function Workbench({ channelId }: { channelId: string }) {
+function Workbench({ channelId, preselect = [] }: { channelId: string; preselect?: string[] }) {
   const { t } = useI18n();
   const f = useFormat();
   const toast = useToast();
   const uploads = useOwnUploads();
-  const [chosen, setChosen] = useState<string[]>([]);
+  const [chosen, setChosen] = useState<string[]>(() => preselect.slice(0, MAX_VIDEOS));
   const [design, setDesign] = useState<OverlayDesign>({ ...DEFAULT_DESIGN, text: '' });
   const [logo, setLogo] = useState<ImageBitmap | null>(null);
   const [images, setImages] = useState<Map<string, Loaded | null>>(new Map());
@@ -378,13 +379,14 @@ function Workbench({ channelId }: { channelId: string }) {
 }
 
 export function ThumbsView({ tab }: { tab?: string }) {
-  void tab;
+  // Videos selected on Studio's Content page arrive as the route id `ids=...` (studioContent.open).
+  const preselect = parseSelection(tab).ids;
   const { t } = useI18n();
   const { channel, loaded } = useOwnChannel();
   return (
     <div className="stack-l">
       <PageHeader kicker={t('shell.group.manage')} title={t('engage.th.heading')} desc={t('engage.th.desc')} />
-      {!loaded ? <Skeleton lines={2} /> : !channel ? <SignInEmpty icon="image" why="engage.signIn.thumbs" /> : <Workbench key={channel.channelId} channelId={channel.channelId} />}
+      {!loaded ? <Skeleton lines={2} /> : !channel ? <SignInEmpty icon="image" why="engage.signIn.thumbs" /> : <Workbench key={channel.channelId} channelId={channel.channelId} preselect={preselect} />}
     </div>
   );
 }

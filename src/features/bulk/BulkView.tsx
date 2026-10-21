@@ -4,6 +4,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { applyBulk, changedFields, changedLines, countMatches, findPattern, type BulkField, type BulkOp } from '../../domain/bulk';
 import { applyProfile, type BlockMode, type ProfileOp } from '../../domain/engageBulk';
+import { parseSelection } from '../../domain/coppa';
 import { checkDraft, LIMITS, parseTags, tagsCharCount } from '../../domain/metadata';
 import type { Draft, Template } from '../../domain/models';
 import { useCollection } from '../../components/hooks';
@@ -85,7 +86,9 @@ export function BulkView() {
   const templates = useCollection('templates');
   const profiles = useCollection('profiles').items;
 
-  const [useDrafts, setUseDrafts] = useState(true);
+  // Videos selected on Studio's Content page arrive as `#bulk/ids=...` (studioContent.open).
+  const [pre] = useState(() => parseSelection(location.hash.startsWith('#bulk/') ? location.hash : ''));
+  const [useDrafts, setUseDrafts] = useState(pre.ids.length === 0);
   const [useTemplates, setUseTemplates] = useState(false);
   const [profileId, setProfileId] = useState('all');
   const [kind, setKind] = useState<Kind>('replace');
@@ -103,9 +106,9 @@ export function BulkView() {
   const [excluded, setExcluded] = useState<Set<string>>(new Set());
   const [applying, setApplying] = useState(false);
   const { channel } = useOwnChannel();
-  const [useLive, setUseLive] = useState(false);
+  const [useLive, setUseLive] = useState(pre.ids.length > 0);
   const live = useOwnUploads(useLive);
-  const [liveIds, setLiveIds] = useState<string[]>([]);
+  const [liveIds, setLiveIds] = useState<string[]>(pre.ids);
   const [progress, setProgress] = useState<LiveProgress | null>(null);
   const [undo, setUndo] = useState<LiveUndoBatch[]>([]);
   useEffect(() => {
@@ -317,6 +320,7 @@ export function BulkView() {
           </div>
           {useLive && (
             <>
+              {pre.ids.length > 0 && <Notice tone="info">{t('sc.preselected', { n: f.int(pre.ids.length) })}</Notice>}
               <ErrorNotice error={live.error} />
               {live.loading && !live.videos && <p className="small muted">{t('bulk.loadingLive')}</p>}
               <VideoPicker videos={live.videos} selected={liveIds} onChange={setLiveIds} label={t('engage.bulk2.pickVideos')} limit={40} />
