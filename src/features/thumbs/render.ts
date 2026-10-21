@@ -2,7 +2,7 @@
 import { hexToRgba, JPEG_QUALITIES, letterboxCrop, overlayLayout, THUMB_H, THUMB_MAX_BYTES, THUMB_W, type OverlayDesign } from '../../domain/engageThumbs';
 import { isRtlText } from '../../domain/text';
 
-const FONT = '"Estedad Variable", "Figtree Variable", Tahoma, sans-serif';
+const FONT = '"TubeX Estedad", Tahoma, sans-serif';
 const font = (size: number) => `800 ${size}px ${FONT}`;
 
 export async function ensureFonts(): Promise<void> {

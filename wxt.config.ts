@@ -16,6 +16,8 @@ export default defineConfig({
     host_permissions: YOUTUBE_MATCHES,
     // Requested at runtime, per exact origin, when the owner connects a service in Settings.
     optional_host_permissions: ['https://www.googleapis.com/*', 'https://youtubeanalytics.googleapis.com/*', 'https://i.ytimg.com/*', 'http://localhost/*', 'http://127.0.0.1/*', 'https://*/*'],
+    // The bundled font, so in-page tools on YouTube and Studio can use it (declared on the page, see src/inpage/font.ts).
+    web_accessible_resources: [{ resources: ['fonts/*'], matches: YOUTUBE_MATCHES }],
     action: { default_title: 'TubeX' },
     content_security_policy: {
       extension_pages: "script-src 'self'; object-src 'self'",

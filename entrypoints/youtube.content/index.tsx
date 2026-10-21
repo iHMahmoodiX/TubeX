@@ -5,6 +5,7 @@ import { registerYoutubeIslands } from '../../src/inpage/youtube';
 import { isPageContextRequest, type PageContextResponse } from '../../src/platform/messages';
 import { ADAPTER_VERSION, readWatchDom } from '../../src/platform/youtubeDom';
 import { loadPrefs } from '../../src/storage/prefs';
+import { injectInpageFont } from '../../src/inpage/font';
 import '../../src/inpage/inpage.css';
 
 // 1) Read-only page-context responder for TubeX's own pages. 2) In-page tools (islands) in shadow roots.
@@ -24,6 +25,7 @@ export default defineContentScript({
       })();
       return true;
     });
+    injectInpageFont();
     // Islands follow Settings → In-page tools live (each checks its own switch), so they register even when off.
     await registerYoutubeIslands(ctx);
   },

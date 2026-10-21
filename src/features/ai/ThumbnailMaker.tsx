@@ -45,7 +45,7 @@ export async function drawThumbnail(canvas: HTMLCanvasElement, image: HTMLImageE
     ctx.drawImage(image, (W - w) / 2, (H - h) / 2, w, h);
   }
   if (!o.text.trim()) return;
-  const font = `900 ${o.size}px "Estedad Variable", "Figtree Variable", sans-serif`;
+  const font = `900 ${o.size}px "TubeX Estedad", sans-serif`;
   await document.fonts?.load(font).catch(() => undefined);
   ctx.font = font;
   ctx.direction = isRtlText(o.text) ? 'rtl' : 'ltr';

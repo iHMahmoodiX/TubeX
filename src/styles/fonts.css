@@ -1,3 +1,9 @@
-/* Bundled fonts for extension pages only (in-page UI on YouTube uses YouTube's own font stack). */
-@import '@fontsource-variable/estedad/index.css';
-@import '@fontsource-variable/figtree/index.css';
+/* Bundled font for extension pages: the owner's Estedad build (variable weight 100–900, Persian digits;
+   SIL Open Font License). In-page islands get the same face from src/inpage/font.ts. */
+@font-face {
+  font-family: 'TubeX Estedad';
+  src: url('/fonts/estedad-fd.woff2') format('woff2-variations'), url('/fonts/estedad-fd.woff2') format('woff2');
+  font-weight: 100 900;
+  font-style: normal;
+  font-display: swap;
+}

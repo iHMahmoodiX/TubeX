@@ -3,14 +3,14 @@
 @import '../styles/base.css';
 
 .tx-root {
-  font-family: 'YouTube Sans', Roboto, Arial, Tahoma, sans-serif;
+  font-family: 'TubeX Estedad', 'YouTube Sans', Roboto, Arial, Tahoma, sans-serif;
   font-size: 14px;
   line-height: 1.5;
   color: var(--text);
   text-align: start;
   background: transparent;
 }
-.tx-root[lang='fa'] { font-family: Roboto, Vazirmatn, 'Segoe UI', Tahoma, sans-serif; line-height: 1.65; }
+.tx-root[lang='fa'] { font-family: 'TubeX Estedad', Roboto, 'Segoe UI', Tahoma, sans-serif; line-height: 1.65; }
 .tx-root[data-theme='dark'] { --bg: #0f0f0f; --surface: #212121; --surface-2: #272727; --surface-3: #3f3f3f; --hover: #3a3a3a; }
 .tx-root[data-theme='light'] { --bg: #ffffff; --surface: #f2f2f2; --surface-2: #e9e9e9; --surface-3: #dedede; }
 

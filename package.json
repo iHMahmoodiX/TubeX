@@ -17,8 +17,6 @@
     "postinstall": "wxt prepare"
   },
   "dependencies": {
-    "@fontsource-variable/estedad": "5.3.0",
-    "@fontsource-variable/figtree": "5.3.0",
     "idb": "8.0.4",
     "react": "19.3.1",
     "react-dom": "19.3.1"
