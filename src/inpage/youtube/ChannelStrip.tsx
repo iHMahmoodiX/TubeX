@@ -1,5 +1,7 @@
 // Channel page strip (Channelytics): subscribers, total views, videos, average views of the latest uploads,
-// upload frequency and last upload, with "Add to competitors" and "Open in TubeX".
+// upload frequency and last upload, with "Add to competitors" and "Open in TubeX". Two expandable sections (#5):
+// Channelytics (lifetime / 30-day figures, compare chart, keywords, channel ID) and Channel Insights inline (the same
+// component the TubeX drawer shows; switch 'channelInsights').
 import { useState } from 'react';
 import { Icon } from '../../components/icons';
 import { Button } from '../../components/ui';
@@ -9,7 +11,8 @@ import type { ChannelInfo, VideoInfo } from '../../integrations/youtube/api';
 import { useI18n } from '../../i18n';
 import { rpc } from '../../platform/rpc';
 import { readChannelRef } from '../../platform/youtubeDomInpage';
-import { cachedRpc, canReadYt, InError, isUnknownMethod, Mark, SetupNeeded, useAsync, useFmt, useStatus } from '../common';
+import { cachedRpc, canReadYt, InError, isUnknownMethod, Mark, SetupNeeded, useAsync, useFmt, useStatus, useStored } from '../common';
+import { ChannelInsights, Channelytics } from './insights';
 import { useHref, useInpageEnabled } from '../InpageRoot';
 import { Stat } from './WatchCard';
 
@@ -47,6 +50,9 @@ function ChannelStripFor({ refKey, channelRef }: { refKey: string; channelRef: {
   const ch = r.data?.channel ?? undefined;
   const sum = ch ? channelSummary(ch, r.data?.recent ?? []) : undefined;
   const own = !!ch && !!status?.channels.some((c) => c.channelId === ch.id);
+  const insightsOn = useInpageEnabled('channelInsights');
+  const [statsOpen, setStatsOpen] = useStored<boolean>('ci.strip.stats', false);
+  const [insightsOpen, setInsightsOpen] = useStored<boolean>('ci.strip.insights', false);
 
   return (
     <section className="tx-card tx-channel" aria-label={t('inpage.channel.label')}>
@@ -93,6 +99,32 @@ function ChannelStripFor({ refKey, channelRef }: { refKey: string; channelRef: {
           <Stat label={t('inpage.channel.avgRecent', { n: sum.sample })} value={f.compact(sum.avgRecentViews)} hint={t('inpage.channel.avgRecentHint')} />
           <Stat label={t('inpage.channel.freq')} value={sum.uploadsPerWeek === undefined ? '—' : t('inpage.channel.perWeek', { n: f.num(sum.uploadsPerWeek, 1) })} hint={t('inpage.channel.freqHint')} />
           <Stat label={t('inpage.channel.last')} value={sum.lastUploadDays === undefined ? '—' : t('inpage.channel.ago', { age: f.age(sum.lastUploadDays) })} />
+        </div>
+      )}
+      {ch && (
+        <div className="ci-strip-toggles">
+          <button type="button" className="ci-toggle" aria-expanded={statsOpen} aria-controls="ci-strip-stats" onClick={() => setStatsOpen(!statsOpen)}>
+            <Icon name="chart" />
+            {t('ci.cl.title')}
+            <Icon name="down" className="icon ci-caret" />
+          </button>
+          {insightsOn && (
+            <button type="button" className="ci-toggle" aria-expanded={insightsOpen} aria-controls="ci-strip-insights" onClick={() => setInsightsOpen(!insightsOpen)}>
+              <Icon name="pulse" />
+              {t('ci.openInsights')}
+              <Icon name="down" className="icon ci-caret" />
+            </button>
+          )}
+        </div>
+      )}
+      {ch && statsOpen && (
+        <div id="ci-strip-stats">
+          <Channelytics channel={ch} own={own} status={status} onClose={() => setStatsOpen(false)} />
+        </div>
+      )}
+      {ch && insightsOn && insightsOpen && (
+        <div id="ci-strip-insights" className="ci-strip-insights">
+          <ChannelInsights channelRef={{ id: ch.id }} variant="inline" />
         </div>
       )}
       {error !== undefined && <InError error={error} />}
