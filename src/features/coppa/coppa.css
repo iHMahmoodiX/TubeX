@@ -1,0 +1,6 @@
+/* COPPA Center: state badges (no colour wash; warning tone marks "made for kids" because it switches features off). */
+.coppa-yes { background: var(--warning-soft); color: var(--warning); }
+.coppa-no { background: var(--surface-3); color: var(--text); }
+.coppa-unknown { background: transparent; box-shadow: inset 0 0 0 1px var(--border); color: var(--text-2); }
+.coppa-arrow { width: 14px; height: 14px; color: var(--text-3); }
+[dir='rtl'] .coppa-arrow { transform: scaleX(-1); }
