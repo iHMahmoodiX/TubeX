@@ -1,0 +1,126 @@
+/* Tag tools at Studio's Tags field (#4). Reuses the in-page tokens (inpage.css / base.css); px sizes only,
+   logical properties, green only for function. Hosts: tubex-tag-tip, tubex-tag-tools, tubex-tag-pop,
+   tubex-video-switcher. */
+
+.tt { font-size: 13px; }
+.tt-dot { width: 18px; height: 18px; border-radius: 50%; background: var(--accent); color: #000; display: inline-grid; place-items: center; flex: none; }
+.tt-dot .icon { width: 10px !important; height: 10px !important; }
+.tt-title { display: inline-flex; align-items: center; gap: 8px; font-weight: 700; font-size: 14px; }
+
+/* Round icon buttons (copy / clear / close) */
+.tt-icon { all: unset; box-sizing: border-box; cursor: pointer; width: 32px; height: 32px; border-radius: 50%; display: inline-grid; place-items: center; color: var(--text); flex: none; }
+.tt-icon:hover { background: var(--hover); }
+.tt-icon:focus-visible { outline: 2px solid var(--focus); outline-offset: 1px; }
+.tt-icon:disabled { opacity: 0.4; cursor: not-allowed; background: none; }
+.tt-icon .icon { width: 18px; height: 18px; }
+.tt-icon-s { width: 26px; height: 26px; }
+.tt-icon-s .icon { width: 14px; height: 14px; }
+
+/* Tip line above the box, with copy/clear at its end edge (over the box corner) */
+.tt-tip-row { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 8px; margin-block: 4px 2px; }
+.tt-tip { margin: 0; font-size: 13px; color: var(--text-2); }
+.tt-tip b { color: var(--text); font-weight: 700; }
+.tt-corner { display: inline-flex; gap: 2px; margin-inline-end: 4px; }
+.tt-full { flex-basis: 100%; }
+
+/* Under the field */
+.tt-under { display: flex; flex-direction: column; gap: 10px; margin-block: 8px 20px; }
+.tt-legend-wrap { display: flex; flex-direction: column; gap: 6px; }
+.tt-legend { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; min-height: 32px; }
+.tt-sample { display: inline-grid; place-items: center; min-width: 18px; height: 18px; padding-inline: 5px; box-sizing: border-box; border-radius: 9999px; background: var(--accent); color: #000; font-size: 11px; font-weight: 700; }
+.tt-progress { gap: 6px; }
+
+.tt-bar, .tt-rec { background: var(--surface); border-radius: 8px; padding: 10px 14px; display: flex; flex-direction: column; gap: 10px; }
+.tt-bar-row { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; min-height: 32px; }
+.tt-tools { display: flex; flex-wrap: wrap; gap: 8px; }
+.tt-tool { all: unset; box-sizing: border-box; cursor: pointer; display: inline-flex; align-items: center; gap: 6px; min-height: 32px; padding: 4px 14px; border-radius: 9999px; background: var(--surface-2); color: var(--text); font-size: 13px; font-weight: 700; }
+.tt-tool .icon { width: 16px; height: 16px; }
+.tt-tool:hover { background: var(--hover); }
+.tt-tool:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
+.tt-tool[aria-pressed='true'] { background: var(--text); color: var(--bg); }
+.tt-tool:disabled { opacity: 0.45; cursor: not-allowed; }
+.tt-panel { background: var(--surface-2); border-radius: 8px; padding: 12px; }
+.tt-save { display: flex; align-items: center; gap: 6px; margin: 0; }
+.tt-save .icon { width: 14px; height: 14px; flex: none; }
+
+/* Radio pills (sort modes, import sources) */
+.tt-radios { display: flex; flex-wrap: wrap; gap: 6px; }
+.tt-radio { all: unset; box-sizing: border-box; cursor: pointer; display: inline-flex; align-items: center; gap: 6px; min-height: 30px; padding: 3px 12px; border-radius: 9999px; font-size: 13px; background: transparent; box-shadow: inset 0 0 0 1px var(--surface-3); color: var(--text); }
+.tt-radio::before { content: ''; width: 12px; height: 12px; border-radius: 50%; box-shadow: inset 0 0 0 2px var(--text-2); flex: none; }
+.tt-radio[aria-checked='true'] { box-shadow: inset 0 0 0 1px var(--accent); }
+.tt-radio[aria-checked='true']::before { box-shadow: inset 0 0 0 4px var(--accent); }
+.tt-radio:hover { background: var(--hover); }
+.tt-radio:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
+.tt-radio:disabled { opacity: 0.45; cursor: not-allowed; background: none; }
+.tt-help { display: inline-grid; place-items: center; width: 16px; height: 16px; border-radius: 50%; background: var(--surface-3); font-size: 10px; font-weight: 700; color: var(--text-2); }
+.tt-sortby { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 14px; }
+
+/* Previews (sort order, import list) */
+.tt-preview { list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; gap: 4px; max-height: 148px; overflow: auto; counter-reset: tt; }
+.tt-preview li { display: inline-flex; align-items: center; gap: 6px; padding: 2px 10px; border-radius: 9999px; background: var(--surface-3); font-size: 12px; counter-increment: tt; }
+ol.tt-preview li::before { content: counter(tt); color: var(--text-3); font-size: 11px; }
+.tt-preview small { color: var(--text-2); font-weight: 700; }
+.tt-preview-chips li[data-have] { opacity: 0.5; text-decoration: line-through; }
+.tt-paste { min-height: 72px; resize: vertical; width: 100%; box-sizing: border-box; }
+
+/* Recommended tags */
+.tt-target { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.tt-target label { display: inline-flex; align-items: center; gap: 6px; }
+.tt-target label .icon { width: 16px; height: 16px; color: var(--accent-text); }
+.tt-target .input { min-width: 180px; flex: 1; }
+.tt-sources { gap: 8px; align-items: center; }
+.tt-sugg-panel { background: var(--surface-2); border-radius: 8px; padding: 10px; max-height: 320px; overflow: auto; }
+.tt-sugg { list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; gap: 6px; }
+.tt-sugg-chip { display: inline-flex; align-items: stretch; border-radius: 9999px; background: var(--surface-3); overflow: hidden; max-width: 100%; }
+.tt-sugg-chip[data-src~='search'] { box-shadow: inset 0 0 0 1px var(--accent); }
+.tt-sugg-add, .tt-sugg-research { all: unset; box-sizing: border-box; cursor: pointer; display: inline-flex; align-items: center; gap: 4px; min-height: 30px; font-size: 13px; color: var(--text); }
+.tt-sugg-add { padding-inline: 8px 10px; min-width: 0; }
+.tt-sugg-add bdi { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.tt-sugg-add small { color: var(--text-2); font-size: 11px; font-weight: 700; padding-inline-start: 2px; }
+.tt-sugg-research { padding-inline: 8px; border-inline-start: 1px solid var(--border); }
+.tt-sugg-add .icon, .tt-sugg-research .icon { width: 14px; height: 14px; flex: none; }
+.tt-sugg-add:hover, .tt-sugg-research:hover { background: var(--hover); }
+.tt-sugg-add:focus-visible, .tt-sugg-research:focus-visible { outline: 2px solid var(--focus); outline-offset: -2px; border-radius: 9999px; }
+.tt-sugg-add:disabled { cursor: default; opacity: 0.6; background: none; }
+.tt-sugg-add:disabled .icon { color: var(--accent-text); }
+
+/* Keyword popover */
+.tt-pop { width: min(380px, calc(100vw - 16px)); max-height: min(70vh, 560px); gap: 10px; }
+.tt-pop-head { display: flex; align-items: center; gap: 6px; }
+.tt-pop-form { display: flex; align-items: center; gap: 4px; min-width: 0; }
+.tt-pop-form .input { flex: 1; min-width: 0; }
+.tt-pop-rank { display: flex; align-items: center; gap: 6px; }
+.tt-pop-rank .icon { width: 16px; height: 16px; color: var(--accent-text); }
+.tt-pop-score { display: flex; align-items: center; gap: 10px; }
+.tt-pop-actions { gap: 6px; }
+.tt-pop .tt-sugg { max-height: 160px; overflow: auto; }
+
+/* Drawer panel */
+.tt-drawer .tx-actions { grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); }
+
+/* Video switcher, docked to the page's end edge (dir = the page's direction) */
+.tt-sw-tab, .tt-sw { position: fixed; z-index: 2200; inset-inline-end: 0; }
+.tt-sw-tab { all: unset; position: fixed; z-index: 2200; inset-inline-end: 0; inset-block-end: 120px; box-sizing: border-box; cursor: pointer; display: flex; flex-direction: column; align-items: center; gap: 6px; padding: 10px 8px; border-start-start-radius: 12px; border-end-start-radius: 12px; background: var(--surface); color: var(--text); box-shadow: var(--shadow); }
+.tt-sw-tab:hover { background: var(--surface-2); }
+.tt-sw-tab:focus-visible { outline: 2px solid var(--focus); outline-offset: -2px; }
+.tt-sw-tab > .icon { width: 18px; height: 18px; }
+.tt-sw { inset-block-end: 72px; width: 120px; max-height: min(560px, calc(100vh - 160px)); display: flex; flex-direction: column; align-items: stretch; background: var(--surface); border-start-start-radius: 12px; border-end-start-radius: 12px; box-shadow: var(--shadow); padding: 8px 6px; gap: 4px; box-sizing: border-box; }
+.tt-sw-head { display: flex; align-items: center; justify-content: space-between; gap: 2px; padding-inline: 4px; }
+.tt-sw-arrow { all: unset; box-sizing: border-box; cursor: pointer; height: 28px; border-radius: 9999px; display: grid; place-items: center; color: var(--text); flex: none; }
+.tt-sw-arrow:hover { background: var(--hover); }
+.tt-sw-arrow:focus-visible { outline: 2px solid var(--focus); outline-offset: -2px; }
+.tt-sw-arrow:disabled { opacity: 0.35; cursor: not-allowed; background: none; }
+.tt-sw-arrow .icon { width: 18px; height: 18px; }
+.tt-sw-strip { list-style: none; margin: 0; padding: 2px; display: flex; flex-direction: column; gap: 6px; overflow-y: auto; overscroll-behavior: contain; min-height: 0; scrollbar-width: thin; }
+.tt-sw-item { position: relative; display: block; border-radius: 6px; overflow: hidden; outline-offset: 1px; }
+.tt-sw-item img { display: block; width: 100%; height: auto; aspect-ratio: 16 / 9; object-fit: cover; background: var(--surface-3); }
+.tt-sw-item[aria-current='page'] { box-shadow: 0 0 0 2px var(--accent); }
+.tt-sw-item:hover img { filter: brightness(1.12); }
+.tt-sw-item:focus-visible { outline: 2px solid var(--focus); }
+.tt-sw-priv { position: absolute; inset-block-end: 3px; inset-inline-start: 3px; padding: 0 5px; border-radius: 9999px; background: rgb(0 0 0 / 0.75); color: #fff; font-size: 10px; font-weight: 700; }
+.tt-sw-skel { display: block; width: 100%; aspect-ratio: 16 / 9; border-radius: 6px; }
+.tt-sw-msg { margin: 0; padding: 4px; font-size: 11px; color: var(--text-2); text-align: center; }
+.tt-sw-msg .tx-err { flex-direction: column; padding: 6px; font-size: 11px; }
+.tt-meta { display: inline-flex; flex-wrap: wrap; gap: 0 10px; }
+.tt-card-note { flex-wrap: wrap; }
+.tt-card-note .grow { min-width: 160px; }

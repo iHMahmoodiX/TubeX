@@ -2,6 +2,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { insertBlock, tagsToAdd } from '../../domain/inpage';
 import { readStudioValues, setEditableText, studioFields, typeTags } from '../../platform/youtubeDomInpage';
+import { removeAllChips } from './tags/dom';
 
 export interface StudioValues {
   title: string;
@@ -82,4 +83,22 @@ export function addTags(root: ParentNode, tags: string[]): TagFill {
   const plan = tagsToAdd(f.tags, tags);
   typeTags(f.tagsInput, plan.add);
   return { ok: true, added: plan.add, duplicate: plan.duplicate, overLimit: plan.overLimit };
+}
+
+export type TagReplace = { ok: true; previous: string[]; added: string[]; overLimit: string[] } | { ok: false; reason: 'no-field' | 'not-cleared' };
+
+/**
+ * Replaces all tags in Studio's tag box with `tags` (sort, clear, import-replace): removes the chips the way a
+ * user would, then types the new list. Explicit click only; returns the previous list for Undo.
+ */
+export async function replaceTags(root: ParentNode, tags: string[]): Promise<TagReplace> {
+  const before = studioFields(root);
+  if (!before.tagsInput && !before.tags.length) return { ok: false, reason: 'no-field' };
+  const previous = before.tags;
+  const left = await removeAllChips(root instanceof Document ? root : (root as Node).ownerDocument ?? document);
+  if (left !== 0) return { ok: false, reason: left < 0 ? 'no-field' : 'not-cleared' };
+  if (!tags.length) return { ok: true, previous, added: [], overLimit: [] };
+  const r = addTags(root, tags);
+  if (!r.ok) return { ok: false, reason: 'no-field' };
+  return { ok: true, previous, added: r.added, overLimit: r.overLimit };
 }
