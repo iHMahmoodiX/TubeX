@@ -51,11 +51,16 @@ async function ownGet<T>(channelId: string, resource: string, params: Record<str
 
 export interface OwnVideo extends VideoInfo {
   privacy: string;
+  /** Languages with their own translated title/description (part=snippet writes never touch them). */
+  localizations?: string[];
 }
 
 type Obj = Record<string, any>;
 
-/** All uploads (public, unlisted and private) of the signed-in channel, newest first, up to `max`. */
+/**
+ * All uploads (public, unlisted and private) of the signed-in channel, newest first, up to `max` (Infinity
+ * for every upload; about 2 units per 50 videos, cached 30 minutes).
+ */
 export async function ownVideos(channelId: string, uploadsPlaylistId: string, max = 500, fresh = false): Promise<OwnVideo[]> {
   const ids: string[] = [];
   let pageToken: string | undefined;
@@ -64,10 +69,14 @@ export async function ownVideos(channelId: string, uploadsPlaylistId: string, ma
     for (const i of r.items ?? []) if (i.contentDetails?.videoId) ids.push(i.contentDetails.videoId);
     pageToken = r.nextPageToken;
   } while (pageToken && ids.length < max);
+  const unique = [...new Set(ids)].slice(0, max);
   const out: OwnVideo[] = [];
-  for (let i = 0; i < Math.min(ids.length, max); i += 50) {
-    const r = await ownGet<Obj>(channelId, 'videos', { part: 'snippet,statistics,contentDetails,status', id: ids.slice(i, i + 50).join(','), maxResults: 50 }, 30 * 60_000, fresh);
-    for (const it of r.items ?? []) out.push({ ...toVideo(it), privacy: String(it.status?.privacyStatus ?? '') });
+  for (let i = 0; i < unique.length; i += 50) {
+    const r = await ownGet<Obj>(channelId, 'videos', { part: 'snippet,statistics,contentDetails,status,localizations', id: unique.slice(i, i + 50).join(','), maxResults: 50 }, 30 * 60_000, fresh);
+    for (const it of r.items ?? []) {
+      const langs = Object.keys(it.localizations ?? {}).filter((l) => l !== it.snippet?.defaultLanguage);
+      out.push({ ...toVideo(it), privacy: String(it.status?.privacyStatus ?? ''), ...(langs.length ? { localizations: langs } : {}) });
+    }
   }
   return out;
 }
@@ -97,10 +106,17 @@ export interface SnippetEdit {
 export interface WriteResult {
   videoId: string;
   before: SnippetEdit;
+  /** What YouTube stored (from the update response), or what was sent when the response has no snippet. */
   after: SnippetEdit;
+  /** Languages with their own title/description; part=snippet writes leave them as they are. */
+  localizations?: string[];
 }
 
-/** Writable snippet fields, copied from the live snippet so nothing is cleared by omission. */
+/**
+ * Writable snippet fields, copied from the live snippet so nothing is cleared by omission: videos.update with
+ * part=snippet replaces the whole snippet, so title, description, tags, categoryId, defaultLanguage and
+ * defaultAudioLanguage are always sent as they are. Localizations are another part and are not sent.
+ */
 export function writableSnippet(live: Obj, edit: SnippetEdit): Obj {
   const out: Obj = { title: edit.title, description: edit.description, tags: edit.tags, categoryId: live.categoryId };
   if (live.defaultLanguage) out.defaultLanguage = live.defaultLanguage;
@@ -108,25 +124,38 @@ export function writableSnippet(live: Obj, edit: SnippetEdit): Obj {
   return out;
 }
 
+export interface UpdateOptions {
+  /** Runs with before/after just before the write is sent, so a lost response can be recognized on a retry. */
+  beforeWrite?: (before: SnippetEdit, after: SnippetEdit) => Promise<void>;
+  /** Also read the video's localizations (same 1 unit) to report their languages. */
+  withLocalizations?: boolean;
+}
+
 /**
  * Re-reads the live snippet, applies `change` to it and writes it back. Returns null when the change
  * leaves the video as it is (nothing is written).
  */
-export async function updateVideo(channelId: string, videoId: string, change: (live: SnippetEdit) => SnippetEdit): Promise<WriteResult | null> {
+export async function updateVideo(channelId: string, videoId: string, change: (live: SnippetEdit) => SnippetEdit, opts: UpdateOptions = {}): Promise<WriteResult | null> {
   await spend(1);
-  const r = (await authed(channelId, `${YT_BASE}/videos?part=snippet&id=${encodeURIComponent(videoId)}`)) as Obj;
-  const live = r.items?.[0]?.snippet;
+  const part = opts.withLocalizations ? 'snippet,localizations' : 'snippet';
+  const r = (await authed(channelId, `${YT_BASE}/videos?part=${part}&id=${encodeURIComponent(videoId)}`)) as Obj;
+  const item = r.items?.[0];
+  const live = item?.snippet;
   if (!live) throw new YtError('not-found', videoId);
+  const langs = Object.keys(item.localizations ?? {}).filter((l) => l !== live.defaultLanguage);
   const before: SnippetEdit = { title: live.title ?? '', description: live.description ?? '', tags: live.tags ?? [] };
   const after = change(before);
   if (after.title === before.title && after.description === before.description && after.tags.join('\n') === before.tags.join('\n')) return null;
+  await opts.beforeWrite?.(before, after);
   await spend(WRITE_COST);
-  await authed(channelId, `${YT_BASE}/videos?part=snippet`, {
+  const res = (await authed(channelId, `${YT_BASE}/videos?part=snippet`, {
     method: 'PUT',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ id: videoId, snippet: writableSnippet(live, after) }),
-  });
-  return { videoId, before, after };
+  })) as Obj | null;
+  const sn = res?.snippet;
+  const stored: SnippetEdit = sn && typeof sn.title === 'string' ? { title: sn.title, description: typeof sn.description === 'string' ? sn.description : '', tags: Array.isArray(sn.tags) ? sn.tags : [] } : after;
+  return { videoId, before, after: stored, ...(langs.length ? { localizations: langs } : {}) };
 }
 
 export const UPDATE_COST = WRITE_COST + 1;

@@ -8,6 +8,7 @@ import { studioContent } from './studioContent';
 import { tagTools } from './tagTools';
 import { channelInsights } from './channelInsights';
 import { launchers } from './launchers';
+import { bulk } from './bulk';
 
-export const partsEn = { ...shell.en, ...reports.en, ...seo.en, ...engage.en, ...inpage.en, ...studioContent.en, ...tagTools.en, ...channelInsights.en, ...launchers.en } as const;
-export const partsFa = { ...shell.fa, ...reports.fa, ...seo.fa, ...engage.fa, ...inpage.fa, ...studioContent.fa, ...tagTools.fa, ...channelInsights.fa, ...launchers.fa };
+export const partsEn = { ...shell.en, ...reports.en, ...seo.en, ...engage.en, ...inpage.en, ...studioContent.en, ...tagTools.en, ...channelInsights.en, ...launchers.en, ...bulk.en } as const;
+export const partsFa = { ...shell.fa, ...reports.fa, ...seo.fa, ...engage.fa, ...inpage.fa, ...studioContent.fa, ...tagTools.fa, ...channelInsights.fa, ...launchers.fa, ...bulk.fa };
