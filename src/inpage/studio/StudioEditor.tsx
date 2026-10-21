@@ -1,7 +1,9 @@
-// Studio video editor assistant (studio.youtube.com/video/<id>/edit): a live SEO checklist that follows the
-// title/description/tags fields as the user types, a focus keyword saved per video, tag suggestions (AI, or
-// top results' tags on click), upload profiles (templates) and AI translation. Fields are only filled on a
-// click; the user reviews and presses Save in Studio.
+// Studio video editor assistant card (studio.youtube.com/video/<id>/edit): the live SEO checklist that follows
+// the title/description/tags fields as the user types, the target (focus) keyword shared with the tag tools at
+// Studio's Tags field, upload profiles (templates) and AI translation of the title and description.
+// Tag work (suggestions, ranks, sort, import, tag translation) lives at the Tags field itself (./tags, switch
+// 'studioTags'); this card keeps its old Tags tab only when that switch is off, so nothing is duplicated.
+// Fields are only filled on a click; the user reviews and presses Save in Studio.
 import { useId, useMemo, useState } from 'react';
 import { Icon } from '../../components/icons';
 import { Button, Score } from '../../components/ui';
@@ -18,6 +20,9 @@ import { useHref, useInpageEnabled } from '../InpageRoot';
 import { SeoChecklist } from '../youtube/WatchSeo';
 import { addTags, replaceField, useStudioValues, type StudioValues } from './fields';
 import { ProfilePicker } from './ProfilePicker';
+import { scrollToTags } from './tags/dom';
+import { mainPhrase, ranksFor } from './tags/logic';
+import { openKeywordPop, useRanks, useTargetKeyword } from './tags/store';
 
 type Tab = 'checks' | 'tags' | 'profile' | 'translate';
 
@@ -35,11 +40,17 @@ function Assistant({ videoId }: { videoId: string }) {
   const { t } = useI18n();
   const getRoot = () => studioEditorRoot(document);
   const values = useStudioValues(getRoot);
-  const [kw, setKw] = useStored<string>(`kw.${videoId}`, '');
+  const tagTools = useInpageEnabled('studioTags');
+  const [kw, setKw] = useTargetKeyword(videoId);
+  const [ranks] = useRanks(videoId);
+  const derived = mainPhrase(values.title);
+  const keyword = kw.trim() || derived;
   const [tab, setTab] = useStored<Tab>('studio.tab', 'checks');
   const [open, setOpen] = useStored<boolean>('studio.open', true);
-  const seo = useMemo(() => videoSeo({ title: values.title, description: values.description, tags: values.tags, keyword: kw }), [values, kw]);
+  const seo = useMemo(() => videoSeo({ title: values.title, description: values.description, tags: values.tags, keyword }), [values, keyword]);
   const kwId = useId();
+  const shown: Tab = tagTools && tab === 'tags' ? 'checks' : tab;
+  const r = ranksFor(values.tags, ranks);
 
   return (
     <section className="tx-card tx-studio" aria-label={t('inpage.studio.label')}>
@@ -56,35 +67,56 @@ function Assistant({ videoId }: { videoId: string }) {
         <>
           <div className="stack-s">
             <label className="small bold" htmlFor={kwId}>
-              {t('inpage.seo.keyword')}
+              {t('tt.target')}
             </label>
-            <input id={kwId} className="input tx-input" dir="auto" value={kw} placeholder={t('inpage.studio.kwPh')} maxLength={100} onChange={(e) => setKw(e.target.value)} />
+            <div className="row tx-kw">
+              <input id={kwId} className="input tx-input" dir="auto" value={kw} placeholder={derived || t('inpage.studio.kwPh')} maxLength={100} onChange={(e) => setKw(e.target.value)} />
+              {tagTools && keyword && (
+                <Button size="s" onClick={(e) => openKeywordPop(keyword, e.currentTarget)}>
+                  <Icon name="search" />
+                  {t('tt.research')}
+                </Button>
+              )}
+            </div>
+            {!kw.trim() && derived && <p className="xsmall muted">{t('tt.targetFromTitle', { k: derived })}</p>}
           </div>
           <InTabs<Tab>
             label={t('inpage.studio.tabs')}
-            value={tab}
+            value={shown}
             onChange={setTab}
             items={[
               { id: 'checks', label: t('inpage.tab.seo'), icon: 'target' },
-              { id: 'tags', label: t('inpage.tab.tags'), icon: 'tag', count: values.tags.length },
+              ...(tagTools ? [] : [{ id: 'tags' as const, label: t('inpage.tab.tags'), icon: 'tag' as const, count: values.tags.length }]),
               { id: 'profile', label: t('inpage.tab.profile'), icon: 'file' },
               { id: 'translate', label: t('inpage.tab.translate'), icon: 'translate' },
             ]}
           />
           <div role="tabpanel" className="tx-panel">
-            {tab === 'checks' &&
+            {shown === 'checks' &&
               (values.found.title ? (
                 <div className="stack-s">
                   <SeoChecklist items={seo.items} />
                   {!values.found.tags && <p className="xsmall muted">{t('inpage.studio.tagsHidden')}</p>}
+                  {tagTools && values.found.tags && (
+                    <div className="tx-note tt-card-note">
+                      <Icon name="tag" />
+                      <span className="grow">
+                        {t('tt.card.atField', { n: values.tags.length, chars: tagsCharCount(values.tags), max: LIMITS.tagsChars })}
+                        {r.checked > 0 && ` ${t('tt.rankSummary', { top: r.top10, found: r.found, n: r.checked })}`}
+                      </span>
+                      <Button size="s" variant="ghost" onClick={() => scrollToTags(document)}>
+                        {t('tt.card.goTags')}
+                      </Button>
+                    </div>
+                  )}
                   <p className="xsmall faint">{t('inpage.seo.disclaimer')}</p>
                 </div>
               ) : (
                 <p className="small muted">{t('inpage.studio.noEditor')}</p>
               ))}
-            {tab === 'tags' && <TagSuggestions values={values} keyword={kw} getRoot={getRoot} />}
-            {tab === 'profile' && <ProfilePicker getRoot={getRoot} />}
-            {tab === 'translate' && <Translate values={values} getRoot={getRoot} />}
+            {shown === 'tags' && <TagSuggestions values={values} keyword={keyword} getRoot={getRoot} />}
+            {shown === 'profile' && <ProfilePicker getRoot={getRoot} />}
+            {shown === 'translate' && <Translate values={values} getRoot={getRoot} />}
           </div>
           <p className="xsmall muted tx-save-note">
             <Icon name="info" />
