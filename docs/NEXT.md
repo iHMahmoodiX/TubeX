@@ -3,7 +3,7 @@
 Updated 2026-10-21.
 
 ## State
-- Base `0.5.1` (f19adad). This branch adds find & replace on YouTube (owner's top priority, CHANGELOG "Unreleased", D-019); version not bumped.
+- Current release `0.5.2`: find & replace on YouTube (owner's top priority, D-019), on top of 0.5.1 (f19adad).
 - 0.4.0 = every buildable item of the owner's TubeBuddy list, first in-page tools, Spotify-inspired design (DESIGN.md, D-016).
 - 0.5.0 = owner's TubeBuddy-parity issues #2–#7: Studio Content menu and selection actions, related video for Shorts, COPPA center, tag tools, Channelytics + Channel Insights, launchers + drawer, Videolytics. Issues stay open until the owner confirms on live pages.
 - 0.5.1 = fixes from the owner's live test (issue #8): Estedad font, Studio menu placement, tolerant chapters, Click Magnet via the Reporting API (D-017), silent renewal + Reconnect (D-018), backup format 2.

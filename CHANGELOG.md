@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased — find & replace on YouTube (owner's top priority)
+## 0.5.2 — 2026-10-21 — find & replace on YouTube (owner's top priority)
 - Bulk edit is now a full find & replace for the descriptions, titles and tags of all your uploads (every page of the uploads list), with filters for visibility, date range, text, Shorts vs videos (by duration, up to 3 minutes) and playlist; Studio's selection still preselects videos.
 - Matching: Persian-aware by default (ي/ی, ك/ک, ة/ه, Persian/Arabic/Latin digits, half-space vs space and repeated spaces count as the same; the new text is inserted exactly as typed), case-insensitive Latin, whole word, regex with $1 and a live validity check, multi-line blocks with CRLF and trailing-space tolerance.
 - Operations: replace text, replace between two markers, add a block at the start or end (never twice), remove lines containing a text, change links safely, add/remove tags, default upload profile.
