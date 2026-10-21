@@ -1,49 +1,41 @@
-// Masthead Quick Links: a round TubeX button next to YouTube's create/notifications buttons. Its menu opens
-// Studio sections for the active TubeX channel and TubeX workspace sections; shows unread alerts.
+// Top-bar TubeX button (#6): a pill with the TubeX mark and a menu icon, next to YouTube's Create/notifications
+// (switch 'masthead') and Studio's help/notifications (switch 'studioMasthead'). Its menu opens the TubeX drawer
+// (this page's panel, tools, alerts), Studio sections for the active TubeX channel and TubeX workspace sections.
+// The unread-alerts badge is read on load and when the menu opens (no timer).
 import { useEffect, useLayoutEffect, useRef, useState, type KeyboardEvent } from 'react';
-import { Icon, type IconName } from '../../components/icons';
-import { STUDIO_SECTIONS, studioUrl, type StudioSection } from '../../domain/inpage';
+import { Icon } from '../../components/icons';
+import { STUDIO_SECTIONS, studioUrl } from '../../domain/inpage';
 import { useI18n } from '../../i18n';
 import type { MessageKey } from '../../i18n/en';
-import type { WorkspaceRoute } from '../../platform/navigation';
 import { rpc } from '../../platform/rpc';
 import { useAsync, useFmt, useStatus } from '../common';
-import { useInpageEnabled } from '../InpageRoot';
+import { useHref, useInpageEnabled } from '../InpageRoot';
+import { requestDrawer, useDrawerOpen, type DrawerView } from '../launch/bus';
+import { PAGE_META, STUDIO_ICONS, WORKSPACE_LINKS } from '../launch/links';
+import { pagePanelFor } from '../launch/logic';
 
-const STUDIO_ICONS: Record<StudioSection, IconName> = { dashboard: 'home', content: 'video', analytics: 'chart', comments: 'message', monetization: 'dollar' };
-const TUBEX: { route: WorkspaceRoute; label: MessageKey; icon: IconName }[] = [
-  { route: 'mychannel', label: 'nav.home', icon: 'home' },
-  { route: 'research', label: 'nav.research', icon: 'search' },
-  { route: 'ideas', label: 'nav.ideas', icon: 'bulb' },
-  { route: 'drafts', label: 'nav.drafts', icon: 'edit' },
-  { route: 'competitors', label: 'nav.competitors', icon: 'users' },
-  { route: 'alerts', label: 'nav.alerts', icon: 'bell' },
-  { route: 'settings', label: 'nav.settings', icon: 'settings' },
-];
 
-export function Masthead() {
-  const on = useInpageEnabled('masthead');
+export function Masthead({ site = 'youtube' }: { site?: 'youtube' | 'studio' }) {
+  const on = useInpageEnabled(site === 'youtube' ? 'masthead' : 'studioMasthead');
   if (!on) return null;
-  return <QuickLinks />;
+  return <QuickLinks site={site} />;
 }
 
-function QuickLinks() {
+function QuickLinks({ site }: { site: 'youtube' | 'studio' }) {
   const { t } = useI18n();
   const f = useFmt();
   const status = useStatus();
+  const href = useHref();
+  const drawerOpen = useDrawerOpen();
   const [open, setOpen] = useState(false);
   const [tick, setTick] = useState(0);
   const btn = useRef<HTMLButtonElement>(null);
   const menu = useRef<HTMLDivElement>(null);
   const [pos, setPos] = useState<{ top: number; left: number } | null>(null);
-  // Unread count: refreshed when the menu opens and every 5 minutes; silently absent if unavailable.
   const unread = useAsync(`unread:${tick}`, () => rpc<number>('inpage.unreadAlerts').catch(() => 0));
-  useEffect(() => {
-    const id = window.setInterval(() => setTick((n) => n + 1), 5 * 60_000);
-    return () => clearInterval(id);
-  }, []);
   const count = unread.data ?? 0;
   const active = status?.channels.find((c) => c.channelId === status.activeChannelId);
+  const panel = pagePanelFor(site, href);
 
   useLayoutEffect(() => {
     if (!open || !btn.current) return;
@@ -74,6 +66,11 @@ function QuickLinks() {
     setOpen(false);
     if (focus) btn.current?.focus();
   };
+  const drawer = (view: DrawerView) => {
+    close(false);
+    // Focus returns to this button when the drawer closes.
+    if (!requestDrawer({ mode: 'open', view, returnTo: btn.current })) void rpc('ui.openWorkspace', view === 'alerts' ? 'alerts' : 'mychannel');
+  };
 
   const onMenuKey = (e: KeyboardEvent<HTMLDivElement>) => {
     const items = [...(menu.current?.querySelectorAll<HTMLElement>('[role="menuitem"]') ?? [])];
@@ -93,13 +90,15 @@ function QuickLinks() {
   };
 
   return (
-    <div className="tx-mast">
+    <div className="tx-mast" data-site={site}>
       <button
         ref={btn}
         type="button"
-        className="tx-round"
+        className="tx-round tx-ln-mastbtn"
+        dir="ltr"
         aria-haspopup="menu"
         aria-expanded={open}
+        data-drawer={drawerOpen}
         aria-label={count ? t('inpage.mast.labelUnread', { n: count }) : t('inpage.mast.label')}
         title={t('inpage.mast.label')}
         onClick={() => {
@@ -110,6 +109,7 @@ function QuickLinks() {
         <span className="tx-round-mark" aria-hidden="true">
           <Icon name="logo" />
         </span>
+        <Icon name="menu" />
         {count > 0 && (
           <span className="tx-round-count" aria-hidden="true">
             {count > 99 ? '99+' : f.int(count)}
@@ -131,20 +131,38 @@ function QuickLinks() {
               </span>
             )}
           </div>
+          <div className="tx-menu-group" role="group" aria-label={t('ln.mast.drawer')}>
+            <span className="tx-menu-label">{t('ln.mast.drawer')}</span>
+            {panel !== 'none' && (
+              <button type="button" role="menuitem" tabIndex={-1} className="tx-menu-item" onClick={() => drawer('page')}>
+                <Icon name={PAGE_META[panel].icon} />
+                <span className="grow">{t(PAGE_META[panel].label)}</span>
+              </button>
+            )}
+            <button type="button" role="menuitem" tabIndex={-1} className="tx-menu-item" onClick={() => drawer('tools')}>
+              <Icon name="layers" />
+              <span className="grow">{t('ln.mast.openDrawer')}</span>
+            </button>
+            <button type="button" role="menuitem" tabIndex={-1} className="tx-menu-item" onClick={() => drawer('alerts')}>
+              <Icon name="bell" />
+              <span className="grow">{t('ln.view.alerts')}</span>
+              {count > 0 && <span className="tx-badge tx-badge-accent">{f.int(count)}</span>}
+            </button>
+          </div>
           <div className="tx-menu-group" role="group" aria-label={t('inpage.mast.studio')}>
             <span className="tx-menu-label">{t('inpage.mast.studio')}</span>
             {STUDIO_SECTIONS.map((s) => (
-              <a key={s} role="menuitem" tabIndex={-1} className="tx-menu-item" href={studioUrl(s, active?.channelId)} target="_blank" rel="noopener noreferrer" onClick={() => close(false)}>
+              <a key={s} role="menuitem" tabIndex={-1} className="tx-menu-item" href={studioUrl(s, active?.channelId)} target={site === 'studio' ? '_self' : '_blank'} rel="noopener noreferrer" onClick={() => close(false)}>
                 <Icon name={STUDIO_ICONS[s]} />
                 <span className="grow">{t(`inpage.studio.${s}` as MessageKey)}</span>
-                <Icon name="external" className="icon tx-menu-ext" />
+                {site !== 'studio' && <Icon name="external" className="icon tx-menu-ext" />}
               </a>
             ))}
             {!active && <span className="tx-menu-note xsmall muted">{t('inpage.mast.studioGeneric')}</span>}
           </div>
           <div className="tx-menu-group" role="group" aria-label={t('inpage.mast.workspace')}>
             <span className="tx-menu-label">{t('inpage.mast.workspace')}</span>
-            {TUBEX.map((x) => (
+            {WORKSPACE_LINKS.map((x) => (
               <button
                 key={x.route}
                 type="button"
@@ -158,7 +176,7 @@ function QuickLinks() {
               >
                 <Icon name={x.icon} />
                 <span className="grow">{t(x.label)}</span>
-                {x.route === 'alerts' && count > 0 && <span className="tx-badge tx-badge-accent">{f.int(count)}</span>}
+                <Icon name="external" className="icon tx-menu-ext" />
               </button>
             ))}
           </div>

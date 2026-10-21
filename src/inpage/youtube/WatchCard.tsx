@@ -1,6 +1,8 @@
-// Watch page card (Videolytics): a compact header with the video's key numbers and TubeX checklist score,
-// and expandable tabs (Overview, Tags, SEO, Actions). Shows below the title, above the description.
-import { useMemo, useState, type ReactNode } from 'react';
+// Watch page bar: a compact header with the video's derived rates (views/day, engagement, like rate, age) and the
+// TubeX checklist score, and expandable tabs (Overview, Tags, SEO, Actions). Shows below the title, above the description.
+// When the Videolytics panel is in the right column, the bar stays compact: Videolytics has the counts, channel,
+// tags and tools, so the bar keeps only its rates and the SEO checklist (no number is shown twice).
+import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { rpc } from '../../platform/rpc';
 import { Icon } from '../../components/icons';
 import { Avatar, Score } from '../../components/ui';
@@ -13,6 +15,7 @@ import { useInpageEnabled } from '../InpageRoot';
 import { WatchTags } from './WatchTags';
 import { WatchSeo } from './WatchSeo';
 import { WatchActions } from './WatchActions';
+import { onWatchSeo, useVideolyticsShown } from '../launch/bus';
 
 type Tab = 'overview' | 'tags' | 'seo' | 'actions';
 
@@ -35,13 +38,26 @@ function WatchCardFor({ videoId }: { videoId: string }) {
   const [rev, setRev] = useState(0);
   const video = useAsync(readable ? `v:${videoId}:${rev}` : null, async () => (rev ? await rpc<VideoInfo[]>('yt.videos', [videoId], true) : await cachedRpc<VideoInfo[]>(10 * 60_000, 'yt.videos', [videoId]))[0] ?? null);
   const v = video.data ?? undefined;
-  const channel = useAsync(v?.channelId ? `c:${v.channelId}` : null, () => cachedRpc<ChannelInfo | null>(30 * 60_000, 'yt.channel', { id: v!.channelId }));
+  const compact = useVideolyticsShown();
+  const section = useRef<HTMLElement>(null);
+  // Videolytics' SEO score opens the checklist here.
+  useEffect(
+    () =>
+      onWatchSeo(() => {
+        setTab('seo');
+        setOpen(true);
+        requestAnimationFrame(() => section.current?.scrollIntoView({ block: 'nearest', behavior: 'smooth' }));
+      }),
+    [setTab, setOpen],
+  );
+  const channel = useAsync(v?.channelId && !compact ? `c:${v.channelId}` : null, () => cachedRpc<ChannelInfo | null>(30 * 60_000, 'yt.channel', { id: v!.channelId }));
 
   const kw = v ? pickKeyword(savedKw, v.tags) : { keyword: '', source: 'none' as const };
   const seo = useMemo(() => (v ? videoSeo({ title: v.title, description: v.description, tags: v.tags, keyword: kw.keyword }) : null), [v, kw.keyword]);
   const own = !!v && !!status?.channels.some((c) => c.channelId === v.channelId);
   const panelId = `tx-watch-panel`;
 
+  if (status && !readable && compact) return null; // Videolytics shows the setup notice
   if (status && !readable)
     return (
       <section className="tx-card" aria-label="TubeX">
@@ -57,7 +73,7 @@ function WatchCardFor({ videoId }: { videoId: string }) {
   const lr = v ? likeRate(v) : undefined;
 
   return (
-    <section className="tx-card tx-watch" aria-label={t('inpage.watch.label')}>
+    <section ref={section} className="tx-card tx-watch" aria-label={t('inpage.watch.label')}>
       <div className="tx-head">
         <Mark />
         {video.loading && !v && <span className="skel tx-skel-line" aria-busy="true" />}
@@ -88,7 +104,13 @@ function WatchCardFor({ videoId }: { videoId: string }) {
       </div>
       {video.error !== undefined && <InError error={video.error} onRetry={video.reload} />}
       {video.data === null && <p className="small muted">{t('inpage.watch.notFound')}</p>}
-      {open && v && (
+      {open && v && compact && seo && (
+        <div id={panelId} className="stack-s">
+          <WatchSeo v={v} seo={seo} keyword={kw.keyword} keywordSource={kw.source} onKeyword={setSavedKw} />
+          <p className="xsmall faint">{t('ln.bar.compactNote')}</p>
+        </div>
+      )}
+      {open && v && !compact && (
         <div id={panelId} className="stack-s">
           <InTabs<Tab>
             label={t('inpage.watch.tabs')}
