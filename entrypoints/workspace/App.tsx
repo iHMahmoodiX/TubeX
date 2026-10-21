@@ -23,6 +23,7 @@ import { SettingsView } from '../../src/features/settings/SettingsView';
 import { ShortsView } from '../../src/features/shorts/ShortsView';
 import { TemplatesView } from '../../src/features/templates/TemplatesView';
 import { ThumbsView } from '../../src/features/thumbs/ThumbsView';
+import { CoppaView } from '../../src/features/coppa/CoppaView';
 import { setActiveChannel } from '../../src/integrations/google/auth';
 import { useI18n } from '../../src/i18n';
 import type { MessageKey } from '../../src/i18n/en';
@@ -60,6 +61,7 @@ const NAV: { group?: MessageKey; items: NavItem[] }[] = [
       { route: 'playlists', label: 'nav.playlists', icon: 'playlist' },
       { route: 'schedule', label: 'nav.schedule', icon: 'calendar' },
       { route: 'thumbs', label: 'nav.thumbs', icon: 'image' },
+      { route: 'kids', label: 'nav.kids', icon: 'shield' },
     ],
   },
   {
@@ -132,6 +134,7 @@ export function App() {
     case 'playlists': view = <PlaylistsView tab={loc.id} />; break;
     case 'schedule': view = <ScheduleView tab={loc.id} />; break;
     case 'thumbs': view = <ThumbsView tab={loc.id} />; break;
+    case 'kids': view = <CoppaView />; break;
     case 'comments': view = <CommentsView tab={loc.id} />; break;
     case 'alerts': view = <AlertsView tab={loc.id} />; break;
     case 'channels': view = <ProfilesView />; break;

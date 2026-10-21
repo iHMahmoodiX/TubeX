@@ -6,11 +6,17 @@ import { mountIsland } from '../mount';
 import { StudioComments } from './StudioComments';
 import { onStudioEditor, StudioEditor } from './StudioEditor';
 import { StudioUpload } from './StudioUpload';
+import { registerStudioContentIslands } from './content';
+import { registerTagToolIslands } from './tags';
+import { registerLaunchers } from '../launch';
 
 export async function registerStudioIslands(ctx: ContentScriptContext): Promise<void> {
   await Promise.all([
     mountIsland(ctx, { name: 'tubex-studio-editor', when: onStudioEditor, anchor: () => studioEditorSpot(document), render: () => <StudioEditor /> }),
     mountIsland(ctx, { name: 'tubex-studio-upload', anchor: () => uploadDialogSpot(document), render: () => <StudioUpload /> }),
     mountIsland(ctx, { name: 'tubex-studio-comments', anchor: () => (document.querySelector('ytcp-comment-thread') ? document.body : null), render: () => <StudioComments /> }),
+    registerStudioContentIslands(ctx),
+    registerTagToolIslands(ctx),
+    registerLaunchers(ctx, 'studio'),
   ]);
 }

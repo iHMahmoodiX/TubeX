@@ -11,9 +11,16 @@ export const INPAGE_FEATURES: { id: string; icon: IconName; site: 'youtube' | 's
   { id: 'search', icon: 'search', site: 'youtube' },
   { id: 'channel', icon: 'users', site: 'youtube' },
   { id: 'masthead', icon: 'menu', site: 'youtube' },
+  { id: 'videolytics', icon: 'chart', site: 'youtube' },
+  { id: 'channelInsights', icon: 'pulse', site: 'youtube' },
+  { id: 'launcherEdge', icon: 'logo', site: 'youtube' },
   { id: 'studioEditor', icon: 'edit', site: 'studio' },
   { id: 'studioUpload', icon: 'upload', site: 'studio' },
   { id: 'studioComments', icon: 'message', site: 'studio' },
+  { id: 'studioContent', icon: 'layers', site: 'studio' },
+  { id: 'studioTags', icon: 'tag', site: 'studio' },
+  { id: 'studioMasthead', icon: 'menu', site: 'studio' },
+  { id: 'studioEdge', icon: 'logo', site: 'studio' },
 ];
 
 export function InpageSettings() {

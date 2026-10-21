@@ -13,6 +13,7 @@ export type WorkspaceRoute =
   | 'playlists'
   | 'schedule'
   | 'thumbs'
+  | 'kids'
   | 'shorts'
   | 'comments'
   | 'alerts'

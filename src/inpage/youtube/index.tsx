@@ -8,6 +8,8 @@ import { onChannel, onSearch, onWatch } from './hooks';
 import { Masthead } from './Masthead';
 import { SearchTools } from './SearchTools';
 import { WatchCard } from './WatchCard';
+import { registerChannelInsightIslands } from './insights';
+import { registerLaunchers } from '../launch';
 
 export async function registerYoutubeIslands(ctx: ContentScriptContext): Promise<void> {
   await Promise.all([
@@ -15,5 +17,7 @@ export async function registerYoutubeIslands(ctx: ContentScriptContext): Promise
     mountIsland(ctx, { name: 'tubex-search', when: onSearch, anchor: () => searchStripSpot(document), render: () => <SearchTools /> }),
     mountIsland(ctx, { name: 'tubex-channel', when: onChannel, anchor: () => channelStripSpot(document), render: () => <ChannelStrip /> }),
     mountIsland(ctx, { name: 'tubex-masthead', anchor: () => mastheadSpot(document), render: () => <Masthead /> }),
+    registerChannelInsightIslands(ctx),
+    registerLaunchers(ctx, 'youtube'),
   ]);
 }
