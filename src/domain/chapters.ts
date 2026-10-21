@@ -72,3 +72,99 @@ export function chapterProblems(description: string): ChapterProblem[] {
   }
   return p;
 }
+
+// ---------------------------------------------------------------- tolerant reading (Videolytics best practices)
+// The strict helpers above stay as they are for the chapter tools. The scanner below only answers "does this
+// description hold a chapter list, and if it is broken, why": it tolerates what real (often Persian, RTL)
+// descriptions contain, so a parser limit is never reported to the user as a chapter problem.
+
+/** Bidi controls, zero-width marks and the BOM (copied text and RTL editors add them around timestamps). */
+const INVISIBLE = /[\u200B-\u200F\u202A-\u202E\u2066-\u2069\u061C\uFEFF]/g;
+const SPACES = /[\u00A0\u2007\u202F\u3000]/g;
+
+/** One line normalized for timestamp matching: marks removed, odd spaces as spaces, Persian/Arabic-Indic digits as ASCII. */
+export function cleanChapterLine(line: string): string {
+  return line
+    .replace(INVISIBLE, '')
+    .replace(SPACES, ' ')
+    .replace(/[\u06F0-\u06F9]/g, (d) => String(d.charCodeAt(0) - 0x06f0))
+    .replace(/[\u0660-\u0669]/g, (d) => String(d.charCodeAt(0) - 0x0660))
+    .replace(/[\uFF1A\uFE55]/g, ':');
+}
+
+const TS = '(?<![\\d:])((?:\\d{1,2}:)?\\d{1,2}:\\d{2})(?![\\d:])';
+const LEAD = '[\\s•·*\\-–—>»▶►▸▪■●○◦✓✔#|]*';
+/** Timestamp first: "00:00 Intro", "• (0:45) Frames", "[1:02:03] - Outro". */
+const TS_FIRST = new RegExp(`^${LEAD}[(\\[]?\\s*${TS}\\s*[)\\]]?\\s*[-–—:|.،]*\\s*(.*)$`);
+/** Timestamp last (common in RTL text): "Intro - 00:00", "Intro (0:45)". */
+const TS_LAST = new RegExp(`^${LEAD}(.*?)\\s*[-–—:|،]*\\s*[(\\[]?\\s*${TS}\\s*[)\\]]?\\s*[.،]?\\s*$`);
+const WORDY = /[\p{L}\p{N}]/u;
+
+export interface ChapterLine {
+  seconds: number;
+  title: string;
+}
+
+/** Every line of a description that reads as "timestamp + title" (start or end of the line), in written order. */
+export function chapterLines(description: string): ChapterLine[] {
+  const out: ChapterLine[] = [];
+  for (const raw of description.split(/\r\n|\r|\n|\u2028|\u2029/)) {
+    const line = cleanChapterLine(raw).trim();
+    if (!line) continue;
+    let time: string | undefined;
+    let title = '';
+    const first = line.match(TS_FIRST);
+    if (first && WORDY.test(first[2]!)) {
+      time = first[1];
+      title = first[2]!.trim();
+    } else {
+      const last = line.match(TS_LAST);
+      if (last && WORDY.test(last[1]!)) {
+        time = last[2];
+        title = last[1]!.trim();
+      }
+    }
+    if (!time) continue;
+    const seconds = parseTimestamp(time);
+    if (seconds !== null) out.push({ seconds, title });
+  }
+  return out;
+}
+
+export interface ChapterScan {
+  /** The chapter list YouTube would read: from the first 0:00 line (or all timestamps when none is at 0:00). */
+  chapters: ChapterLine[];
+  /** Concrete, fixable problems of that list (empty when it is valid or when there is no list). */
+  problems: ChapterProblem[];
+  /** Timestamp lines found anywhere in the description. */
+  found: number;
+}
+
+/**
+ * Finds the chapter list in a description and what is wrong with it. A list starts at a 0:00 line and runs until
+ * the next 0:00 line (a second list, e.g. timestamps of another part of a course, is ignored rather than called out
+ * of order). Without a 0:00 line, three or more timestamps are a list that does not start at 0:00; one or two stray
+ * timestamps ("at 5:30 I show…") are not a chapter list at all.
+ */
+export function scanChapters(description: string): ChapterScan {
+  const lines = chapterLines(description);
+  const start = lines.findIndex((l) => l.seconds === 0);
+  let list: ChapterLine[];
+  if (start >= 0) {
+    list = [lines[start]!];
+    for (const l of lines.slice(start + 1)) {
+      if (l.seconds === 0) break;
+      list.push(l);
+    }
+  } else if (lines.length >= 3) list = lines;
+  else return { chapters: [], problems: [], found: lines.length };
+  const problems: ChapterProblem[] = [];
+  if (list[0]!.seconds !== 0) problems.push('not-at-zero');
+  if (list.length < 3) problems.push('too-few');
+  for (let i = 1; i < list.length; i++) {
+    const gap = list[i]!.seconds - list[i - 1]!.seconds;
+    if (gap <= 0 && !problems.includes('not-ascending')) problems.push('not-ascending');
+    else if (gap > 0 && gap < 10 && !problems.includes('too-short')) problems.push('too-short');
+  }
+  return { chapters: list, problems, found: lines.length };
+}

@@ -1,6 +1,7 @@
 // Pure rules for the launchers, the TubeX drawer and Videolytics (no browser APIs; unit-tested).
-import { chapterProblems, extractChapters } from '../../domain/chapters';
+import { scanChapters, type ChapterProblem } from '../../domain/chapters';
 import { parsePageUrl } from '../../domain/pageContext';
+import type { WatchSignals } from './dom';
 
 // ---------------------------------------------------------------- which page the drawer is on
 
@@ -77,29 +78,63 @@ export interface VideoFacts {
   definition?: string;
 }
 
+/** Where a verdict comes from (shown in its tooltip). */
+export type PracticeSource = 'api' | 'page' | 'description';
+
 export interface Practice {
   id: PracticeId;
   state: PracticeState;
+  source: PracticeSource;
+  /** Message key suffix of the explanation: `ln.bp.<id>.<reason>`. */
+  reason: string;
+  /** Values for the explanation (e.g. the chapter count). */
+  values?: Record<string, number>;
 }
 
 export type ChapterState = 'ok' | 'warn' | 'fail';
 
-/** Chapters from description timestamps: valid list (≥3, from 0:00, ≥10 s apart) / timestamps with problems / none. */
-export function chapterState(description: string): ChapterState {
-  if (!extractChapters(description).length) return 'fail';
-  return chapterProblems(description).length ? 'warn' : 'ok';
+const PROBLEM_REASON: Record<ChapterProblem, string> = { 'not-at-zero': 'notAtZero', 'too-few': 'tooFew', 'not-ascending': 'notAscending', 'too-short': 'tooShort' };
+
+/**
+ * Chapters: YouTube decides, so chapters the page shows are always ok. Otherwise the description is read with the
+ * tolerant scanner; 'warn' only names a concrete problem the creator can fix.
+ */
+export function chapterPractice(description: string, page?: WatchSignals['chapters']): Practice {
+  if (page === 'shown') return { id: 'chapters', state: 'ok', source: 'page', reason: 'page' };
+  const scan = scanChapters(description);
+  if (scan.chapters.length && !scan.problems.length) return { id: 'chapters', state: 'ok', source: 'description', reason: 'desc', values: { n: scan.chapters.length } };
+  if (page === 'auto') return { id: 'chapters', state: 'ok', source: 'page', reason: 'auto' };
+  if (scan.problems.length) return { id: 'chapters', state: 'warn', source: 'description', reason: PROBLEM_REASON[scan.problems[0]!], values: { n: scan.chapters.length } };
+  return { id: 'chapters', state: 'fail', source: 'description', reason: 'none' };
 }
 
-export function bestPractices(description: string, facts: VideoFacts | null | undefined): Practice[] {
+/** Chapters from the description alone: valid list / list with a fixable problem / none. */
+export function chapterState(description: string): ChapterState {
+  return chapterPractice(description).state as ChapterState;
+}
+
+function captionPractice(facts: VideoFacts | null | undefined, cc: WatchSignals['cc']): Practice {
+  // contentDetails.caption reports uploaded caption tracks only; automatic captions show in the player's CC button.
+  if (facts?.caption === true) return { id: 'captions', state: 'ok', source: 'api', reason: 'uploaded' };
+  if (cc === 'on') return { id: 'captions', state: 'ok', source: 'page', reason: 'auto' };
+  if (cc === 'off') return { id: 'captions', state: 'fail', source: 'page', reason: 'none' };
+  if (facts?.caption === false) return { id: 'captions', state: 'fail', source: 'api', reason: 'noUploaded' };
+  return { id: 'captions', state: 'unknown', source: 'api', reason: 'unknown' };
+}
+
+/** The checklist. `page` is what the visible watch page shows (readWatchSignals); omitted = page not readable. */
+export function bestPractices(description: string, facts: VideoFacts | null | undefined, page?: WatchSignals | null): Practice[] {
+  const pinned = page?.pinned ?? 'notLoaded';
   return [
-    { id: 'thumbnail', state: facts ? (facts.maxres ? 'ok' : 'fail') : 'unknown' },
-    { id: 'captions', state: facts && facts.caption !== undefined ? (facts.caption ? 'ok' : 'fail') : 'unknown' },
-    { id: 'chapters', state: chapterState(description) },
-    // Not in the YouTube Data API (Inferred): never a failed check.
-    { id: 'pinned', state: 'unknown' },
-    { id: 'hearted', state: 'unknown' },
-    { id: 'cards', state: 'unknown' },
-    { id: 'endScreen', state: 'unknown' },
+    facts ? { id: 'thumbnail', state: facts.maxres ? 'ok' : 'fail', source: 'api', reason: facts.maxres ? 'maxres' : 'noMaxres' } : { id: 'thumbnail', state: 'unknown', source: 'api', reason: 'unknown' },
+    captionPractice(facts, page?.cc),
+    chapterPractice(description, page?.chapters),
+    // Not in any official API: read from the comments as shown. 'fail' only when the first thread is loaded without a pin.
+    { id: 'pinned', state: pinned === 'yes' ? 'ok' : pinned === 'no' ? 'fail' : 'unknown', source: 'page', reason: pinned === 'yes' ? 'page' : pinned === 'no' ? 'none' : pinned },
+    // A heart may be further down than the loaded comments: never a failed check.
+    { id: 'hearted', state: page?.hearted ? 'ok' : 'unknown', source: 'page', reason: page?.hearted ? 'page' : page?.hearted === false ? 'notFound' : 'notLoaded' },
+    { id: 'cards', state: page?.cards ? 'ok' : 'unknown', source: 'page', reason: page?.cards ? 'page' : 'notFound' },
+    { id: 'endScreen', state: page?.endScreen ? 'ok' : 'unknown', source: 'page', reason: page?.endScreen ? 'page' : 'notFound' },
   ];
 }
 

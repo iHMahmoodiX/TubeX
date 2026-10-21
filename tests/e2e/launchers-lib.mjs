@@ -23,6 +23,13 @@ const VIDEOS = {
     tags: TAGS,
     channelId: OTHER, channelTitle: 'Sample Channel', publishedAt: ago(96), views: 25900, likes: 464, comments: 43, duration: 'PT19M26S', maxres: true, caption: 'true',
   },
+  // Best-practices scenes (launchers-practices-shots.mjs): a chapter list that doesn't start at 0:00, no uploaded captions.
+  bpWarn00001: {
+    title: 'آموزش فیگما — قسمت دوم',
+    description: 'قسمت دوم دوره\n\n0:15 مقدمه\n۰۲:۱۰ فریم‌ها\nخروجی گرفتن - 05:40',
+    tags: TAGS.slice(0, 6),
+    channelId: OWN, channelTitle: 'Hossein Studio', publishedAt: ago(30), views: 4100, likes: 210, comments: 18, duration: 'PT12M', maxres: false, caption: 'false',
+  },
 };
 for (let i = 0; i < 10; i++) VIDEOS[`up${String(i).padStart(9, '0')}`] = { title: `Upload ${i}`, tags: [], channelId: OTHER, channelTitle: 'Sample Channel', publishedAt: ago(3 + i * 6), views: 9000 + i * 3500, likes: 300, comments: 20, duration: 'PT8M' };
 const video = (id) => {
