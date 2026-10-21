@@ -2,9 +2,12 @@
 // Daily health snapshot: for each enabled 'reports.health' tracker (opt-in from the Health report), at most
 // once every 20 hours, compute the channel health score from cached reads, store a snapshot and alert when
 // the score drops by 10 or more.
+// Reach sync: for each channel that started collecting thumbnail impressions/CTR (Click magnet), download new
+// daily YouTube Reporting API reports at most every 6 hours while the browser is open (reach.ts).
 import { loadGoogleState } from '../../integrations/google/auth';
 import { addAlert, all, history, put, snapshot, type Tracker } from '../../storage/stores';
 import { computeHealth, healthRef, loadOwnVideos } from '../../features/reports/data';
+import { reachDue, syncReach, toReachState } from '../../features/reports/reach';
 import type { JobHandler, Tick } from './index';
 
 const EVERY_MS = 20 * 3600_000;
@@ -50,4 +53,23 @@ export const reportsTicks: Tick[] = [
       await put('trackers', { ...t, lastCheckedAt: now.toISOString() });
     }
   },
+  async (now) => {
+    await reachTick(now);
+  },
 ];
+
+/** Syncs due reach collections one channel at a time. syncReach records its own time and error. */
+export async function reachTick(now: Date): Promise<number> {
+  const due = (await all('trackers'))
+    .map(toReachState)
+    .filter((s): s is NonNullable<typeof s> => !!s && reachDue(s, now.getTime()));
+  let n = 0;
+  for (const s of due) {
+    try {
+      n += (await syncReach(s.channelId, now)).days;
+    } catch {
+      /* stored as lastError and shown in Click magnet; retried after the interval */
+    }
+  }
+  return n;
+}

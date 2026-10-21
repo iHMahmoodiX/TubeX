@@ -5,7 +5,7 @@ import type { IconName } from '../../components/icons';
 import { Avatar, PageHeader, Tabs } from '../../components/ui';
 import { useI18n } from '../../i18n';
 import type { MessageKey } from '../../i18n/en';
-import { ErrorNotice } from '../connections/ErrorNotice';
+import { ReportError } from './errors';
 import { AuditTab } from './AuditTab';
 import { BestTimeTab } from './BestTimeTab';
 import { ClickTab } from './ClickTab';
@@ -62,7 +62,7 @@ export function ReportsView({ tab }: { tab?: string }) {
           <SignedOut />
         ) : (
           <>
-            <ErrorNotice error={vids.error} />
+            <ReportError error={vids.error} what="videos" />
             {!vids.data ? (
               vids.loading || !vids.error ? <TrackSkeleton rows={6} /> : null
             ) : (

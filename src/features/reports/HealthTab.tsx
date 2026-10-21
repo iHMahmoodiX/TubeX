@@ -8,9 +8,9 @@ import type { HealthId, SubScore } from '../../domain/reports';
 import { useI18n } from '../../i18n';
 import type { MessageKey } from '../../i18n/en';
 import { del, put } from '../../storage/stores';
-import { ErrorNotice } from '../connections/ErrorNotice';
+import { ReportError } from './errors';
 import { useAsync, useFormat } from '../research/shared';
-import { computeHealth, healthRef, healthTrackerId, type RVideo } from './data';
+import { computeHealth, HEALTH_CTR_MIN_DAYS, healthRef, healthTrackerId, type RVideo } from './data';
 import type { ReportTab } from './ReportsView';
 import { StatSkeleton } from './shared';
 
@@ -65,7 +65,7 @@ export function HealthTab({ channelId, videos, onTab }: { channelId: string; vid
 
   return (
     <div className="stack-l">
-      <ErrorNotice error={error} />
+      <ReportError error={error} what="health" />
       {!h ? (
         loading && (
           <>
@@ -102,10 +102,17 @@ export function HealthTab({ channelId, videos, onTab }: { channelId: string; vid
               </div>
             )}
           </div>
-          {data!.ctrError !== undefined && (
+          {data!.ctrDays < HEALTH_CTR_MIN_DAYS ? (
             <Notice>
-              <p>{t('reports.health.ctrMissing')}</p>
+              <p>{t('reports.health.ctrMissing', { n: f.int(HEALTH_CTR_MIN_DAYS) })}</p>
+              <div>
+                <button type="button" className="btn btn-s" onClick={() => onTab('clickmagnet')}>
+                  {t('reports.health.go.clickmagnet')}
+                </button>
+              </div>
             </Notice>
+          ) : (
+            <p className="small faint">{t('reports.health.ctrFrom', { n: f.int(data!.ctrDays) })}</p>
           )}
           <div className="rp-grid-3">
             {ORDER.map((id) => {

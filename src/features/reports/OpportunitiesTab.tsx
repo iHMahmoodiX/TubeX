@@ -12,7 +12,7 @@ import { AuthError } from '../../integrations/google/auth';
 import { report } from '../../integrations/google/own';
 import { channelUploads, getChannel } from '../../integrations/youtube/api';
 import { captureIdea } from '../ideas/ideaActions';
-import { ErrorNotice } from '../connections/ErrorNotice';
+import { ReportError } from './errors';
 import { useAsync, useFormat } from '../research/shared';
 import { AiIdeas } from './AiIdeas';
 import { studioUrl, videoToDraft, type RVideo } from './data';
@@ -66,7 +66,7 @@ export function OpportunitiesTab({ channelId, videos }: { channelId: string; vid
         recent.value ? updateOld(rowsOf(recent.value).map((r) => ({ videoId: String(r.video), views: Number(r.views) || 0 })), own) : [],
         comp.value ? competitorTopics(comp.value, own) : [],
       ]);
-      return { list, errors: [terms.error, perf.error, recent.error].filter(Boolean), compError: comp.error, competitors: competitorIds ? competitorIds.split(',').length : 0 };
+      return { list, errors: ([['search', terms.error], ['videoPerf', perf.error], ['videoPerf', recent.error]] as const).filter(([, e]) => Boolean(e)), compError: comp.error, competitors: competitorIds ? competitorIds.split(',').length : 0 };
     },
     [channelId, videos, competitorIds],
   );
@@ -79,7 +79,7 @@ export function OpportunitiesTab({ channelId, videos }: { channelId: string; vid
   const shown = (data?.list ?? []).filter((o) => kind === 'all' || o.kind === kind);
   return (
     <div className="stack-l">
-      <ErrorNotice error={error} />
+      <ReportError error={error} what="opportunities" />
       {data && (
         <div className="rp-chip-row" role="group" aria-label={t('reports.opp.filter')}>
           <button type="button" className="chip" aria-pressed={kind === 'all'} onClick={() => setKind('all')}>
@@ -92,7 +92,7 @@ export function OpportunitiesTab({ channelId, videos }: { channelId: string; vid
           ))}
         </div>
       )}
-      {data?.errors.map((e, i) => <ErrorNotice key={i} error={e} />)}
+      {data?.errors.map(([what, e], i) => <ReportError key={i} error={e} what={what} tone="warning" />)}
       {data && data.competitors === 0 && (
         <Notice>
           <p>{t('reports.opp.noCompetitors')}</p>
@@ -104,10 +104,7 @@ export function OpportunitiesTab({ channelId, videos }: { channelId: string; vid
         </Notice>
       )}
       {data?.compError !== undefined && (
-        <Notice tone="warning">
-          <p>{t('reports.opp.compFailed')}</p>
-          <ErrorNotice error={data!.compError} />
-        </Notice>
+        <ReportError error={data!.compError} what="competitors" tone="warning" />
       )}
       {loading && !data && <TrackSkeleton rows={5} />}
       {data && !shown.length && (

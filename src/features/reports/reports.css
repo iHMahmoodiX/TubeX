@@ -157,3 +157,4 @@
 @media (max-width: 640px) { .rp-stats { grid-template-columns: repeat(2, minmax(0, 1fr)); } .rp-stats .stat b { font-size: 22px; } }
 @media (max-width: 1099px) { .rp-picker { max-height: 280px; } }
 @media (max-width: 640px) { .track-head.rp-track { display: none; } }
+.rp-err-details summary { cursor: pointer; inline-size: fit-content; }
