@@ -1,12 +1,18 @@
-// Google sign-in for the owner's own channels (OAuth 2.0 token flow through chrome.identity.launchWebAuthFlow).
-// The client ID is public by design; there is no client secret in the extension, so there are no refresh
-// tokens. Access tokens live only in chrome.storage.session (cleared when the browser closes) and are never
-// logged, backed up or sent elsewhere. To keep the owner signed in, each channel remembers the Google account
-// identifier (`sub`) its token belongs to, and tokens are renewed silently with `login_hint=<sub>` and
-// `prompt=none` a few minutes before they expire and again after a browser restart (D-018). When Google needs
-// the owner (signed out of Google, consent changed), the channel is marked "reconnect" and the UI offers a
-// one-click interactive flow pre-selected for that account.
+// Google sign-in for the owner's own channels, through chrome.identity.launchWebAuthFlow.
+// Two ways to stay signed in:
+// 1. With the owner's sign-in server (D-020): authorization code flow with PKCE; the server (a free Supabase
+//    Edge Function he runs) holds the client secret, swaps the code for tokens and refreshes access tokens.
+//    Each channel's refresh token is stored encrypted (refreshStore.ts), so renewal needs no window, also
+//    after a browser restart.
+// 2. Without it (D-018): the token flow; tokens are renewed silently with `login_hint=<sub>` and
+//    `prompt=none`, which Google may refuse after a restart (then the channel shows "Reconnect").
+// Access tokens live only in chrome.storage.session and are never logged, backed up or sent elsewhere.
+// The client ID is public by design; there is never a client secret in the extension.
 import { browser } from 'wxt/browser';
+import { AuthError } from './authError';
+import { buildCodeAuthUrl, createPkce, exchangeCode, normalizeServerUrl, parseCodeResponse, refreshAccessToken, revokeViaServer } from './codeFlow';
+import { deleteRefreshToken, loadRefreshToken, saveRefreshToken } from './refreshStore';
+export { AuthError, type AuthErrorCode } from './authError';
 
 export const GOOGLE_CLIENT_ID = '49141970502-mffpqb3pg8mp9fu8knpetd4s6ej56ipr.apps.googleusercontent.com';
 export const SCOPES = [
@@ -49,23 +55,14 @@ export interface ChannelAuth {
   reconnect: boolean;
   at: string;
   detail?: string;
-}
-
-export type AuthErrorCode = 'canceled' | 'denied' | 'permission' | 'state-mismatch' | 'no-channel' | 'expired' | 'network' | 'wrong-channel';
-export class AuthError extends Error {
-  constructor(
-    public code: AuthErrorCode,
-    public detail?: string,
-    /** The channel the error is about, when known (lost over RPC; callers fall back to the active channel). */
-    public channelId?: string,
-  ) {
-    super(code);
-  }
+  /** Short code of the last failed renewal (e.g. invalid_grant, interaction_required, network). */
+  code?: string;
 }
 
 const STATE_KEY = 'google';
 const TOKENS_KEY = 'googleTokens';
 const STATUS_KEY = 'googleAuthStatus';
+const SERVER_KEY = 'googleSignInServer';
 
 const isObj = (v: unknown): v is Record<string, unknown> => typeof v === 'object' && v !== null;
 const SUB_RE = /^[\w.-]{1,128}$/;
@@ -106,6 +103,29 @@ export function onGoogleStateChanged(cb: (s: GoogleState) => void): () => void {
 export async function setActiveChannel(channelId: string): Promise<void> {
   const s = await loadGoogleState();
   if (s.channels.some((c) => c.channelId === channelId)) await saveGoogleState({ ...s, activeChannelId: channelId });
+}
+
+// ---- sign-in server setting (storage.local; a URL, not a secret) ----
+export async function loadSignInServer(): Promise<string> {
+  const raw = (await browser.storage.local.get(SERVER_KEY))[SERVER_KEY];
+  return typeof raw === 'string' ? (normalizeServerUrl(raw) ?? '') : '';
+}
+/** Saves the server URL ('' turns persistent sign-in off). Throws on an invalid URL. */
+export async function saveSignInServer(url: string): Promise<string> {
+  const clean = url.trim() ? normalizeServerUrl(url) : '';
+  if (clean === null) throw new AuthError('server', 'bad_url');
+  await browser.storage.local.set({ [SERVER_KEY]: clean });
+  return clean;
+}
+export function onSignInServerChanged(cb: (url: string) => void): () => void {
+  const l = (changes: Record<string, { newValue?: unknown }>, area: string) => {
+    if (area === 'local' && changes[SERVER_KEY]) {
+      const v = changes[SERVER_KEY].newValue;
+      cb(typeof v === 'string' ? (normalizeServerUrl(v) ?? '') : '');
+    }
+  };
+  browser.storage.onChanged.addListener(l);
+  return () => browser.storage.onChanged.removeListener(l);
 }
 
 /**
@@ -228,6 +248,45 @@ async function runFlow(opts: FlowOptions): Promise<Token> {
   return parseAuthResponse(responseUrl, state);
 }
 
+interface Grant {
+  token: Token;
+  refreshToken?: string;
+}
+const toToken = (accessToken: string, expiresIn: number, scopes: string[], now = Date.now()): Token => ({
+  accessToken,
+  expiresAt: now + Math.max(60, expiresIn - 60) * 1000,
+  scopes,
+});
+
+/**
+ * Interactive authorization code flow with PKCE, exchanged through the owner's sign-in server (D-020).
+ * `consent` asks Google again so it issues a refresh token for this account.
+ */
+async function runCodeFlow(server: string, opts: { loginHint?: string; consent: boolean }): Promise<Grant> {
+  const state = crypto.randomUUID();
+  const pkce = await createPkce();
+  const redirectUri = browser.identity.getRedirectURL();
+  const url = buildCodeAuthUrl({ clientId: GOOGLE_CLIENT_ID, scopes: SCOPES, redirectUri, state, challenge: pkce.challenge, loginHint: opts.loginHint, consent: opts.consent });
+  let responseUrl: string | undefined;
+  try {
+    responseUrl = await browser.identity.launchWebAuthFlow({ url, interactive: true });
+  } catch (e) {
+    throw new AuthError('canceled', e instanceof Error ? e.message : String(e));
+  }
+  if (!responseUrl) throw new AuthError('canceled');
+  const code = parseCodeResponse(responseUrl, state);
+  const t = await exchangeCode(server, code, pkce.verifier, redirectUri);
+  return { token: toToken(t.accessToken, t.expiresIn, t.scopes), refreshToken: t.refreshToken };
+}
+
+/** Interactive sign-in: the code flow when a sign-in server is set, otherwise the token flow. */
+async function interactiveGrant(opts: { loginHint?: string; channelId?: string }): Promise<Grant> {
+  const server = await loadSignInServer();
+  if (!server) return { token: await runFlow({ interactive: true, loginHint: opts.loginHint }) };
+  const has = opts.channelId ? !!(await loadRefreshToken(opts.channelId).catch(() => undefined)) : false;
+  return runCodeFlow(server, { loginHint: opts.loginHint, consent: !has });
+}
+
 /**
  * The Google account id behind an access token, after checking the token was issued to TubeX's client
  * (a token for another app is refused). Undefined when the endpoint cannot be reached; the flow still works,
@@ -277,13 +336,16 @@ async function fetchOwnChannel(t: Token): Promise<GoogleChannel> {
  * Stores a fresh token and the channel it belongs to (title, avatar and `sub` refreshed). Silent renewals pass
  * `allowNew: false`: a token for a channel the owner never connected is dropped, never added.
  */
-async function adopt(t: Token, opts: { makeActive: boolean; allowNew: boolean }): Promise<GoogleChannel> {
+async function adopt(t: Token, opts: { makeActive: boolean; allowNew: boolean; refreshToken?: string }): Promise<GoogleChannel> {
   const ch = await fetchOwnChannel(t);
   if (!opts.allowNew && !(await loadGoogleState()).channels.some((c) => c.channelId === ch.channelId)) return ch;
   const sub = await tokenSubject(t.accessToken).catch((e) => {
     if (e instanceof AuthError && e.code === 'state-mismatch') throw e;
     return undefined;
   });
+  // The refresh token belongs to the identity Google signed in (a Brand Account has its own), which the
+  // channel check above has just resolved to this channel.
+  if (opts.refreshToken) await saveRefreshToken(ch.channelId, opts.refreshToken);
   await setToken(ch.channelId, t);
   await setAuthStatus(ch.channelId, null);
   const s = await loadGoogleState();
@@ -300,7 +362,8 @@ export async function signIn(): Promise<GoogleChannel> {
   // Ask for API host access first, while the click still counts as a user gesture.
   const granted = await browser.permissions.request({ origins: GOOGLE_ORIGINS });
   if (!granted) throw new AuthError('permission');
-  return adopt(await runFlow({ interactive: true }), { makeActive: true, allowNew: true });
+  const g = await interactiveGrant({});
+  return adopt(g.token, { makeActive: true, allowNew: true, refreshToken: g.refreshToken });
 }
 
 /**
@@ -313,17 +376,36 @@ export async function reconnect(channelId: string, fromGesture = true): Promise<
   if (!granted) throw new AuthError('permission', undefined, channelId);
   const s = await loadGoogleState();
   const known = s.channels.find((c) => c.channelId === channelId);
-  const got = await adopt(await runFlow({ interactive: true, loginHint: known?.sub }), { makeActive: !known, allowNew: true });
+  const g = await interactiveGrant({ loginHint: known?.sub, channelId: known?.channelId });
+  const got = await adopt(g.token, { makeActive: !known, allowNew: true, refreshToken: g.refreshToken });
   if (known && got.channelId !== channelId) throw new AuthError('wrong-channel', got.title, channelId);
   return got;
 }
 
 const inflight = new Map<string, Promise<string>>();
 
+const SHORT_CODE = /^[a-z_]{1,40}$/;
+
+/** A fresh token without UI: the refresh token through the sign-in server when there is one, else prompt=none. */
+async function silentGrant(channelId: string, sub: string | undefined): Promise<Token> {
+  const server = await loadSignInServer();
+  const rt = server ? await loadRefreshToken(channelId).catch(() => undefined) : undefined;
+  if (!server || !rt) return runFlow({ interactive: false, loginHint: sub });
+  try {
+    const t = await refreshAccessToken(server, rt);
+    return toToken(t.accessToken, t.expiresIn, t.scopes);
+  } catch (e) {
+    // Revoked, expired (7 days while the Google app is in Testing) or password changed: the stored token is useless.
+    if (e instanceof AuthError && e.detail === 'invalid_grant') await deleteRefreshToken(channelId);
+    throw e;
+  }
+}
+
 /**
- * Silent renewal for one channel (no UI). Uses the channel's Google account as login_hint so Brand Account
- * channels get their own token instead of the default identity's. On an auth failure the channel is marked
- * "reconnect"; network failures are not, so they are retried later.
+ * Silent renewal for one channel (no UI). With a refresh token this also works right after a browser
+ * restart. Without one it uses the channel's Google account as login_hint so Brand Account channels get
+ * their own token instead of the default identity's. On an auth failure the channel is marked "reconnect";
+ * network failures are recorded but not marked, so they are retried later.
  */
 export function renewSilently(channelId: string): Promise<string> {
   const running = inflight.get(channelId);
@@ -331,19 +413,44 @@ export function renewSilently(channelId: string): Promise<string> {
   const p = (async () => {
     const known = (await loadGoogleState()).channels.find((c) => c.channelId === channelId);
     try {
-      const fresh = await runFlow({ interactive: false, loginHint: known?.sub });
+      const fresh = await silentGrant(channelId, known?.sub);
       const got = await adopt(fresh, { makeActive: false, allowNew: false });
       if (got.channelId === channelId) return fresh.accessToken;
       throw new AuthError('wrong-channel', got.title, channelId);
     } catch (e) {
       const err = e instanceof AuthError ? e : new AuthError('expired', e instanceof Error ? e.message : String(e));
-      if (err.code === 'network') throw new AuthError('network', err.detail, channelId);
-      await setAuthStatus(channelId, { reconnect: true, at: new Date().toISOString(), detail: err.detail?.slice(0, 200) });
-      throw new AuthError('expired', err.detail, channelId);
+      const code = err.detail && SHORT_CODE.test(err.detail) ? err.detail : err.code;
+      const at = new Date().toISOString();
+      if (err.code === 'network') {
+        await setAuthStatus(channelId, { reconnect: false, at, code, detail: err.detail?.slice(0, 200) });
+        throw new AuthError('network', err.detail, channelId);
+      }
+      await setAuthStatus(channelId, { reconnect: true, at, code, detail: err.detail?.slice(0, 200) });
+      throw new AuthError(err.code === 'server' ? 'server' : 'expired', err.detail, channelId);
     }
   })().finally(() => inflight.delete(channelId));
   inflight.set(channelId, p);
   return p;
+}
+
+/**
+ * Reconnects several channels one after another, from one click. Asks for the API host permission once
+ * while the click still counts as a user gesture. Closing Google's window stops the run.
+ */
+export async function reconnectAll(channelIds: string[]): Promise<{ ok: GoogleChannel[]; failed: { channelId: string; error: unknown }[] }> {
+  const granted = await browser.permissions.request({ origins: GOOGLE_ORIGINS });
+  if (!granted) throw new AuthError('permission');
+  const ok: GoogleChannel[] = [];
+  const failed: { channelId: string; error: unknown }[] = [];
+  for (const id of channelIds) {
+    try {
+      ok.push(await reconnect(id, false));
+    } catch (error) {
+      failed.push({ channelId: id, error });
+      if (error instanceof AuthError && error.code === 'canceled') break;
+    }
+  }
+  return { ok, failed };
 }
 
 /**
@@ -402,8 +509,13 @@ export async function forgetToken(channelId: string): Promise<void> {
 /** Removes a channel from TubeX and revokes its token at Google (best effort). */
 export async function signOut(channelId: string): Promise<void> {
   const t = (await tokens())[channelId];
+  const rt = await loadRefreshToken(channelId).catch(() => undefined);
+  const server = await loadSignInServer();
+  await deleteRefreshToken(channelId).catch(() => undefined);
   await setToken(channelId, null);
   await setAuthStatus(channelId, null);
+  // Revoking the refresh token ends the grant at Google; best effort, never blocks disconnecting.
+  if (rt && server) void revokeViaServer(server, rt);
   if (t) void fetch(`https://oauth2.googleapis.com/revoke?token=${encodeURIComponent(t.accessToken)}`, { method: 'POST', mode: 'no-cors' }).catch(() => undefined);
   const s = await loadGoogleState();
   const channels = s.channels.filter((c) => c.channelId !== channelId);

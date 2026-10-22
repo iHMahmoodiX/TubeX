@@ -533,7 +533,7 @@ export const en = {
   'maker.download': 'Download PNG (1280×720)',
 
   'nav.mychannel': 'My channel',
-  'auth.intro': 'Sign in with Google to read your own channel’s videos and analytics, and to change your published videos from Bulk edit. TubeX uses your own Google Cloud app in testing mode; Google shows an “unverified app” notice that you can pass with Advanced → Go to TubeX. TubeX renews the sign-in silently, also after the browser restarts, while you stay signed in to Google in this browser.',
+  'auth.intro': 'Sign in with Google to read your own channel’s videos and analytics, and to change your published videos from Bulk edit. TubeX uses your own Google Cloud app; Google shows an “unverified app” notice that you can pass with Advanced → Go to TubeX. TubeX renews the sign-in silently while the browser is open; to stay signed in after a browser restart as well, add your sign-in server below.',
   'auth.signIn': 'Sign in with Google',
   'auth.addChannel': 'Add another channel',
   'auth.signingIn': 'Waiting for Google…',

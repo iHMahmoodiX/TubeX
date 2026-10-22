@@ -1,5 +1,11 @@
 # Changelog
 
+## Unreleased
+- Stay signed in after a browser restart (D-020): optional "Sign-in server URL" in Settings → Google account and channels. With your own free Supabase function (source and guide in `server/`), sign-in uses Google's code flow with PKCE and keeps an encrypted refresh token per channel, so channels renew without any window, also after restarting Edge. The client secret stays in Supabase, never in TubeX. Without a server everything works as before.
+- Settings shows per channel whether it stays signed in or needs a click after a restart, and the last renewal error code.
+- "Reconnect all" in Settings and in the Reconnect banner: one click goes through every channel that needs it.
+- Disconnecting a channel also deletes and revokes its refresh token. Backups never include sign-in tokens.
+
 ## 0.5.2 — 2026-10-21 — find & replace on YouTube (owner's top priority)
 - Bulk edit is now a full find & replace for the descriptions, titles and tags of all your uploads (every page of the uploads list), with filters for visibility, date range, text, Shorts vs videos (by duration, up to 3 minutes) and playlist; Studio's selection still preselects videos.
 - Matching: Persian-aware by default (ي/ی, ك/ک, ة/ه, Persian/Arabic/Latin digits, half-space vs space and repeated spaces count as the same; the new text is inserted exactly as typed), case-insensitive Latin, whole word, regex with $1 and a live validity check, multi-line blocks with CRLF and trailing-space tolerance.

@@ -167,7 +167,14 @@ describe('daily snapshot tick', () => {
     expect(await all('snapshots')).toHaveLength(1);
     await tick(new Date(t0.getTime() + 7 * 3600_000));
     expect((await all('snapshots')).length).toBe(2);
-    expect(await channelInsightsJobs['ci.snapshot']!({} as never)).toBe('0');
+    // The job reads the clock itself; pin it to the last tick so t0 + 7 h crossing midnight does not matter.
+    vi.useFakeTimers({ toFake: ['Date'] });
+    vi.setSystemTime(new Date(t0.getTime() + 7 * 3600_000));
+    try {
+      expect(await channelInsightsJobs['ci.snapshot']!({} as never)).toBe('0');
+    } finally {
+      vi.useRealTimers();
+    }
   });
 
   it('does nothing without a way to read YouTube', async () => {
