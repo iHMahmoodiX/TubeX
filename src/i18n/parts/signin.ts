@@ -1,0 +1,56 @@
+import { definePart } from './define';
+
+// Persistent sign-in through the owner's own sign-in server (D-020), per-channel sign-in status and
+// "Reconnect all".
+export const signin = definePart(
+  {
+    'auth.error.server': 'Your sign-in server did not accept the request. Check the server address in Settings and the secrets in Supabase, then try again.',
+    'signin.heading': 'Stay signed in after a browser restart',
+    'signin.intro':
+      'Without a sign-in server, Google can ask for one click per channel after every browser restart. With your own free sign-in server (a Supabase function that keeps your Google client secret), each channel stays signed in until you disconnect it. TubeX never sees the secret.',
+    'signin.urlLabel': 'Sign-in server URL',
+    'signin.urlHelp': 'The address of your Supabase function (it ends with /functions/v1/google-token). Any https address works if you host the server elsewhere.',
+    'signin.urlInvalid': 'Enter a full https address without a query or #.',
+    'signin.urlNotSupabase': 'This is not a Supabase function address. That is fine if you host the server yourself.',
+    'signin.save': 'Save and allow',
+    'signin.saved': 'Sign-in server saved. Click “Reconnect all” once so every channel stays signed in.',
+    'signin.savedNoPermission': 'Saved, but the browser did not allow access to the server. Click “Save and allow” again and confirm.',
+    'signin.turnOff': 'Turn off',
+    'signin.turnedOff': 'Sign-in server removed. Channels renew the old way and may need a click after a restart.',
+    'signin.guide': 'Setup: create a free Supabase project, deploy the google-token function, add GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET under Edge Functions → Secrets (only there, never in TubeX or a chat), publish your Google app (In production) so the sign-in does not expire after 7 days, paste the function URL here and click “Reconnect all”.',
+    'signin.state.persistent': 'Stays signed in',
+    'signin.state.upgrade': 'Click Reconnect once to stay signed in',
+    'signin.state.session': 'Needs a click after a browser restart',
+    'signin.lastError': 'Last renewal error:',
+    'signin.guideSummary': 'How to set up the sign-in server',
+    'signin.reconnectAll': 'Reconnect all ({n})',
+    'signin.reconnectAllHelp': 'Opens Google’s window for each channel in turn. Pick the matching channel each time.',
+    'signin.reconnectAllDone': 'Reconnected {n} channels',
+    'signin.reconnectAllPartial': 'Reconnected {ok} of {n} channels. The others still show Reconnect.',
+  },
+  {
+    'auth.error.server': 'سرور ورود شما درخواست را نپذیرفت. نشانی سرور را در تنظیمات و Secretها را در Supabase بررسی کنید و دوباره امتحان کنید.',
+    'signin.heading': 'ماندن در حساب بعد از بستن مرورگر',
+    'signin.intro':
+      'بدون سرور ورود، گوگل ممکن است بعد از هر بار بستن و باز کردن مرورگر برای هر کانال یک کلیک بخواهد. با سرور ورود رایگان خودتان (یک تابع Supabase که Client Secret گوگل را نگه می‌دارد)، هر کانال تا وقتی خودتان قطعش نکنید وارد می‌ماند. TubeX هیچ‌وقت Secret را نمی‌بیند.',
+    'signin.urlLabel': 'نشانی سرور ورود',
+    'signin.urlHelp': 'نشانی تابع Supabase شما (آخرش google-token است). اگر سرور را جای دیگری میزبانی می‌کنید، هر نشانی https کار می‌کند.',
+    'signin.urlInvalid': 'یک نشانی کامل https بدون ? و # وارد کنید.',
+    'signin.urlNotSupabase': 'این نشانی تابع Supabase نیست. اگر سرور را خودتان جای دیگری میزبانی می‌کنید، اشکالی ندارد.',
+    'signin.save': 'ذخیره و اجازه',
+    'signin.saved': 'سرور ورود ذخیره شد. یک بار «اتصال دوبارهٔ همه» را بزنید تا همهٔ کانال‌ها وارد بمانند.',
+    'signin.savedNoPermission': 'ذخیره شد، ولی مرورگر اجازهٔ دسترسی به سرور را نداد. دوباره «ذخیره و اجازه» را بزنید و تأیید کنید.',
+    'signin.turnOff': 'خاموش کردن',
+    'signin.turnedOff': 'سرور ورود حذف شد. کانال‌ها به روش قبلی تمدید می‌شوند و ممکن است بعد از باز شدن مرورگر یک کلیک لازم باشد.',
+    'signin.guide': 'راه‌اندازی: یک پروژهٔ رایگان Supabase بسازید، تابع google-token را مستقر کنید، GOOGLE_CLIENT_ID و GOOGLE_CLIENT_SECRET را در Edge Functions → Secrets وارد کنید (فقط همان‌جا، هرگز در TubeX یا گفت‌وگو)، برنامهٔ گوگل خود را منتشر کنید (In production) تا ورود بعد از ۷ روز باطل نشود، نشانی تابع را این‌جا بگذارید و «اتصال دوبارهٔ همه» را بزنید.',
+    'signin.state.persistent': 'وارد می‌ماند',
+    'signin.state.upgrade': 'یک بار «اتصال دوباره» بزنید تا وارد بماند',
+    'signin.state.session': 'بعد از بستن مرورگر یک کلیک لازم دارد',
+    'signin.lastError': 'خطای آخرین تمدید:',
+    'signin.guideSummary': 'راه‌اندازی سرور ورود',
+    'signin.reconnectAll': 'اتصال دوبارهٔ همه ({n})',
+    'signin.reconnectAllHelp': 'پنجرهٔ گوگل را برای هر کانال به نوبت باز می‌کند. هر بار همان کانال را انتخاب کنید.',
+    'signin.reconnectAllDone': '{n} کانال دوباره وصل شد',
+    'signin.reconnectAllPartial': '{ok} از {n} کانال دوباره وصل شد. بقیه هنوز «اتصال دوباره» را نشان می‌دهند.',
+  },
+);

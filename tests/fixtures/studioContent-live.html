@@ -1,0 +1,87 @@
+<!doctype html>
+<!-- Synthetic fixture modelled on the owner's live Studio Content page (issue #8 screenshot), built to reproduce the
+     0.5.0 failures: the page scrolls inside #main, which also has a transform (a containing block for position: fixed,
+     and a clip), the tabs are a Polymer-like paper-tabs (#tabsContainer overflow hidden > #tabsContent), a generic
+     filter toolbar sits above the table and ytcp-bulk-actions is an empty, collapsed shell until rows are ticked.
+     Query: ?sel=0 no rows selected (default: two), ?dir=rtl a Persian (RTL) Studio. Element names are Inferred. -->
+<html dark lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>Channel content - YouTube Studio</title>
+    <style>
+      html { background: #f9f9f9; color: #0d0d0d; font: 14px Roboto, Arial, sans-serif; }
+      html[dark] { background: #282828; color: #fff; }
+      body { margin: 0; background: inherit; overflow: hidden; height: 100vh; }
+      #header { height: 64px; display: flex; align-items: center; padding: 0 24px; font-size: 22px; font-weight: 700; border-bottom: 1px solid #3f3f3f; }
+      #page { display: flex; height: calc(100vh - 65px); }
+      #nav { flex: 0 0 255px; border-inline-end: 1px solid #3f3f3f; padding: 24px; box-sizing: border-box; color: #aaa; }
+      #main { flex: 1 1 auto; min-width: 0; overflow: auto; transform: translateZ(0); contain: paint; position: relative; }
+      ytcp-content-section { display: block; padding: 0 0 0 0; }
+      h1 { font-size: 28px; margin: 0; padding: 24px 32px 8px; }
+      #tab-row { display: flex; align-items: center; padding-inline: 32px; border-bottom: 1px solid #3f3f3f; }
+      tp-yt-paper-tabs { display: flex; flex: 1 1 auto; min-width: 0; height: 48px; }
+      #tabsContainer { flex: 1 1 auto; overflow: hidden; height: 100%; position: relative; }
+      #tabsContent { display: inline-flex; height: 100%; white-space: nowrap; }
+      tp-yt-paper-tab { display: inline-flex; align-items: center; padding: 0 20px; height: 100%; color: #aaa; font-weight: 500; font-size: 15px; box-sizing: border-box; }
+      tp-yt-paper-tab:first-child { padding-inline-start: 0; }
+      tp-yt-paper-tab[aria-selected='true'] { color: #fff; box-shadow: inset 0 -3px 0 #fff; }
+      #filter-bar { display: flex; align-items: center; gap: 16px; padding: 12px 32px; color: #aaa; border-bottom: 1px solid #3f3f3f; }
+      #filter-bar input { all: unset; color: #aaa; }
+      ytcp-bulk-actions { display: flex; align-items: center; gap: 24px; padding: 10px 32px; background: #eee; color: #0d0d0d; }
+      ytcp-bulk-actions:not([visible]) { padding: 0; background: none; }
+      ytcp-bulk-actions:not([visible]) > * { display: none; }
+      ytcp-bulk-actions ytcp-select { padding: 8px 4px; }
+      ytcp-bulk-actions #close-button { margin-inline-start: auto; cursor: pointer; }
+      .head, ytcp-video-row { display: grid; grid-template-columns: 32px minmax(0, 1fr) 110px 130px 70px; gap: 16px; align-items: center; padding: 10px 32px; border-bottom: 1px solid #3f3f3f; }
+      .head { color: #aaa; font-size: 12px; }
+      .thumb { display: inline-block; width: 116px; height: 64px; background: #2b3a8f; border-radius: 4px; vertical-align: middle; margin-inline-end: 12px; }
+      .box-ui { display: inline-grid; place-items: center; width: 16px; height: 16px; border: 2px solid #aaa; border-radius: 2px; font-size: 12px; }
+      a { color: inherit; text-decoration: none; }
+    </style>
+  </head>
+  <body>
+    <div id="header">Studio</div>
+    <div id="page">
+      <div id="nav">Dashboard<br />Content<br />Analytics</div>
+      <div id="main"><ytcp-content-section>
+        <h1>Channel content</h1>
+        <div id="tab-row">
+          <tp-yt-paper-tabs id="tabs" role="tablist">
+            <div id="tabsContainer"><div id="tabsContent">
+              <tp-yt-paper-tab role="tab" aria-selected="true">Videos</tp-yt-paper-tab><tp-yt-paper-tab role="tab">Shows</tp-yt-paper-tab><tp-yt-paper-tab role="tab">Shorts</tp-yt-paper-tab><tp-yt-paper-tab role="tab">Live</tp-yt-paper-tab><tp-yt-paper-tab role="tab">Posts</tp-yt-paper-tab><tp-yt-paper-tab role="tab">Playlists</tp-yt-paper-tab><tp-yt-paper-tab role="tab">Podcasts</tp-yt-paper-tab><tp-yt-paper-tab role="tab">Courses</tp-yt-paper-tab><tp-yt-paper-tab role="tab">Promotions</tp-yt-paper-tab><tp-yt-paper-tab role="tab">Collaborations</tp-yt-paper-tab><tp-yt-paper-tab role="tab">Ideas</tp-yt-paper-tab>
+            </div></div>
+          </tp-yt-paper-tabs>
+        </div>
+        <ytcp-video-section-content>
+          <div id="filter-bar" role="toolbar"><span>☰</span><input placeholder="Filter" value="Filter" /></div>
+          <ytcp-bulk-actions visible>
+            <span id="selection-count">2 selected</span>
+            <ytcp-select id="edit">Edit ▾</ytcp-select>
+            <ytcp-select id="add-to-playlist">Add to playlist ▾</ytcp-select>
+            <ytcp-select id="more-actions">More actions ▾</ytcp-select>
+            <ytcp-icon-button id="close-button" aria-label="Close">✕</ytcp-icon-button>
+          </ytcp-bulk-actions>
+          <div class="head"><span class="box-ui"></span><span>Video</span><span>Visibility</span><span>Date</span><span>Views</span></div>
+          <div id="rows"></div>
+        </ytcp-video-section-content>
+      </ytcp-content-section></div>
+    </div>
+    <script>
+      const q = new URLSearchParams(location.search);
+      if (q.get('dir') === 'rtl') {
+        document.documentElement.setAttribute('dir', 'rtl');
+        document.documentElement.setAttribute('lang', 'fa');
+      }
+      const sel = q.get('sel') !== '0';
+      const ids = ['aaaaaaaaaa1', 'bbbbbbbbbb2', 'cccccccccc3', 'dddddddddd4', 'eeeeeeeeee5', 'ffffffffff6', 'aaaaaaaaaa1', 'bbbbbbbbbb2', 'cccccccccc3', 'dddddddddd4'];
+      const titles = ['تجربه نادیا از دوره طراحی محصول', 'تجربه مهسا از دوره UI Design Plus', 'تجربه فائزه از دوره UI Design', 'Sahar Notion Kermanshah Testimony', 'آموزش کامل ابزار الاینمنت در Adobe XD', 'Figma auto layout in 10 minutes', 'آموزش ابزار Boolean', 'عکس و ماسک کردن در ادوبی ایکس دی', 'ابزار متن و تایپوگرافی', 'تسلط کامل بر اشکال و تنظیمات'];
+      document.getElementById('rows').innerHTML = ids
+        .map((id, i) => {
+          const on = sel && i < 2;
+          return `<ytcp-video-row><ytcp-checkbox-lit id="row-checkbox" role="checkbox" aria-checked="${on}"><span class="box-ui">${on ? '✓' : ''}</span></ytcp-checkbox-lit><a id="video-title" href="/video/${id}/edit" dir="auto"><span class="thumb"></span>${titles[i]}</a><div>Public</div><div>Aug ${3 - (i % 3)}, 2026</div><div>${100 + i * 7}</div></ytcp-video-row>`;
+        })
+        .join('');
+      if (!sel) document.querySelector('ytcp-bulk-actions').removeAttribute('visible');
+    </script>
+  </body>
+</html>

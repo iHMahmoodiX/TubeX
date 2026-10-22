@@ -1,0 +1,43 @@
+# Architecture
+
+Status labels: **Verified** = exercised by tests/smoke run on 2026-10-20; **Proposed** = not built.
+
+## Verified (M1)
+```text
+entrypoints/
+  sidepanel/  popup/  workspace/   React pages (index.html + main.tsx + App.tsx)
+  youtube.content.ts                read-only page-context responder on www.youtube.com
+src/
+  domain/      pure rules: text normalization, page-URL parsing, metadata checks, records, backup format
+  storage/     db.ts (IndexedDB via idb, sole owner of records), prefs.ts (chrome.storage.local)
+  platform/    active-tab context, YouTube DOM adapter, typed messages, files, navigation
+  features/    ideas, drafts, templates, profiles, settings UI
+  components/  AppShell (prefs/i18n/theme/storage health), ui primitives, toasts, hooks
+  i18n/        en.ts (keys), fa.ts, runtime
+  styles/      base.css (tokens + components)
+tests/unit, tests/e2e, tests/fixtures
+```
+No background service worker in M1: nothing needs privileged network or scheduled work yet.
+
+### Data
+- IndexedDB `tubex` v2: stores `profiles`, `ideas`, `drafts`, `templates`, `keywordLists`, `watchlist`, `replies` (keyPath `id`, index `updatedAt`), `meta` (import snapshot), `cache` (API/AI responses, `expiresAt` index, not backed up). Upgrades run per version from `MIGRATIONS` in `db.ts`.
+- Every record: `id`, `createdAt`, `updatedAt`, `rev`. `save()` writes only if the stored `rev` matches (cross-window conflict detection); `put()` is the explicit override.
+- Reads pass through `sanitizeRecord()`; invalid rows are hidden and counted, never deleted.
+- Draft edits are mirrored synchronously to `localStorage` (`tubex:pending-draft:<id>`) until IndexedDB confirms, so closing the panel or browser mid-debounce does not lose text.
+- Backup: JSON `{ app: "tubex", format: 1, exportedAt, appVersion, data }`, max 5 MB; import validates every record (known keys only, https URLs only, size caps), reports rejects, snapshots current data for one-step undo.
+- Preferences (`chrome.storage.local` key `prefs`): UI language, theme, active profile, last draft, page-adapter kill switch.
+- Connections (`chrome.storage.local` key `integrations`): AI base URL/model/key/monthly cap, YouTube key/region/language/daily cap; `usage` holds monthly AI and Pacific-day YouTube counters. Neither is in backups.
+
+### Page context
+1. Side panel/popup asks `tabs.query` for the active tab; URL is parsed purely (`parsePageUrl`). Hosts outside the permission list come back without URL and are shown as unsupported.
+2. For watch pages only, it asks the content script for DOM title/channel. The adapter (`youtubeDom.ts`, version `yt-watch-2026-10-20`) returns data only if `ytd-watch-flexy[video-id]` equals the URL video id (YouTube SPA can show stale DOM). 800 ms timeout; any failure falls back to URL + tab title.
+3. Content script validates `sender.id` and message type, changes nothing, injects nothing.
+
+### Security boundaries
+- Permissions: `storage`, `sidePanel`, `identity`; hosts `https://www.youtube.com/*`, `https://studio.youtube.com/*`. CSP `script-src 'self'`.
+- Network only to origins the owner allowed at runtime (`optional_host_permissions`): the YouTube Data API and the chosen AI base URL, from extension pages. No remote code. Page DOM, imported files, API responses and model output are untrusted and validated.
+
+## Proposed (not built)
+- M2 remainder: per-channel cache retention rules; background jobs if scheduled updates are requested. OAuth itself is built in extension pages (`src/integrations/google`, D-015), no service worker.
+- M3: one optional AI provider adapter with budget enforcement; thumbnail canvas workbench.
+- M4: durable job store with per-item checkpoints, lease against duplicate execution, conditional restore.

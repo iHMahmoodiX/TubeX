@@ -1,0 +1,58 @@
+<!doctype html>
+<!-- Synthetic fixture modelled on the 2026 YouTube Studio video details editor (Inferred). The title/description are
+     contenteditable boxes; tags are chips plus a text input. Includes a closed upload dialog that must be ignored. -->
+<html dark lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>Video details - YouTube Studio</title>
+    <style>
+      html { background: #f9f9f9; color: #0d0d0d; font: 14px Roboto, Arial, sans-serif; }
+      html[dark] { background: #1f1f1f; color: #fff; }
+      body { margin: 0; background: inherit; }
+      ytcp-video-metadata-editor { display: grid; grid-template-columns: minmax(0, 1fr) 380px; gap: 24px; max-width: 1240px; margin: 0 auto; padding: 24px; }
+      .box { border: 1px solid #606060; border-radius: 4px; padding: 8px 12px; margin-bottom: 16px; }
+      .box label { font-size: 12px; color: #aaa; display: block; }
+      #textbox { outline: none; min-height: 24px; white-space: pre-wrap; }
+      #description-textarea #textbox { min-height: 120px; }
+      ytcp-chip { display: inline-block; background: #3f3f3f; border-radius: 12px; padding: 2px 10px; margin: 2px; }
+      #text-input { background: transparent; border: 0; color: inherit; }
+      .preview { aspect-ratio: 16/9; background: #000; border-radius: 4px; margin-bottom: 16px; }
+      ytcp-uploads-dialog[hidden] { display: none; }
+    </style>
+  </head>
+  <body>
+    <ytcp-app>
+      <ytcp-video-metadata-editor>
+        <ytcp-video-metadata-editor-basics>
+          <ytcp-video-title>
+            <ytcp-social-suggestions-textbox id="title-textarea" class="box">
+              <label>Title (required)</label>
+              <div id="textbox" contenteditable="true" role="textbox">Figma auto layout tutorial</div>
+            </ytcp-social-suggestions-textbox>
+          </ytcp-video-title>
+          <ytcp-video-description>
+            <ytcp-social-suggestions-textbox id="description-textarea" class="box">
+              <label>Description</label>
+              <div id="textbox" contenteditable="true" role="textbox">Learn auto layout in Figma.<br>0:00 Intro<br>0:30 Basics<br>2:00 Advanced</div>
+            </ytcp-social-suggestions-textbox>
+          </ytcp-video-description>
+          <ytcp-form-input-container id="tags-container" class="box">
+            <label>Tags</label>
+            <ytcp-free-text-chip-bar>
+              <ytcp-chip><span id="chip-text">figma</span></ytcp-chip>
+              <ytcp-chip><span id="chip-text">auto layout</span></ytcp-chip>
+              <input id="text-input" aria-label="Tags" />
+            </ytcp-free-text-chip-bar>
+          </ytcp-form-input-container>
+        </ytcp-video-metadata-editor-basics>
+        <ytcp-video-metadata-editor-sidepanel>
+          <div class="preview"></div>
+          <div class="box"><label>Video link</label>https://youtu.be/dQw4w9WgXcQ</div>
+        </ytcp-video-metadata-editor-sidepanel>
+      </ytcp-video-metadata-editor>
+      <ytcp-uploads-dialog hidden>
+        <ytcp-video-metadata-editor><div id="title-textarea"><div id="textbox" contenteditable="true">upload</div></div></ytcp-video-metadata-editor>
+      </ytcp-uploads-dialog>
+    </ytcp-app>
+  </body>
+</html>

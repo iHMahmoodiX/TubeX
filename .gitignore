@@ -1,0 +1,13 @@
+node_modules/
+.output/
+.wxt/
+dist/
+*.zip
+*.log
+.env
+.env.*
+# Personal data must never be committed
+backups/
+tubex-backup-*.json
+tests/e2e/artifacts/
+.claude/worktrees/
