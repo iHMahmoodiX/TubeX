@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'react';
 import { AiError } from '../../integrations/ai/provider';
 import { YtError } from '../../integrations/youtube/client';
-import { AuthError, loadAuthStatus, loadGoogleState, onAuthStatusChanged, onGoogleStateChanged, type ChannelAuth, type GoogleState } from '../../integrations/google/auth';
+import { AuthError, loadAuthStatus, loadGoogleState, loadSignInServer, onAuthStatusChanged, onGoogleStateChanged, onSignInServerChanged, type ChannelAuth, type GoogleState } from '../../integrations/google/auth';
+import { onRefreshChanged, refreshChannelIds } from '../../integrations/google/refreshStore';
 import type { MessageKey } from '../../i18n/en';
 import { DEFAULT_INTEGRATIONS, loadIntegrations, loadUsage, onIntegrationsChanged, onUsageChanged, rollUsage, type Integrations, type Usage } from '../../storage/integrations';
 
@@ -54,4 +55,28 @@ export function useAuthStatus(): Record<string, ChannelAuth> {
     return onAuthStatusChanged(setS);
   }, []);
   return s;
+}
+
+/** The saved sign-in server URL ('' when persistent sign-in is off), D-020. */
+export function useSignInServer(): { url: string; loaded: boolean } {
+  const [s, setS] = useState({ url: '', loaded: false });
+  useEffect(() => {
+    void loadSignInServer()
+      .then((url) => setS({ url, loaded: true }))
+      .catch(() => setS({ url: '', loaded: true }));
+    return onSignInServerChanged((url) => setS({ url, loaded: true }));
+  }, []);
+  return s;
+}
+
+/** Channels with a stored (encrypted) refresh token: they stay signed in after a browser restart. */
+export function useRefreshIds(): string[] {
+  const [ids, setIds] = useState<string[]>([]);
+  useEffect(() => {
+    void refreshChannelIds()
+      .then(setIds)
+      .catch(() => undefined);
+    return onRefreshChanged(setIds);
+  }, []);
+  return ids;
 }

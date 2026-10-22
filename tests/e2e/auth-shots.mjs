@@ -64,6 +64,24 @@ await p.goto(`chrome-extension://${id}/workspace.html#settings`);
 await p.waitForTimeout(800);
 await scrollTo('[data-testid="google-settings"]');
 await shot('settings-google');
+
+// Persistent sign-in (D-020): a sign-in server is set, channel A keeps a (fake, sealed) refresh token,
+// B failed with invalid_grant. Only key names matter for the status display; nothing is decrypted here.
+await p.evaluate(
+  async ({ A, B }) => {
+    await chrome.storage.local.set({
+      googleSignInServer: 'https://abcdefghijklmnop.supabase.co/functions/v1/google-token',
+      googleRefresh: { [A]: { iv: 'AAAA', ct: 'AAAA', at: '' } },
+    });
+    await chrome.storage.session.set({ googleAuthStatus: { [B]: { reconnect: true, at: new Date().toISOString(), code: 'invalid_grant' } } });
+  },
+  { A, B },
+);
+await p.goto('about:blank');
+await p.goto(`chrome-extension://${id}/workspace.html#settings`);
+await p.waitForTimeout(800);
+await scrollTo('[data-testid="signin-server"]');
+await shot('settings-signin');
 await scrollTo('[data-testid="yt-settings"] >> text=/Allow access|اجازهٔ دسترسی/');
 await shot('settings-youtube');
 await scrollTo('[data-testid="update-note"]');

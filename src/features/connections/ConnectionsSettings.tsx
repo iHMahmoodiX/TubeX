@@ -12,9 +12,10 @@ import { hasOrigin, originPattern, requestOrigin } from '../../platform/permissi
 import { cacheClear } from '../../storage/cache';
 import { saveIntegrations, type AiSettings, type YouTubeSettings } from '../../storage/integrations';
 import { ErrorNotice } from './ErrorNotice';
-import { useAuthStatus, useGoogle, useIntegrations, useUsage } from './useConnections';
-import { ReconnectButton } from './Reconnect';
-import { setActiveChannel, signIn, signOut } from '../../integrations/google/auth';
+import { useAuthStatus, useGoogle, useIntegrations, useRefreshIds, useSignInServer, useUsage } from './useConnections';
+import { ReconnectAllButton, ReconnectButton } from './Reconnect';
+import { saveSignInServer, setActiveChannel, signIn, signOut, type ChannelAuth } from '../../integrations/google/auth';
+import { isSupabaseFunctionUrl, normalizeServerUrl } from '../../integrations/google/codeFlow';
 import '../core/core.css';
 
 export function StatusPill({ on, children }: { on: boolean | 'warn'; children: ReactNode }) {
@@ -401,11 +402,126 @@ function YouTubeSection() {
   );
 }
 
+/** Sign-in server URL for persistent sign-in (D-020). The host permission is asked for on Save, from the click. */
+function SignInServerBlock() {
+  const { t } = useI18n();
+  const toast = useToast();
+  const server = useSignInServer();
+  const [url, setUrl] = useState('');
+  const [granted, setGranted] = useState<boolean | null>(null);
+  const [error, setError] = useState<unknown>(null);
+  useEffect(() => {
+    if (server.loaded) setUrl(server.url);
+  }, [server.loaded, server.url]);
+  useEffect(() => {
+    if (server.url) void hasOrigin(server.url).then(setGranted);
+    else setGranted(null);
+  }, [server.url]);
+  const clean = normalizeServerUrl(url);
+  const dirty = (clean ?? url.trim()) !== server.url;
+  const save = async () => {
+    setError(null);
+    if (!clean) return;
+    // Permission first: the browser only shows its prompt during the click.
+    const allowed = await requestOrigin(clean);
+    try {
+      await saveSignInServer(clean);
+    } catch (e) {
+      setError(e);
+      return;
+    }
+    setGranted(allowed);
+    toast(allowed ? t('signin.saved') : t('signin.savedNoPermission'));
+  };
+  const turnOff = async () => {
+    setError(null);
+    await saveSignInServer('');
+    setUrl('');
+    toast(t('signin.turnedOff'));
+  };
+  const help = url.trim() && !clean ? t('signin.urlInvalid') : clean && !isSupabaseFunctionUrl(clean) ? t('signin.urlNotSupabase') : t('signin.urlHelp');
+  return (
+    <div className="stack-s" data-testid="signin-server">
+      <div className="row" style={{ justifyContent: 'space-between' }}>
+        <strong>{t('signin.heading')}</strong>
+        <StatusPill on={server.url ? (granted === false ? 'warn' : true) : false}>{server.url ? (granted === false ? t('core.conn.needsAllow') : t('conn.on')) : t('conn.off')}</StatusPill>
+      </div>
+      <p className="small muted">{t('signin.intro')}</p>
+      <Field label={t('signin.urlLabel')} help={help}>
+        {({ id, describedBy }) => (
+          <input
+            id={id}
+            aria-describedby={describedBy}
+            aria-invalid={url.trim() && !clean ? true : undefined}
+            className="input ltr"
+            dir="ltr"
+            type="url"
+            inputMode="url"
+            spellCheck={false}
+            autoComplete="off"
+            placeholder="https://<project>.supabase.co/functions/v1/google-token"
+            value={url}
+            onChange={(e) => setUrl(e.target.value.trim())}
+            data-testid="signin-server-url"
+          />
+        )}
+      </Field>
+      {server.url && granted === false && <Notice tone="warning">{t('signin.savedNoPermission')}</Notice>}
+      <div className="row">
+        <Button variant="primary" size="s" disabled={!clean || (!dirty && granted !== false)} onClick={() => void save()} data-testid="signin-server-save">
+          {t('signin.save')}
+        </Button>
+        {server.url && (
+          <Button size="s" variant="ghost" onClick={() => void turnOff()}>
+            {t('signin.turnOff')}
+          </Button>
+        )}
+      </div>
+      <ErrorNotice error={error} />
+      <details className="disclosure">
+        <summary className="small">{t('signin.guideSummary')}</summary>
+        <p className="small muted">{t('signin.guide')}</p>
+      </details>
+    </div>
+  );
+}
+
+/** "Stays signed in" / "Click Reconnect once" / "Needs a click after a browser restart", plus the last renewal error. */
+function ChannelSignInState({ hasRefresh, serverOn, st }: { hasRefresh: boolean; serverOn: boolean; st?: ChannelAuth }) {
+  const { t, lang } = useI18n();
+  const persistent = hasRefresh && serverOn;
+  const label = persistent ? t('signin.state.persistent') : serverOn ? t('signin.state.upgrade') : t('signin.state.session');
+  const when = st?.at ? new Date(st.at) : null;
+  const time = when && !Number.isNaN(when.getTime()) ? new Intl.DateTimeFormat(lang === 'fa' ? 'fa-IR' : 'en-US', { hour: '2-digit', minute: '2-digit' }).format(when) : '';
+  return (
+    <span className="stack-s" style={{ gap: 2 }}>
+      {!st?.reconnect && (
+        <span className="xsmall" data-testid="signin-state" data-persistent={String(persistent)}>
+          <StatusPill on={persistent ? true : 'warn'}>{label}</StatusPill>
+        </span>
+      )}
+      {st?.code && (
+        <span className="xsmall muted" data-testid="signin-last-error">
+          {t('signin.lastError')} <bdi dir="ltr">{st.code}</bdi>
+          {time && (
+            <>
+              {' · '}
+              <bdi>{time}</bdi>
+            </>
+          )}
+        </span>
+      )}
+    </span>
+  );
+}
+
 function GoogleSection() {
   const { t } = useI18n();
   const toast = useToast();
   const g = useGoogle();
   const status = useAuthStatus();
+  const server = useSignInServer();
+  const refreshIds = useRefreshIds();
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<unknown>(null);
   const connect = async () => {
@@ -422,6 +538,8 @@ function GoogleSection() {
   };
   const n = g.channels.length;
   const needN = g.channels.filter((c) => status[c.channelId]?.reconnect).length;
+  // "Reconnect all": channels Google asked about, plus (with a sign-in server) channels without a refresh token yet.
+  const toReconnect = g.channels.filter((c) => status[c.channelId]?.reconnect || (!!server.url && !refreshIds.includes(c.channelId))).map((c) => c.channelId);
   return (
     <Card
       data-testid="google-settings"
@@ -453,8 +571,9 @@ function GoogleSection() {
                   </strong>
                   <span className="small muted ltr truncate">{c.handle}</span>
                   {status[c.channelId]?.reconnect && <span className="small">{t('auth.needsReconnectHelp')}</span>}
+                  <ChannelSignInState hasRefresh={refreshIds.includes(c.channelId)} serverOn={!!server.url} st={status[c.channelId]} />
                 </div>
-                {status[c.channelId]?.reconnect && <ReconnectButton channelId={c.channelId} />}
+                {toReconnect.includes(c.channelId) && <ReconnectButton channelId={c.channelId} primary={!!status[c.channelId]?.reconnect} />}
                 {active ? (
                   <span className="badge badge-accent">{t('auth.active')}</span>
                 ) : (
@@ -475,12 +594,14 @@ function GoogleSection() {
         </div>
       )}
       <div className="row">
-        <Button variant="primary" disabled={busy} onClick={() => void connect()} data-testid="google-signin">
+        <Button variant={toReconnect.length ? undefined : 'primary'} disabled={busy} onClick={() => void connect()} data-testid="google-signin">
           <Icon name={n ? 'plus' : 'lock'} />
           {busy ? t('auth.signingIn') : n ? t('auth.addChannel') : t('auth.signIn')}
         </Button>
+        {toReconnect.length > 1 && <ReconnectAllButton channelIds={toReconnect} />}
       </div>
       <ErrorNotice error={error} />
+      <SignInServerBlock />
       <details className="disclosure">
         <summary className="small">{t('core.conn.howSignIn')}</summary>
         <div className="stack-s small muted">

@@ -177,6 +177,7 @@
 .core-status[data-on='true'] .dot { background: var(--accent); }
 .core-status[data-on='warn'] { background: var(--warning-soft); color: var(--warning); }
 .core-status[data-on='warn'] .dot { background: var(--warning); }
+.core-account .core-status { white-space: normal; max-width: 100%; padding-block: 3px; }
 .core-providers { display: grid; gap: var(--space-2); grid-template-columns: repeat(auto-fit, minmax(min(100%, 190px), 1fr)); }
 .core-provider { position: relative; display: flex; flex-direction: column; gap: 6px; padding: var(--space-3) var(--space-4); border-radius: var(--radius-m); background: var(--surface-2); cursor: pointer; box-shadow: transparent 0 0 0 2px inset; transition: background 120ms, box-shadow 120ms; }
 .core-provider:hover { background: var(--hover); }
