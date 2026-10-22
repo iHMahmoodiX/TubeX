@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 0.5.3 — 2026-10-22 — persistent Google sign-in (D-020)
 - Stay signed in after a browser restart (D-020): optional "Sign-in server URL" in Settings → Google account and channels. With your own free Supabase function (source and guide in `server/`), sign-in uses Google's code flow with PKCE and keeps an encrypted refresh token per channel, so channels renew without any window, also after restarting Edge. The client secret stays in Supabase, never in TubeX. Without a server everything works as before.
 - Settings shows per channel whether it stays signed in or needs a click after a restart, and the last renewal error code.
 - "Reconnect all" in Settings and in the Reconnect banner: one click goes through every channel that needs it.
