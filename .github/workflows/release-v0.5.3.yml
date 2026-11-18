@@ -1,0 +1,72 @@
+name: Publish TubeX v0.5.3
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/release-v0.5.3.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Use Node 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - name: Install locked dependencies
+        run: npm ci
+      - name: Typecheck, unit tests and build
+        run: npm run check
+      - name: Package Chrome/Edge extension
+        run: npm run zip
+      - name: Check version and ZIP
+        shell: bash
+        run: |
+          test "$(node -p "require('./package.json').version")" = '0.5.3'
+          shopt -s nullglob
+          files=(.output/*.zip)
+          test "${#files[@]}" -gt 0
+          ls -lh "${files[@]}"
+      - name: Create or update GitHub Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          cat > release-notes.md <<'NOTES'
+          # TubeX v0.5.3
+          Chrome/Edge MV3 extension, built from the merged main branch.
+
+          ## Highlights
+          - Persian/English RTL creator workspace, ideas, drafts, reusable templates and AI assist.
+          - Keyword research, competitors, search rankings, video and channel insights.
+          - Tools embedded into YouTube and YouTube Studio, including Videolytics, Channelytics, tag and bulk tools.
+          - Google multi-channel sign-in, reporting, content management, scheduling and comment workflows.
+          - Advanced Persian-aware bulk find and replace, preview, progress and conditional undo.
+          - Optional persistent Google sign-in server implementation (requires separate setup).
+
+          ## Installation
+          Download the ZIP and extract it. Enable Developer mode in Chrome or Edge extensions,
+          then Load unpacked and select the extracted chrome-mv3 extension directory.
+          Do not remove your existing unpacked extension before backing up its data.
+
+          ## Validation status
+          The build is gated by typecheck, unit tests and production build in this workflow.
+          Real Google sign-in, YouTube writes, live site selectors, Edge behavior and external reporting
+          still require owner verification; see issue #9. This is a GitHub development release,
+          not a Chrome Web Store or Edge Add-ons publication.
+          NOTES
+          if gh release view v0.5.3 >/dev/null 2>&1; then
+            gh release upload v0.5.3 .output/*.zip --clobber
+          else
+            gh release create v0.5.3 .output/*.zip --target "$GITHUB_SHA" --title 'TubeX v0.5.3' --notes-file release-notes.md
+          fi
