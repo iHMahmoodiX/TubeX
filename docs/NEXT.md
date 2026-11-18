@@ -2,6 +2,11 @@
 
 Updated: 2026-11-18.
 
+## Active development handoff (2026-11-18)
+- One-time comprehensive Claude Code brief: [`docs/CLAUDE_IMPLEMENTATION_HANDOFF_2026-11-18.md`](CLAUDE_IMPLEMENTATION_HANDOFF_2026-11-18.md). Its source map, YouTube-first/Aparat-last stages, acceptance gates and token-saving rules replace any need to re-audit the entire repo.
+- Canonical prioritization is [`docs/BACKLOG.md`](BACKLOG.md) and GitHub Issues #9–#17. **Start #9.** Gemini preset compatibility in #15 is a near-term dependency; only after scoped YouTube milestones proceed to Aparat #16 → #17.
+- Feature-code status has **not** changed by the new documentation; no live acceptance claimed. New commits after the v0.5.3 tag are documentation-only unless Git history indicates otherwise.
+
 ## Current state
 - Branch `main` now contains all code merged from PR #1 (`3432e29e`), originally on `claude/m0-m1-baseline-9rp5tg`.
 - GitHub Release **v0.5.3** is published: https://github.com/iHMahmoodiX/TubeX/releases/tag/v0.5.3
