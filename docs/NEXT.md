@@ -2,46 +2,23 @@
 
 Updated: 2026-11-18.
 
-## Active development handoff (2026-11-18)
-- One-time comprehensive Claude Code brief: [`docs/CLAUDE_IMPLEMENTATION_HANDOFF_2026-11-18.md`](CLAUDE_IMPLEMENTATION_HANDOFF_2026-11-18.md). Its source map, YouTube-first/Aparat-last stages, acceptance gates and token-saving rules replace any need to re-audit the entire repo.
-- Canonical prioritization is [`docs/BACKLOG.md`](BACKLOG.md) and GitHub Issues #9–#17. **Start #9.** Gemini preset compatibility in #15 is a near-term dependency; only after scoped YouTube milestones proceed to Aparat #16 → #17.
-- Feature-code status has **not** changed by the new documentation; no live acceptance claimed. New commits after the v0.5.3 tag are documentation-only unless Git history indicates otherwise.
+## State
+- Version **0.6.0** on branch `claude/project-thread-2pwd6e` (PR to `main`). Implements the whole plan in [`docs/CLAUDE_IMPLEMENTATION_HANDOFF_2026-11-18.md`](CLAUDE_IMPLEMENTATION_HANDOFF_2026-11-18.md): Y0 (#9 quota/Gemini/CI), Y1 (#10 Improve queue), Y2 (#14 Research → Idea → Draft), Y3 (#12 A/B assistant, #13 context previews), Y4 (#15 coach + Ask Studio), Y5 (#11 Outlier Lite), A0 (#16 [Aparat feasibility](APARAT_FEASIBILITY.md)), A1 (#17 Aparat package). Also: Studio "Upload profile" is a button next to "Reuse details".
+- Checks: 526/526 unit tests, typecheck, build, fixture e2e 16/16, grow screenshots reviewed (fa, dark). Decisions D-021…D-026 in [DECISIONS.md](DECISIONS.md).
+- **Nothing is live-verified.** Owner runs [LIVE_TEST_MATRIX.md](LIVE_TEST_MATRIX.md); close issues only with that evidence.
 
-## Current state
-- Branch `main` now contains all code merged from PR #1 (`3432e29e`), originally on `claude/m0-m1-baseline-9rp5tg`.
-- GitHub Release **v0.5.3** is published: https://github.com/iHMahmoodiX/TubeX/releases/tag/v0.5.3
-- Release asset: `tubex-0.5.3-chrome.zip`, built with the repo's `.github/workflows/release-v0.5.3.yml` on GitHub Actions run 44254314177 (success, checks + ZIP).
-- Version remains **0.5.3**; GitHub Release means a downloadable unpacked extension, not a Chrome Web Store/Edge Add-ons publication.
-- No source-feature code was changed for the competitor or Aparat research. GitHub Issues #9–#17 are the active post-release task registry.
+## Owner-only steps still open
+- Supabase secrets for the sign-in server (`GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`) and publishing the OAuth app (see `/mnt/project-files/guides/persistent-sign-in-fa.md`).
+- Gemini key test in Settings; switch to `gemini-3.5-flash-lite` before 2026-12-01 if still on 2.5.
+- Confirm `https://www.aparat.com/upload` and Aparat's form limits (matrix lines 11–12).
+- Single-video bulk find & replace test before any large run.
 
-## Priority order (do not start all at once)
-1. **P0 Do now:** #9 — real YouTube/Edge stabilization, Google sign-in persistence/Brand Accounts, in-page selectors, bulk single-video test, reporting, API quota and derived metrics policy; close old #2–#8 only with live evidence.
-2. **Do next after P0:** #10 Optimize Queue; #12 YouTube-native A/B test assistant; #14 Research → Idea → Draft → Optimize workflow.
-3. **Validate first:** #11 compliant Outlier Discovery Lite; #15 evidence-based personalized recommendations with existing Gemini and Ask Studio native handoff.
-4. **Do next if justified:** #13 competitive thumbnail context previews.
-5. **Aparat separate, minimal track:** #16 official API/terms audit then, only if worthwhile, #17 local-first Aparat metadata package, native upload/edit handoff and optional permitted read research.
-- Parked features (full automated shorts rendering, generic AI coach rewrite, own MCP service, team/organization platform, speculative search volume and paid data) remain out of the active tasks.
+## Next
+1. Fix whatever the live matrix finds (selectors in Studio, Edge sign-in, Aparat URL/limits).
+2. Then the 10 workaround-only TubeBuddy features remain parked until the owner decides.
+3. Never: Aparat login/upload/endpoints, private YouTube endpoints, paid services, store submission.
 
-## Gemini integration note
-- Existing preset: `src/integrations/ai/provider.ts` (OpenAI-compatible Gemini endpoint). The API key and live connectivity are **not confirmed**; do not claim Gemini already works in the owner's installation.
-- Default model is `gemini-2.5-flash`, which Google's deprecations page says is deprecated; requests will route to `gemini-3.5-flash-lite` starting **2026-12-01** with possible pricing/compatibility change. Validate/test and migrate under #15 before that date.
-- Ask Studio is part of YouTube Studio. No supported external API confirmed; use an explicit native Studio handoff or copyable prompt, not private calls or scraped conversations.
-
-## Aparat evidence
-- Official portal `https://api.aparat.com/` has a documentation landing page but no usable public spec verified as of 2026-11-18.
-- Unofficial old `/etc/api` and newer `/api/fa/v1` patterns appear in third-party clients; they are **not** approval for a stable API.
-- `sepehr071/aparat-mcp` exposes unofficial read-only research and is PolyForm Noncommercial in current version; assess licensing before reuse, and do not bundle unapproved code.
-- Official Aparat upload guidance: description <=2000 characters, 3–5 tags each <=23 characters, recommended cover 1920×1080, playlists, captions and scheduled publishing in the native UI. Re-verify prior to implementation (#17).
-
-## Existing implementation landmarks
-- WXT + React + TypeScript MV3.
-- Core: `entrypoints/`, `src/features/`, `src/domain/`, `src/storage/`, `src/background/`, `src/inpage/`.
-- Google auth: `src/integrations/google/{auth,codeFlow,refreshStore,own,ownWrites}.ts`; optional server `server/supabase/functions/google-token/`.
-- AI: `src/integrations/ai/` and Settings → Connections.
-- Research, competitors, reports, bulk and scheduling already have nontrivial implementation; prefer reuse over new architectures.
-
-## Verification and immediate next step
-- GitHub Actions v0.5.3: install, typecheck/unit tests/build, WXT ZIP packaging and release all **passed** on 2026-11-18.
-- Historical project checkpoint reported 486/486 unit tests and 16/16 fixture E2E, but **no independent live-account validation**. GitHub release workflow currently does not execute fixture E2E.
-- Start #9. Test on a single owned video with owner authorization before broad bulk writes. Ensure token setup/deployment remains separately authorized. No external/store publication.
-- Read `AGENTS.md`, this checkpoint and only task-relevant modules; preserve token budget and avoid unnecessary rebuilds.
+## Landmarks
+- New domain modules: `src/domain/{optimizeQueue,coach,experiments,workflow,outliers,aparat,aiModels}.ts`.
+- New UI: `src/features/optimize/`, `src/features/experiments/`, `src/features/thumbs/ContextPreview.tsx`, `src/features/drafts/{DraftFlow,AparatPanel}.tsx`, `src/features/research/Outliers.tsx`, `src/features/ideas/WorkflowButtons.tsx`.
+- Screens: `node tests/e2e/grow-shots.mjs <outDir> [route…]` (see TESTING.md).

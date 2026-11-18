@@ -8,7 +8,8 @@ export const APARAT_UPLOAD_URL = 'https://www.aparat.com/upload';
 export const APARAT_HOME = 'https://www.aparat.com/';
 
 /**
- * 'help' = Aparat's upload form as described by public how-to guides (Aparat's help center blocks automated reads).
+ * 'help' = Aparat's upload guidance (help center, recorded in docs/NEXT.md and the how-to guides in
+ * docs/APARAT_FEASIBILITY.md; the help center blocks automated reads, so the owner re-checks it live).
  * 'inferred' = a cautious default, not a published Aparat limit: shown as a warning only.
  */
 export type RuleSource = 'help' | 'inferred';
@@ -16,10 +17,11 @@ export const APARAT_RULES = {
   titleRequired: { source: 'help' as RuleSource },
   categoryRequired: { source: 'help' as RuleSource },
   minTags: { value: 3, source: 'help' as RuleSource },
-  maxTags: { value: 10, source: 'inferred' as RuleSource },
-  tagChars: { value: 30, source: 'inferred' as RuleSource },
+  maxTags: { value: 5, source: 'help' as RuleSource },
+  tagChars: { value: 23, source: 'help' as RuleSource },
   titleChars: { value: 100, source: 'inferred' as RuleSource },
-  descriptionChars: { value: 2000, source: 'inferred' as RuleSource },
+  descriptionChars: { value: 2000, source: 'help' as RuleSource },
+  cover: { value: '1920×1080 (16:9)', source: 'help' as RuleSource },
   subtitleFormat: { value: 'SRT', source: 'help' as RuleSource },
 } as const;
 
@@ -41,7 +43,7 @@ const isAparatUrl = (u: string) => {
   }
 };
 
-/** A fresh package from the YouTube draft. YouTube-only lines (subscribe/YouTube links) are dropped, nothing else. */
+/** A fresh package from the YouTube draft. YouTube-only lines (subscribe/YouTube links) are dropped; all tags are kept so the owner picks which ones stay (the check flags more than 5). */
 export function aparatFromDraft(d: Pick<Draft, 'title' | 'description' | 'tags'>, at = new Date().toISOString()): AparatPackage {
   const description = d.description
     .split('\n')
@@ -53,7 +55,7 @@ export function aparatFromDraft(d: Pick<Draft, 'title' | 'description' | 'tags'>
   return {
     title: d.title.trim(),
     description,
-    tags: [...new Set(d.tags.map((t) => t.replace(/^#/, '').trim()).filter(Boolean))].slice(0, APARAT_RULES.maxTags.value),
+    tags: [...new Set(d.tags.map((t) => t.replace(/^#/, '').trim()).filter(Boolean))],
     category: '',
     playlist: '',
     coverNote: '',
@@ -71,10 +73,10 @@ export function checkAparat(p: AparatPackage): AparatIssue[] {
   else if ([...title].length > R.titleChars.value) out.push({ id: 'title-long', severity: 'warning', source: R.titleChars.source, values: { n: [...title].length, max: R.titleChars.value } });
   if (!p.category.trim()) out.push({ id: 'category-missing', severity: 'error', source: R.categoryRequired.source });
   if (p.tags.length < R.minTags.value) out.push({ id: 'tags-few', severity: 'error', source: R.minTags.source, values: { n: p.tags.length, min: R.minTags.value } });
-  if (p.tags.length > R.maxTags.value) out.push({ id: 'tags-many', severity: 'warning', source: R.maxTags.source, values: { n: p.tags.length, max: R.maxTags.value } });
+  if (p.tags.length > R.maxTags.value) out.push({ id: 'tags-many', severity: 'error', source: R.maxTags.source, values: { n: p.tags.length, max: R.maxTags.value } });
   const long = p.tags.filter((t) => [...t].length > R.tagChars.value);
-  if (long.length) out.push({ id: 'tag-long', severity: 'warning', source: R.tagChars.source, values: { tags: long.join('، '), max: R.tagChars.value } });
-  if ([...p.description].length > R.descriptionChars.value) out.push({ id: 'description-long', severity: 'warning', source: R.descriptionChars.source, values: { n: [...p.description].length, max: R.descriptionChars.value } });
+  if (long.length) out.push({ id: 'tag-long', severity: 'error', source: R.tagChars.source, values: { tags: long.join('، '), max: R.tagChars.value } });
+  if ([...p.description].length > R.descriptionChars.value) out.push({ id: 'description-long', severity: 'error', source: R.descriptionChars.source, values: { n: [...p.description].length, max: R.descriptionChars.value } });
   if (/(?:youtube\.com|youtu\.be)\//i.test(p.description)) out.push({ id: 'youtube-links', severity: 'warning', source: 'inferred' });
   if (p.url && !isAparatUrl(p.url)) out.push({ id: 'url-not-aparat', severity: 'error', source: 'inferred' });
   return out;

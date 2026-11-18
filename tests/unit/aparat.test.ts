@@ -25,9 +25,15 @@ describe('aparat package', () => {
     ]);
     const ok = { ...aparatFromDraft(draft), category: 'آموزشی' };
     expect(checkAparat(ok)).toEqual([]);
-    const warn = checkAparat({ ...ok, title: 'x'.repeat(120), tags: Array.from({ length: 12 }, (_, i) => `t${i}`), description: 'see https://youtube.com/watch?v=1' });
+    const warn = checkAparat({ ...ok, title: 'x'.repeat(120), description: 'see https://youtube.com/watch?v=1' });
     expect(warn.every((i) => i.severity === 'warning')).toBe(true);
-    expect(warn.map((i) => i.id)).toEqual(['title-long', 'tags-many', 'youtube-links']);
+    expect(warn.map((i) => i.id)).toEqual(['title-long', 'youtube-links']);
+    const hard = checkAparat({ ...ok, tags: ['a', 'b', 'c', 'd', 'e', 'برچسبی-خیلی-خیلی-طولانی-برای-آپارات'], description: 'x'.repeat(2001) });
+    expect(hard.map((i) => [i.id, i.severity])).toEqual([
+      ['tags-many', 'error'],
+      ['tag-long', 'error'],
+      ['description-long', 'error'],
+    ]);
   });
 
   it('accepts only aparat.com links as the published URL', () => {

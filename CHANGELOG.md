@@ -1,5 +1,18 @@
 # Changelog
 
+## 0.6.0 — 2026-11-18 — grow the channel: improve queue, A/B assistant, research workflow, outliers, Aparat package
+- Studio upload: the upload profile is now a small "Upload profile" button next to Studio's "Reuse details"; the panel opens only on click and floats above the dialog without changing its layout.
+- 2026 YouTube quota (D-021): searches have their own daily limit (default 100, with a reserve for manual research); research costs are shown in searches.
+- Gemini (D-022): new default `gemini-3.5-flash-lite`; Settings warns about retiring models and switches with one click, never silently.
+- Improve queue (#10): the few published videos worth improving now, each with its reason and numbers (low CTR, strong retention with low reach, evergreen traffic, failing metadata), observation log with 7-day before/after, done/snooze/dismiss with undo, "Improve in a draft", A/B and Studio links.
+- Coach and Ask Studio (#15, D-024): rule-based advice for each item; optional Gemini advice after one-time consent, only from the item's own numbers; Ask Studio prompt copy and handoff.
+- A/B assistant (#12) and thumbnail context previews (#13): up to 3 title/thumbnail variants checked against Test & Compare rules, previews in home, search, mobile and sidebar (optionally among real search results, 1 search), Studio checklist and a results record.
+- Research → Idea → Draft (#14): "Idea + draft" and "Save idea" from keyword research, outliers and the watch page carry the keyword, intent and dated public numbers into the draft; drafts show a step tracker with one next action and link to the Improve queue.
+- Outliers (#11, D-025): Research → Outliers finds recent videos well above their channel's or search sample's usual views per day, with raw numbers, sample size and time, bounded cost shown before the click, and one-click idea capture.
+- Aparat (#16, #17, D-026): feasibility matrix; opt-in "Aparat helpers" with a per-draft Aparat package (Aparat-specific checks, copy/download, open Aparat's upload page, status and link record) and Aparat tabs in the side panel. No Aparat login, upload or API use.
+- Database v4 (D-023): new local stores for the queue and experiments; backups include them.
+- CI: typecheck, unit tests, build and fixture e2e on pull requests.
+
 ## 0.5.3 — 2026-10-22 — persistent Google sign-in (D-020)
 - Stay signed in after a browser restart (D-020): optional "Sign-in server URL" in Settings → Google account and channels. With your own free Supabase function (source and guide in `server/`), sign-in uses Google's code flow with PKCE and keeps an encrypted refresh token per channel, so channels renew without any window, also after restarting Edge. The client secret stays in Supabase, never in TubeX. Without a server everything works as before.
 - Settings shows per channel whether it stays signed in or needs a click after a restart, and the last renewal error code.

@@ -7,9 +7,11 @@ Checked on **2026-11-18**. Re-check before widening the Aparat scope.
 | Source | Result |
 |---|---|
 | `https://www.aparat.com/etc/api` (the legacy web-service path used by community libraries) | Not readable by automated tools (robots.txt disallows). No public developer portal, published terms for API clients, scopes, OAuth or rate limits were found. |
+| `https://api.aparat.com/` | A documentation landing page was noted earlier (docs/NEXT.md); not readable by automated tools now (robots.txt) and no usable public spec, scopes or terms were verified. |
 | `https://support.aparat.com` (help center, e.g. article 94 "How do I upload a video?") | Blocked for automated reads (robots.txt). Owner can open it in a browser. |
 | Community wrappers: `mahdikhashan/aparat-python`, `meysam1366/LaravelAparat`, `im-javad/aparat-API`, `AparatPHP`, `m2sh/AparatVideoUploader`, `karim23657/AparatUploader` | Unofficial. Log in with **username + sha1(md5(password)) in the URL path** and get an `ltoken`, or reuse **browser cookies**; upload through an `uploadform` handshake. |
 | `apieco.ir/docs/aparat.html` | Third-party reseller proxy of the same legacy endpoints (search, video, profile, uploadform, delete, login) behind its own API key. Not Aparat. |
+| Project notes (docs/NEXT.md, 2026-11-18): Aparat help-center upload guidance | Description ≤ 2000 characters, 3–5 tags each ≤ 23 characters, cover 1920×1080, playlists, captions and scheduling in the native UI. Recorded earlier; re-check live. |
 | How-to guide (anzalweb.ir, "آموزش آپلود ویدیو در آپارات") | Upload form: title **required**, description optional, tags **required, at least 3**, category **required (one)**, thumbnail from a frame or an uploaded image, subtitle **SRT only**, "save, publish later" option. No published max lengths, tag limits or cover size. |
 
 ## Capability matrix
@@ -35,12 +37,12 @@ Checked on **2026-11-18**. Re-check before widening the Aparat scope.
 | Title required | – | how-to guide | error |
 | Category required | – | how-to guide | error |
 | Minimum tags | 3 | how-to guide | error |
-| Max tags | ~10 | inferred default | warning |
-| Tag length | ~30 chars | inferred default | warning |
+| Max tags | 5 | Aparat upload guidance (project notes, docs/NEXT.md of 2026-11-18) | error |
+| Tag length | 23 chars | Aparat upload guidance (same) | error |
+| Description length | 2000 chars | Aparat upload guidance (same) | error |
 | Title length | ~100 chars | inferred default | warning |
-| Description length | ~2000 chars | inferred default | warning |
 | Subtitle format | SRT | how-to guide | note |
-| Cover | 16:9 suggested | inferred (no published size) | note |
+| Cover | 1920×1080 (16:9) recommended | Aparat upload guidance (same) | note |
 
 Inferred values are never errors. YouTube limits are never applied to the Aparat package.
 
