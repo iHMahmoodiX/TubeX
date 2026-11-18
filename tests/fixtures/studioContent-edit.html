@@ -1,0 +1,32 @@
+<!doctype html>
+<!-- Synthetic fixture of a Short's Studio edit page with a "Related video" control (markup Inferred, not verified live). -->
+<html dark lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>Short details - YouTube Studio</title>
+    <style>
+      html { background: #f9f9f9; color: #0d0d0d; font: 14px Roboto, Arial, sans-serif; }
+      html[dark] { background: #1f1f1f; color: #fff; }
+      body { margin: 0; background: inherit; }
+      ytcp-video-metadata-editor { display: block; max-width: 860px; margin: 0 auto; padding: 24px; }
+      .box { border: 1px solid #606060; border-radius: 4px; padding: 8px 12px; margin-bottom: 16px; }
+      .box label { font-size: 12px; color: #aaa; display: block; }
+      #textbox { outline: none; min-height: 24px; }
+      #related-video { border: 1px solid #606060; border-radius: 4px; padding: 12px; }
+      #related-video h3 { margin: 0 0 4px; font-size: 15px; }
+      #trigger { display: inline-block; margin-top: 8px; padding: 8px 12px; border: 1px solid #606060; border-radius: 4px; cursor: pointer; }
+    </style>
+  </head>
+  <body>
+    <ytcp-app>
+      <ytcp-video-metadata-editor>
+        <ytcp-video-title><div id="title-textarea" class="box"><label>Title</label><div id="textbox" contenteditable="true">انتخاب سریع با چوب جادو در فتوشاپ</div></div></ytcp-video-title>
+        <div id="related-video">
+          <h3>Related video</h3>
+          <div class="sub">Link a video from your channel. Viewers see it in the Short.</div>
+          <ytcp-dropdown-trigger id="trigger" role="button">Add a related video</ytcp-dropdown-trigger>
+        </div>
+      </ytcp-video-metadata-editor>
+    </ytcp-app>
+  </body>
+</html>

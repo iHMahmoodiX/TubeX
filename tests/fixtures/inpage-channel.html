@@ -1,0 +1,41 @@
+<!doctype html>
+<!-- Synthetic fixture modelled on a 2026 YouTube channel page (Inferred): a hidden home ytd-browse and the visible
+     channel ytd-browse with yt-page-header-renderer. -->
+<html dark lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>Sample Channel - YouTube</title>
+    <link rel="canonical" href="https://www.youtube.com/channel/UCabcdefghijklmnopqrstuv" />
+    <meta itemprop="identifier" content="UCabcdefghijklmnopqrstuv" />
+    <style>
+      html { background: #fff; color: #0f0f0f; font: 14px Roboto, Arial, sans-serif; }
+      html[dark] { background: #0f0f0f; color: #f1f1f1; }
+      body { margin: 0; }
+      ytd-browse[hidden] { display: none; }
+      ytd-browse { display: block; max-width: 1280px; margin: 0 auto; padding: 16px 24px; }
+      .banner { height: 160px; border-radius: 16px; background: linear-gradient(90deg, #345, #523); }
+      yt-page-header-renderer { display: flex; gap: 16px; align-items: center; padding: 16px 0; }
+      .avatar { width: 120px; height: 120px; border-radius: 50%; background: #c66; }
+      h1 { margin: 0; font-size: 32px; }
+      .tabs { display: flex; gap: 24px; border-bottom: 1px solid #333; padding: 12px 0; }
+    </style>
+  </head>
+  <body>
+    <ytd-app>
+      <ytd-browse page-subtype="home" hidden><yt-page-header-renderer>old</yt-page-header-renderer></ytd-browse>
+      <ytd-browse page-subtype="channels">
+        <div id="page-header-container">
+          <div class="banner"></div>
+          <yt-page-header-renderer>
+            <div class="avatar"></div>
+            <div>
+              <h1>Sample Channel</h1>
+              <div>@sample-channel · 52.4K subscribers · 214 videos</div>
+            </div>
+          </yt-page-header-renderer>
+          <div class="tabs"><span>Home</span><span>Videos</span><span>Shorts</span><span>Playlists</span></div>
+        </div>
+      </ytd-browse>
+    </ytd-app>
+  </body>
+</html>

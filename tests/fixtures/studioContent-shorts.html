@@ -1,0 +1,78 @@
+<!doctype html>
+<!-- Synthetic fixture modelled on YouTube Studio > Content > Shorts with two rows selected (element names Inferred, not
+     verified live): tabs in tp-yt-paper-tabs, the selection bar ytcp-bulk-actions, rows ytcp-video-row. -->
+<html dark lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>Channel content - YouTube Studio</title>
+    <style>
+      html { background: #f9f9f9; color: #0d0d0d; font: 14px Roboto, Arial, sans-serif; }
+      html[dark] { background: #1f1f1f; color: #fff; }
+      body { margin: 0; background: inherit; }
+      #main { padding: 24px 32px; }
+      h1 { font-size: 32px; margin: 0 0 16px; }
+      #tabs-container { display: flex; align-items: center; border-bottom: 1px solid #3f3f3f; }
+      tp-yt-paper-tabs { display: flex; gap: 32px; }
+      tp-yt-paper-tab { padding: 12px 0; color: #aaa; font-weight: 500; }
+      tp-yt-paper-tab[aria-selected="true"] { color: #fff; border-bottom: 2px solid #fff; }
+      .filter { padding: 12px 0; color: #aaa; border-bottom: 1px solid #3f3f3f; }
+      ytcp-bulk-actions { display: flex; align-items: center; gap: 24px; padding: 12px 16px; background: #eee; color: #0d0d0d; }
+      ytcp-bulk-actions ytcp-select { padding: 8px 4px; }
+      ytcp-bulk-actions #close-button { margin-left: auto; cursor: pointer; }
+      ytcp-video-row { display: grid; grid-template-columns: 32px 120px minmax(0,1fr) 120px 140px 80px; gap: 16px; align-items: center; padding: 12px 16px; border-bottom: 1px solid #3f3f3f; }
+      .thumb { display: grid; place-items: end; width: 116px; height: 64px; background: #2b3a8f; border-radius: 4px; color: #fff; font-size: 12px; padding: 2px 4px; box-sizing: border-box; }
+      .box-ui { display: inline-grid; place-items: center; width: 16px; height: 16px; border: 2px solid #aaa; border-radius: 2px; font-size: 12px; }
+      a { color: inherit; text-decoration: none; }
+      .sub { color: #aaa; font-size: 12px; }
+      .num { text-align: end; }
+    </style>
+  </head>
+  <body>
+    <ytcp-app><div id="main"><ytcp-content-section>
+      <h1>Channel content</h1>
+      <div id="tabs-container">
+        <tp-yt-paper-tabs id="tabs" role="tablist">
+          <tp-yt-paper-tab role="tab">Videos</tp-yt-paper-tab><tp-yt-paper-tab role="tab">Shows</tp-yt-paper-tab><tp-yt-paper-tab role="tab" aria-selected="true">Shorts</tp-yt-paper-tab><tp-yt-paper-tab role="tab">Live</tp-yt-paper-tab><tp-yt-paper-tab role="tab">Posts</tp-yt-paper-tab><tp-yt-paper-tab role="tab">Playlists</tp-yt-paper-tab><tp-yt-paper-tab role="tab">Podcasts</tp-yt-paper-tab>
+        </tp-yt-paper-tabs>
+      </div>
+      <div class="filter">Filter</div>
+      <ytcp-bulk-actions>
+        <span id="selection-count">2 selected</span>
+        <ytcp-select id="edit">Edit ▾</ytcp-select>
+        <ytcp-select id="add-to-playlist">Add to playlist ▾</ytcp-select>
+        <ytcp-select id="more-actions">More actions ▾</ytcp-select>
+        <ytcp-icon-button id="close-button" aria-label="Close">✕</ytcp-icon-button>
+      </ytcp-bulk-actions>
+      <ytcp-video-row>
+        <ytcp-checkbox-lit id="row-checkbox" role="checkbox" aria-checked="true"><span class="box-ui">✓</span></ytcp-checkbox-lit>
+        <a id="thumbnail-anchor" href="/video/aaaaaaaaaa1/edit"><span class="thumb">0:33</span></a>
+        <div class="meta"><a id="video-title" href="/video/aaaaaaaaaa1/edit" dir="auto">سرویس جدید XpertAI، خیلی کاربردی</a><div class="sub">Add description</div></div>
+        <div class="cell">Public</div><div class="cell">Dec 30, 2025</div><div class="cell num">877</div>
+      </ytcp-video-row>
+      <ytcp-video-row>
+        <ytcp-checkbox-lit id="row-checkbox" role="checkbox" aria-checked="true"><span class="box-ui">✓</span></ytcp-checkbox-lit>
+        <a id="thumbnail-anchor" href="/video/bbbbbbbbbb2/edit"><span class="thumb">1:05</span></a>
+        <div class="meta"><a id="video-title" href="/video/bbbbbbbbbb2/edit" dir="auto">انتخاب سریع با چوب جادو در فتوشاپ</a><div class="sub">Add description</div></div>
+        <div class="cell">Public</div><div class="cell">Dec 30, 2025</div><div class="cell num">877</div>
+      </ytcp-video-row>
+      <ytcp-video-row>
+        <ytcp-checkbox-lit id="row-checkbox" role="checkbox" aria-checked="false"><span class="box-ui"></span></ytcp-checkbox-lit>
+        <a id="thumbnail-anchor" href="/video/cccccccccc3/edit"><span class="thumb">1:04</span></a>
+        <div class="meta"><a id="video-title" href="/video/cccccccccc3/edit" dir="auto">آموزش دقیق کردن دورگیری در فتوشاپ - Refine Edge</a><div class="sub">Add description</div></div>
+        <div class="cell">Public</div><div class="cell">Dec 30, 2025</div><div class="cell num">877</div>
+      </ytcp-video-row>
+      <ytcp-video-row>
+        <ytcp-checkbox-lit id="row-checkbox" role="checkbox" aria-checked="false"><span class="box-ui"></span></ytcp-checkbox-lit>
+        <a id="thumbnail-anchor" href="/video/dddddddddd4/edit"><span class="thumb">1:24</span></a>
+        <div class="meta"><a id="video-title" href="/video/dddddddddd4/edit" dir="auto">انتخاب هوشمند با ابزار Quick Selection</a><div class="sub">Add description</div></div>
+        <div class="cell">Public</div><div class="cell">Dec 30, 2025</div><div class="cell num">877</div>
+      </ytcp-video-row>
+      <ytcp-video-row>
+        <ytcp-checkbox-lit id="row-checkbox" role="checkbox" aria-checked="false"><span class="box-ui"></span></ytcp-checkbox-lit>
+        <a id="thumbnail-anchor" href="/video/eeeeeeeeee5/edit"><span class="thumb">0:39</span></a>
+        <div class="meta"><a id="video-title" href="/video/eeeeeeeeee5/edit" dir="auto">طبیعی کردن نور ها در فتوشاپ با فیلتر Radial Blur</a><div class="sub">Add description</div></div>
+        <div class="cell">Public</div><div class="cell">Dec 30, 2025</div><div class="cell num">877</div>
+      </ytcp-video-row>
+    </ytcp-content-section></div></ytcp-app>
+  </body>
+</html>

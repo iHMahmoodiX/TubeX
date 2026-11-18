@@ -1,0 +1,6 @@
+# Minimal Supabase CLI config for the optional TubeX sign-in server (D-020). Only the edge function is used.
+project_id = "tubex-signin"
+
+[functions.google-token]
+# The extension has no Supabase session; the function checks origin, payload and PKCE itself.
+verify_jwt = false

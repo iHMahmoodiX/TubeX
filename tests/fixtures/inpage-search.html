@@ -1,0 +1,73 @@
+<!doctype html>
+<!-- Synthetic fixture modelled on the 2026 YouTube search results page (Inferred). Mixes ytd-video-renderer and the
+     newer yt-lockup-view-model, plus an ad slot that must be skipped. -->
+<html dark lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>figma tutorial - YouTube</title>
+    <style>
+      html { background: #fff; color: #0f0f0f; font: 14px Roboto, Arial, sans-serif; }
+      html[dark] { background: #0f0f0f; color: #f1f1f1; }
+      body { margin: 0; }
+      ytd-masthead { display: flex; align-items: center; justify-content: space-between; height: 56px; padding: 0 16px; }
+      #end, #buttons { display: flex; align-items: center; gap: 8px; }
+      .yt-icon { width: 40px; height: 40px; display: grid; place-items: center; }
+      ytd-search { display: block; max-width: 1100px; margin: 0 auto; padding: 16px 24px; }
+      ytd-video-renderer, yt-lockup-view-model, ytd-ad-slot-renderer { display: flex; gap: 16px; margin-bottom: 16px; }
+      .thumb { width: 360px; aspect-ratio: 16/9; background: #333; border-radius: 12px; flex: none; }
+      a { color: inherit; text-decoration: none; }
+      #video-title, .yt-lockup-metadata-view-model-wiz__title { font-size: 18px; display: block; margin: 4px 0; }
+      #metadata-line, yt-content-metadata-view-model { color: #aaa; font-size: 12px; display: block; }
+    </style>
+  </head>
+  <body>
+    <ytd-app>
+      <ytd-masthead>
+        <div id="start">▶ YouTube</div>
+        <div id="end"><div id="buttons"><span class="yt-icon">＋</span><span class="yt-icon">🔔</span></div></div>
+      </ytd-masthead>
+      <ytd-search>
+        <div id="primary">
+          <ytd-section-list-renderer>
+            <div id="contents">
+              <ytd-item-section-renderer>
+                <div id="contents">
+                  <ytd-video-renderer>
+                    <a id="thumbnail" href="/watch?v=aaaaaaaaaa1"><div class="thumb"></div></a>
+                    <div id="meta">
+                      <a id="video-title" href="/watch?v=aaaaaaaaaa1&amp;pp=xyz">Figma tutorial for beginners 2026</a>
+                      <ytd-video-meta-block><div id="metadata-line"><span>1.2M views</span> · <span>1 year ago</span></div></ytd-video-meta-block>
+                    </div>
+                  </ytd-video-renderer>
+                  <ytd-ad-slot-renderer>
+                    <ytd-video-renderer>
+                      <a id="video-title" href="/watch?v=adadadadad1">Sponsored</a>
+                      <div id="metadata-line">Ad</div>
+                    </ytd-video-renderer>
+                  </ytd-ad-slot-renderer>
+                  <yt-lockup-view-model>
+                    <a href="/watch?v=bbbbbbbbbb2"><div class="thumb"></div></a>
+                    <div>
+                      <a class="yt-lockup-metadata-view-model-wiz__title" href="/watch?v=bbbbbbbbbb2">Auto layout in 10 minutes</a>
+                      <yt-content-metadata-view-model>48K views · 3 weeks ago</yt-content-metadata-view-model>
+                    </div>
+                  </yt-lockup-view-model>
+                  <ytd-video-renderer>
+                    <a id="thumbnail" href="/shorts/cccccccccc3"><div class="thumb"></div></a>
+                    <div id="meta">
+                      <a id="video-title" href="/shorts/cccccccccc3">Figma shortcut you didn't know #shorts</a>
+                      <ytd-video-meta-block><div id="metadata-line"><span>300K views</span> · <span>2 days ago</span></div></ytd-video-meta-block>
+                    </div>
+                  </ytd-video-renderer>
+                  <ytd-video-renderer>
+                    <div id="meta"><span>Channel shelf without a video link</span><div id="metadata-line">—</div></div>
+                  </ytd-video-renderer>
+                </div>
+              </ytd-item-section-renderer>
+            </div>
+          </ytd-section-list-renderer>
+        </div>
+      </ytd-search>
+    </ytd-app>
+  </body>
+</html>

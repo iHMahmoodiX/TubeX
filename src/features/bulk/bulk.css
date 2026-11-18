@@ -1,0 +1,109 @@
+/* Bulk find & replace (route 'bulk'). Scoped 'fr-' classes on top of base.css and engage.css; logical
+   properties only; tokens follow the light/dark theme. See DESIGN.md. */
+
+/* Scope pills */
+.fr-scope { display: flex; gap: var(--space-2); flex-wrap: wrap; }
+.fr-scope-btn { all: unset; box-sizing: border-box; cursor: pointer; display: inline-flex; align-items: center; gap: var(--space-2); min-height: 40px; padding-inline: var(--space-4); border-radius: var(--pill); background: var(--surface-2); color: var(--text); font-weight: 700; max-width: 100%; min-width: 0; transition: background 120ms; }
+.fr-scope-btn:hover { background: var(--hover); }
+.fr-scope-btn:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
+.fr-scope-btn[aria-pressed='true'] { background: var(--text); color: var(--bg); }
+.fr-scope-btn:disabled { cursor: not-allowed; opacity: 0.5; font-weight: 400; }
+.fr-scope-btn .icon { width: 18px; height: 18px; flex: none; }
+.fr-scope-btn small { color: inherit; opacity: 0.65; font-weight: 400; font-variant-numeric: tabular-nums; }
+.fr-sep { border: 0; border-block-start: 1px solid var(--border); margin: 0; }
+
+/* Filters */
+.fr-filters { background: var(--surface-2); border-radius: var(--radius-m); padding: var(--space-3); }
+.fr-filter-grid { display: grid; gap: var(--space-2); grid-template-columns: minmax(200px, 2fr) repeat(3, minmax(130px, 1fr)); align-items: end; }
+@media (max-width: 760px) { .fr-filter-grid { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); } .fr-filter-grid > :first-child { grid-column: 1 / -1; } }
+.fr-date { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.fr-date .input, .fr-date .select { min-height: 36px; padding-block: 4px; }
+.fr-date .icon { width: 14px; height: 14px; vertical-align: -2px; }
+
+/* Find form */
+/* The app font draws Latin digits as Persian ones. Find/replace input and diffs must show the exact
+   characters (10 vs ۱۰ is a real difference here), so they use a system stack with true digits. */
+.fr-mono, .fr-diff { font-family: Tahoma, 'Segoe UI', Roboto, Arial, sans-serif; }
+.fr-mono { unicode-bidi: plaintext; }
+.fr-toggle .icon { width: 14px; height: 14px; }
+.fr-bad { color: var(--danger); }
+.fr-good { color: var(--accent-text); }
+.fr-warn { color: var(--warning); }
+.fr-bad .icon, .fr-good .icon { width: 14px; height: 14px; vertical-align: -2px; }
+
+/* Preview rows: a track list of items, each with its diff */
+.fr-stats { grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); }
+.fr-rows { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 2px; max-height: 70vh; overflow-y: auto; overscroll-behavior: contain; border-radius: var(--radius-m); }
+.fr-row { padding: var(--space-2) var(--space-3); border-radius: var(--radius-m); display: flex; flex-direction: column; gap: var(--space-2); min-width: 0; }
+.fr-row:hover { background: var(--hover); }
+.fr-row[data-off='true'] { opacity: 0.5; }
+.fr-row-head { display: flex; align-items: center; gap: var(--space-3); min-width: 0; }
+.fr-row-head > input { width: 16px; height: 16px; accent-color: var(--accent); margin: 0; flex: none; }
+.fr-row-body { padding-inline-start: calc(16px + var(--space-3)); display: flex; flex-direction: column; gap: var(--space-2); min-width: 0; }
+.fr-thumb-icon { display: grid; place-items: center; color: var(--text-3); flex: none; }
+.fr-expand { flex: none; }
+.fr-expand .icon { transition: transform 150ms; }
+.fr-expand[aria-expanded='true'] .icon { transform: rotate(180deg); }
+.fr-row .badge, .fr-res .badge { font-size: 11px; }
+
+/* Diff */
+.fr-diff { display: flex; flex-direction: column; gap: 1px; min-width: 0; background: var(--bg); border-radius: var(--radius-s); padding: var(--space-2); }
+.fr-diff-label { font-size: var(--text-xs); color: var(--text-3); font-weight: 700; margin-block-end: 2px; }
+.fr-line { font-size: var(--text-s); line-height: 1.7; white-space: pre-wrap; overflow-wrap: anywhere; padding-inline: 8px 8px; border-radius: var(--radius-xs); unicode-bidi: plaintext; color: var(--text-2); }
+.fr-del { background: var(--danger-soft); color: var(--text); }
+.fr-add { background: var(--success-soft); color: var(--text); }
+.fr-sign { display: inline-block; inline-size: 1.2em; font-weight: 800; user-select: none; }
+.fr-del .fr-sign { color: var(--danger); }
+.fr-add .fr-sign { color: var(--success); }
+.fr-line mark { color: inherit; border-radius: 3px; padding-inline: 1px; }
+.fr-del mark { background: rgb(243 114 127 / 0.4); text-decoration: line-through; text-decoration-thickness: 1px; }
+.fr-add mark { background: rgb(30 215 96 / 0.35); }
+.fr-gap { all: unset; box-sizing: border-box; cursor: pointer; font-size: var(--text-xs); color: var(--text-3); padding: 2px 8px; border-radius: var(--pill); align-self: flex-start; }
+.fr-gap:hover { color: var(--text); background: var(--hover); }
+.fr-gap:focus-visible { outline: 2px solid var(--focus); }
+.fr-tags { display: flex; flex-wrap: wrap; gap: 4px; align-items: center; }
+.fr-tags del, .fr-tags ins { font-size: var(--text-xs); padding: 2px 10px; border-radius: var(--pill); text-decoration: none; unicode-bidi: isolate; }
+.fr-tags del { background: var(--danger-soft); text-decoration: line-through; }
+.fr-tags ins { background: var(--success-soft); }
+
+.fr-skipped { background: var(--surface-2); border-radius: var(--radius-m); padding: var(--space-2) var(--space-3); }
+.fr-skipped > summary { cursor: pointer; font-weight: 700; color: var(--warning); display: flex; gap: var(--space-2); align-items: center; padding-block: 4px; }
+.fr-skipped > summary .icon { width: 16px; height: 16px; }
+
+/* Run */
+.fr-plan { display: flex; gap: var(--space-3); align-items: flex-start; flex-wrap: wrap; background: var(--surface-2); border-radius: var(--radius-m); padding: var(--space-3); }
+
+/* Jobs */
+.fr-job { background: var(--surface); border-radius: var(--radius-m); padding: var(--space-3) var(--space-4); display: flex; flex-direction: column; gap: var(--space-3); min-width: 0; }
+.fr-job-head { display: flex; align-items: center; gap: var(--space-3); min-width: 0; }
+.fr-job-head h3 { font-size: var(--text-l); font-weight: 700; margin: 0; }
+.fr-dot { inline-size: 10px; block-size: 10px; border-radius: 50%; flex: none; background: var(--text-3); }
+.fr-dot-running { background: var(--accent); box-shadow: 0 0 0 4px var(--accent-soft); }
+.fr-dot-waiting { background: var(--info); }
+.fr-dot-stopped { background: var(--warning); }
+.fr-dot-done { background: var(--accent); }
+@media (prefers-reduced-motion: no-preference) { .fr-dot-running { animation: fr-pulse 1.6s ease-in-out infinite; } }
+@keyframes fr-pulse { 50% { box-shadow: 0 0 0 7px transparent; } }
+.fr-results { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; max-height: 60vh; overflow-y: auto; overscroll-behavior: contain; }
+.fr-res { padding: 6px var(--space-2); border-radius: var(--radius-m); display: flex; flex-direction: column; gap: var(--space-2); min-width: 0; }
+.fr-res:hover { background: var(--hover); }
+.fr-res-head { display: grid; grid-template-columns: 32px 20px minmax(0, 1fr) auto; gap: var(--space-2); align-items: center; }
+.fr-res-head .track-n { color: var(--text-3); text-align: center; font-size: var(--text-s); }
+.fr-res-icon { display: grid; place-items: center; color: var(--text-3); }
+.fr-res-icon .icon { width: 16px; height: 16px; }
+.fr-res-written, .fr-res-restored { color: var(--accent-text); }
+.fr-res-failed { color: var(--danger); }
+.fr-res-conflict { color: var(--warning); }
+.fr-res-title { color: var(--text); text-decoration: none; font-weight: 700; }
+.fr-res-title:hover { text-decoration: underline; }
+.fr-res-body { padding-inline-start: calc(52px + var(--space-2)); }
+.fr-legacy > summary { cursor: pointer; }
+.link-btn { all: unset; cursor: pointer; color: var(--text); font-weight: 700; text-decoration: underline; text-underline-offset: 2px; }
+.link-btn:focus-visible { outline: 2px solid var(--focus); border-radius: 2px; }
+.link-btn:disabled { cursor: default; opacity: 0.6; }
+
+@media (max-width: 600px) {
+  .fr-row-body, .fr-res-body { padding-inline-start: 0; }
+  .fr-res-head { grid-template-columns: 24px 18px minmax(0, 1fr); }
+  .fr-res-head > .row { grid-column: 3; }
+}

@@ -1,0 +1,26 @@
+# Testing
+
+| Command | Covers | Last result |
+|---|---|---|
+| `npm run typecheck` | TypeScript strict (includes the sign-in server source in `server/`) | Pass, 2026-10-22 |
+| `npm test` | 486 unit tests (persistent sign-in, D-020, adds PKCE (RFC 7636 vector), code-flow URL, server answers and URL validation, encrypted refresh-token store with a non-extractable key, renewal through the server after a restart, invalid_grant / network / misconfigured server, fallback to the token flow, channel check, Reconnect all, revoke on disconnect, backups without tokens, and the Supabase function handler with a fake fetch: CORS, origin, size, PKCE/redirect checks, sanitized Google errors, revoke); (find & replace on YouTube adds Persian-aware matching, operations, limits, writable snippet, diff, quota plan, and the background job runner: quota stop, backoff, next-day resume, idempotent re-runs, lost responses, undo conflicts); (0.5.1 adds Reporting API, tolerant chapters and page signals, Studio menu placement, auth renewal, backup format 2); (0.5.0 adds Studio content/COPPA, tag tools, channel insights, launchers/Videolytics: domain logic, RPC validation, DOM helpers on fixtures): background RPC/scheduler/snapshots, reports scoring (health, audit, retention, best time, click magnet, opportunities, ad-friendliness), SEO (keyword score, language detection, rank parsing, leaderboard), engage (comment filters, moderation, playlists planning, schedule diff, writes with mocked fetch, thumbnails, shorts), in-page DOM readers on fixtures and pure logic, core readiness score; plus Google auth/writes, bulk edit, research, chapters, AI, YouTube client, settings, DB upgrades, Persian text, URL context, metadata, backup, repository, prefs, i18n parity | 486/486 pass, 2026-10-22 |
+| `npm run build` | WXT production build | Pass, 2026-10-22 |
+| `npm run e2e` | Loads the real unpacked build in Chromium; YouTube URLs served from local fixtures | 16/16 steps pass, 2026-10-22, Chromium 141.0.7390.37 headless, Linux |
+
+## e2e steps (tests/e2e/smoke.mjs)
+Persian RTL default and local channel profile; content script injects nothing and YouTube DOM is unchanged; popup opens the real side panel; panel detects the video from page DOM; one-click capture with canonical source link; draft from idea with Persian autosave, checks and preview; instant language/theme switch across pages; navigation to another video keeps the draft and warns about context; unsupported page fallback; 320 px panel and workspace without overflow; keyboard focus order and focus on route change; backup export contents; invalid JSON and unsafe record rejection; merge import with undo available; text typed just before browser quit survives restart; bulk find/replace preview, apply and reverse on drafts; research/competitors/comments/connection settings render, canned reply with markup, Gemini preset fills URL and model; My Channel asks to sign in and the live bulk scope is disabled while signed out.
+
+Screenshots are written to `tests/e2e/artifacts/` (git-ignored).
+
+## Not yet verified
+- Live YouTube DOM (selectors are checked only against a synthetic fixture), Microsoft Edge, Windows build, headed Chrome stable.
+- Screen-reader pass, 200% zoom, measured contrast.
+- Live YouTube Data API, Ollama and Gemini calls (mocked in unit tests; e2e cannot click the browser's host-permission prompt).
+- Persistent sign-in (D-020) live: the deployed Supabase function, Google's code exchange and refresh with the real client, Brand Account refresh tokens on Edge, and the 7-day expiry in Testing mode. The function is unit-tested with a fake fetch only; it has not been run under Deno.
+
+## Running e2e on Windows
+Install Chrome or Chromium and set `CHROMIUM_PATH` to its executable, `npm run build`, then `npm run e2e`. `HEADED=1` shows the browser.
+
+## Design review screenshots
+`node tests/e2e/shots.mjs <outDir> <route…>` (workspace/side panel/popup; env LANG_UI, THEME, WIDTH, PAGE, FULL) and `node tests/e2e/inpage-shots.mjs <outDir> [scenario…]` (in-page islands on synthetic YouTube/Studio fixtures with mocked APIs). Per-area in-page screens (0.5.0): `node tests/e2e/{studioContent,tagTools,channelInsights,launchers}-shots.mjs <outDir>`; launcher cost: `node tests/e2e/launchers-perf.mjs [runs]`. Find & replace on YouTube (in-memory Data API, 12 videos, real background job: quota wait, raise cap, finish, undo with one conflict, 420 px overflow check): `node tests/e2e/bulk-shots.mjs <outDir>` (env LANG_UI, THEME, WIDTH). Not part of the gate.
+Sign-in screens (reconnect, persistent sign-in server, per-channel status, backups): `node tests/e2e/auth-shots.mjs <outDir>` (env LANG_UI, THEME). Not part of the gate.

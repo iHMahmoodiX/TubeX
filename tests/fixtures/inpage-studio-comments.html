@@ -1,0 +1,58 @@
+<!doctype html>
+<!-- Synthetic fixture modelled on the 2026 YouTube Studio comments page (Inferred). The first thread has its reply box
+     open; the second needs its Reply button clicked first. -->
+<html dark lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>Channel comments - YouTube Studio</title>
+    <style>
+      html { background: #f9f9f9; color: #0d0d0d; font: 14px Roboto, Arial, sans-serif; }
+      html[dark] { background: #1f1f1f; color: #fff; }
+      body { margin: 0; background: inherit; padding: 24px; }
+      ytcp-comment-thread { display: block; max-width: 900px; padding: 16px 0; border-bottom: 1px solid #3f3f3f; }
+      #author-text { font-weight: 500; font-size: 13px; }
+      #content-text { margin: 4px 0 8px; }
+      ytcp-comment-action-buttons { display: inline-flex; gap: 8px; vertical-align: middle; }
+      ytcp-comment-action-buttons button { background: transparent; color: inherit; border: 0; padding: 6px 10px; border-radius: 16px; }
+      ytcp-commentbox { display: block; margin-top: 8px; }
+      #contenteditable-textarea { border-bottom: 1px solid #aaa; min-height: 24px; outline: none; }
+    </style>
+  </head>
+  <body>
+    <ytcp-app>
+      <div id="threads">
+        <ytcp-comment-thread>
+          <ytcp-comment>
+            <a id="author-text" href="/channel/UCxxxxxxxxxxxxxxxxxxxxxx">@sara_designs</a>
+            <div id="content-text">This helped me a lot, thanks! When is part 2?</div>
+            <div id="toolbar">
+              <ytcp-comment-action-buttons><button id="reply-button" aria-label="Reply">Reply</button><button>♥</button></ytcp-comment-action-buttons>
+            </div>
+          </ytcp-comment>
+          <ytcp-commentbox><div id="contenteditable-textarea" contenteditable="true"></div></ytcp-commentbox>
+        </ytcp-comment-thread>
+        <ytcp-comment-thread>
+          <ytcp-comment>
+            <a id="author-text" href="/channel/UCyyyyyyyyyyyyyyyyyyyyyy">Ali Rezaei</a>
+            <div id="content-text">ممنون از آموزش خوبتون</div>
+            <div id="toolbar">
+              <ytcp-comment-action-buttons><button id="reply-button" aria-label="Reply">Reply</button><button>♥</button></ytcp-comment-action-buttons>
+            </div>
+          </ytcp-comment>
+        </ytcp-comment-thread>
+      </div>
+    </ytcp-app>
+    <script>
+      // Opens a reply box like Studio does (fixture-only behaviour; content scripts never run page scripts).
+      document.addEventListener('click', (e) => {
+        const b = e.target.closest && e.target.closest('#reply-button');
+        if (!b) return;
+        const th = b.closest('ytcp-comment-thread');
+        if (th.querySelector('ytcp-commentbox')) return;
+        const box = document.createElement('ytcp-commentbox');
+        box.innerHTML = '<div id="contenteditable-textarea" contenteditable="true"></div>';
+        th.append(box);
+      });
+    </script>
+  </body>
+</html>
