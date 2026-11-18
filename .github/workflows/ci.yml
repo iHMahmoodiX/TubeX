@@ -1,0 +1,36 @@
+name: CI
+
+# Checks every pull request and branch push: typecheck, unit tests, build, then the fixture e2e
+# (real unpacked build in headless Chromium, YouTube pages served from local fixtures). No release, no secrets.
+on:
+  pull_request:
+  push:
+    branches-ignore: [main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  check:
+    # Pinned: ubuntu-latest moved to 26.04, which Playwright 1.56 cannot install Chromium deps for.
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - run: npm ci
+      - run: npm run check
+      - name: Install Chromium for the fixture e2e
+        run: npx -y playwright@1.56.1 install --with-deps chromium
+      - name: Fixture e2e
+        shell: bash
+        run: |
+          export CHROMIUM_PATH="$(ls -d ~/.cache/ms-playwright/chromium-*/chrome-linux*/chrome | head -1)"
+          npm run e2e

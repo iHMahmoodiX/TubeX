@@ -12,7 +12,7 @@ import { chromium } from 'playwright-core';
 
 process.env.PW_EXPERIMENTAL_SERVICE_WORKER_NETWORK_EVENTS = '1';
 const SRC = resolve(process.env.EXT_DIR ?? '.output/chrome-mv3');
-const EXE = process.env.CHROMIUM_PATH ?? '/opt/pw-browsers/chromium-1194/chrome-linux/chrome';
+const EXE = process.env.CHROMIUM_PATH ?? '/opt/pw-browsers/chromium-1243/chrome-linux64/chrome';
 const [outDir = '/tmp/tubex-inpage-shots', ...asked] = process.argv.slice(2);
 mkdirSync(outDir, { recursive: true });
 const width = Number(process.env.WIDTH ?? 1280);
@@ -80,10 +80,11 @@ const SCENES = {
   channel: { url: 'https://www.youtube.com/@sample-channel', fixture: 'inpage-channel.html', host: 'tubex-channel' },
   masthead: { url: 'https://www.youtube.com/watch?v=dQw4w9WgXcQ', fixture: 'inpage-watch.html', host: 'tubex-masthead', click: '.tx-round' },
   'studio-editor': { url: 'https://studio.youtube.com/video/dQw4w9WgXcQ/edit', fixture: 'inpage-studio-editor.html', host: 'tubex-studio-editor' },
-  'studio-upload': { url: 'https://studio.youtube.com/channel/UCownownownownownownown1/videos/upload', fixture: 'inpage-studio-upload.html', host: 'tubex-studio-upload' },
+  'studio-upload': { url: 'https://studio.youtube.com/channel/UCownownownownownownown1/videos/upload', fixture: 'inpage-studio-upload.html', host: 'tubex-studio-upload', click: '.tx-upload-btn' },
+  'studio-upload-closed': { url: 'https://studio.youtube.com/channel/UCownownownownownownown1/videos/upload', fixture: 'inpage-studio-upload.html', host: 'tubex-studio-upload' },
   'studio-comments': { url: 'https://studio.youtube.com/channel/UCownownownownownownown1/comments/inbox', fixture: 'inpage-studio-comments.html', host: 'tubex-reply', comments: true },
 };
-const names = asked.length ? asked : ['watch', 'watch-overview', 'watch-tags', 'watch-seo', 'watch-actions', 'search', 'channel', 'masthead', 'studio-editor', 'studio-upload', 'studio-comments'];
+const names = asked.length ? asked : ['watch', 'watch-overview', 'watch-tags', 'watch-seo', 'watch-actions', 'search', 'channel', 'masthead', 'studio-editor', 'studio-upload', 'studio-upload-closed', 'studio-comments'];
 
 const ctx = await chromium.launchPersistentContext(mkdtempSync(join(tmpdir(), 'tubex-inpage-')), {
   executablePath: EXE,

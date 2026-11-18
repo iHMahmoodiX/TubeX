@@ -176,5 +176,14 @@
 .tx-reply:focus-visible { outline: 2px solid var(--focus); outline-offset: -2px; }
 
 /* Studio cards sit inside Studio's own layout */
-.tx-studio, .tx-upload { margin-block: 0 16px; }
+.tx-studio { margin-block: 0 16px; }
+/* Upload dialog: a compact pill beside Studio's "Reuse details"; the panel floats and never reflows the dialog. */
+.tx-upload-btn { all: unset; box-sizing: border-box; cursor: pointer; display: inline-flex; align-items: center; gap: 6px; height: 36px; padding-inline: 10px 14px; border-radius: 9999px; font-size: 13px; font-weight: 600; white-space: nowrap; color: var(--text); background: var(--surface-2); }
+.tx-upload-btn:hover { background: var(--hover); }
+.tx-upload-btn:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
+.tx-upload-btn[aria-expanded='true'] { background: var(--accent); color: #000; }
+.tx-upload-btn i { width: 18px; height: 18px; border-radius: 50%; background: var(--accent); color: #000; display: grid; place-items: center; }
+.tx-upload-btn[aria-expanded='true'] i { background: #000; color: var(--accent); }
+.tx-upload-btn i .icon { width: 10px; height: 10px; }
+.tx-upload-pop { max-height: min(80vh, 520px); }
 .tx-studio .tx-panel { max-height: 420px; overflow: auto; }

@@ -238,8 +238,17 @@ export function isDue(lastCheckedAt: string | undefined, everyMs: number, now = 
   return Number.isNaN(t) || now - t >= everyMs;
 }
 
-export const SEARCH_COST = 100;
-export const RANK_CHECK_COST = SEARCH_COST + 1;
+/** search.list calls (own daily bucket, default 100) per search; not pool units. */
+export const SEARCH_COST = 1;
+/** One search call plus one videos.list unit. */
+export const RANK_CHECK_COST = SEARCH_COST;
+
+/** search.list calls the background may still make today, keeping a reserve for the owner's own searches. */
+export function spendableSearches(used: number, dailyCap: number): number {
+  const cap = dailyCap > 0 ? dailyCap : 100;
+  const reserve = Math.max(5, Math.round(cap * 0.2));
+  return Math.max(0, cap - used - reserve);
+}
 
 /** Units the background may still spend today, keeping a reserve for the owner's own actions. */
 export function spendable(ytUnitsUsed: number, dailyCap: number): number {

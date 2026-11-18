@@ -7,12 +7,7 @@ import { ErrorNotice } from '../connections/ErrorNotice';
 import { useIntegrations } from '../connections/useConnections';
 import { useAiTask } from './useAiTask';
 import { ThumbnailMaker } from './ThumbnailMaker';
-
-const SIZES = [
-  { key: 'thumb.size.search', width: 360 },
-  { key: 'thumb.size.sidebar', width: 168 },
-  { key: 'thumb.size.tiny', width: 120 },
-] as const;
+import { ContextPreview } from '../thumbs/ContextPreview';
 
 /** Loads an image file and re-encodes it as a JPEG no larger than 1280×720. */
 export async function loadThumbnail(file: File): Promise<{ dataUrl: string; width: number; height: number }> {
@@ -31,7 +26,6 @@ export function ThumbnailCheck({ title, language }: { title: string; language: '
   const { ai } = useIntegrations();
   const { run, cancel, running, results, error } = useAiTask();
   const [img, setImg] = useState<{ dataUrl: string; width: number; height: number } | null>(null);
-  const [dark, setDark] = useState(false);
   const [loadError, setLoadError] = useState(false);
   const out = results.thumbnail?.output;
 
@@ -68,33 +62,7 @@ export function ThumbnailCheck({ title, language }: { title: string; language: '
       {img && (
         <>
           {Math.abs(img.width / img.height - 16 / 9) > 0.02 && <Notice tone="warning">{t('thumb.ratio')}</Notice>}
-          <label className="check">
-            <input type="checkbox" checked={dark} onChange={(e) => setDark(e.target.checked)} />
-            <span>{t('thumb.dark')}</span>
-          </label>
-          <div className="stack-s" style={{ background: dark ? '#0f0f0f' : '#ffffff', color: dark ? '#f1f1f1' : '#0f0f0f', padding: 12, borderRadius: 10 }}>
-            {SIZES.map((s) => (
-              <figure key={s.key} style={{ margin: 0, display: 'flex', gap: 10, alignItems: 'flex-start' }}>
-                <div style={{ position: 'relative', width: s.width, flex: 'none' }}>
-                  <img src={img.dataUrl} alt="" style={{ width: s.width, aspectRatio: '16 / 9', objectFit: 'cover', borderRadius: s.width > 200 ? 12 : 8, display: 'block' }} />
-                  <span
-                    aria-hidden="true"
-                    style={{ position: 'absolute', insetInlineEnd: 4, insetBlockEnd: 4, background: 'rgb(0 0 0 / .8)', color: '#fff', fontSize: 11, padding: '0 4px', borderRadius: 4, direction: 'ltr' }}
-                  >
-                    12:34
-                  </span>
-                </div>
-                <figcaption className="stack-s" style={{ minWidth: 0 }}>
-                  <span className="yt-title" dir="auto" lang={language} style={{ fontSize: s.width > 200 ? 16 : 13 }}>
-                    {title || t('draft.untitled')}
-                  </span>
-                  <span className="small" style={{ opacity: 0.7 }}>
-                    {t(s.key)}
-                  </span>
-                </figcaption>
-              </figure>
-            ))}
-          </div>
+          <ContextPreview candidates={[{ key: 'draft', label: t('tctx.yours'), title, thumb: img.dataUrl }]} language={language} defaultQuery={title} />
           {ai.enabled && (
             <div className="row">
               <Button size="s" variant="primary" disabled={!!running} onClick={() => void run('thumbnail', { language, title }, {}, { imageDataUrl: img.dataUrl })}>

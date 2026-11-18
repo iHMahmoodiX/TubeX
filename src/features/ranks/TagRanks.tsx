@@ -49,7 +49,7 @@ export function TagRanks({ canRead }: { canRead: boolean }) {
   }, [picked, results]);
 
   const units = uncached.length * SEARCH_COST;
-  const cap = youtube.dailyUnitCap || 10_000;
+  const cap = youtube.dailySearchCap || 100;
   const run = async () => {
     if (!v) return;
     const c = new AbortController();
@@ -154,7 +154,7 @@ export function TagRanks({ canRead }: { canRead: boolean }) {
               <ConfirmButton
                 danger={false}
                 label={t('seo.tags.check', { n: picked.length })}
-                question={units ? t('seo.tags.confirm', { n: picked.length, units: f.int(units), left: f.int(Math.max(0, cap - usage.ytUnits)) }) : t('seo.tags.confirmFree', { n: picked.length })}
+                question={units ? t('seo.tags.confirm', { n: picked.length, units: f.int(units), left: f.int(Math.max(0, cap - usage.ytSearches)) }) : t('seo.tags.confirmFree', { n: picked.length })}
                 confirmLabel={t('seo.tags.checkConfirm')}
                 onConfirm={run}
               />

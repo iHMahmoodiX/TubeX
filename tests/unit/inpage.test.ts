@@ -199,7 +199,7 @@ describe('results from other areas', () => {
       { tag: 'a', rank: 12 },
       { tag: 'b', rank: 2 },
     ]);
-    expect(tagRankCost(5)).toBe(500);
+    expect(tagRankCost(5)).toBe(5);
   });
   it('normalizes keyword scores', () => {
     expect(normalizeKeywordScore({ score: 140, parts: { demand: 70, competition: 'x' }, sampleSize: 25, fetchedAt: 'T' })).toEqual({ score: 100, parts: [{ key: 'demand', value: 70 }], sampleSize: 25, fetchedAt: 'T' });

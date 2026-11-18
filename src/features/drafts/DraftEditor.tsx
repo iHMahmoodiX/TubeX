@@ -16,6 +16,9 @@ import { AiAssist } from '../ai/AiAssist';
 import { ThumbnailCheck } from '../ai/ThumbnailCheck';
 import { Cover, TagInput } from '../core/CoreUi';
 import { Checks } from './Checks';
+import { DraftFlow } from './DraftFlow';
+import { AparatPanel } from './AparatPanel';
+import { BlogPanel } from './BlogPanel';
 import { Preview } from './Preview';
 
 type SaveState = 'saved' | 'dirty' | 'saving' | 'failed' | 'conflict';
@@ -52,7 +55,9 @@ const sameContent = (a: Draft, b: Draft) =>
   a.focusKeyword === b.focusKeyword &&
   a.language === b.language &&
   a.profileId === b.profileId &&
-  a.tags.join('\n') === b.tags.join('\n');
+  a.tags.join('\n') === b.tags.join('\n') &&
+  JSON.stringify(a.research ?? null) === JSON.stringify(b.research ?? null) &&
+  JSON.stringify(a.platforms ?? null) === JSON.stringify(b.platforms ?? null);
 
 /** Collapsible side card with a round icon, used for the editor's secondary tools. */
 function Fold({ icon, title, extra, open, children, testId }: { icon: IconName; title: string; extra?: ReactNode; open?: boolean; children: ReactNode; testId?: string }) {
@@ -556,6 +561,7 @@ export function DraftEditor({
         {conflictNotice}
         {sourceLink}
         {contextDiffers && <Notice>{t('draft.contextDiffers')}</Notice>}
+        <DraftFlow draft={draft} update={update} />
         {fields}
         <Fold icon="check" title={t('core.draft.readiness')} extra={<Score value={score} label={t('core.draft.readiness')} />} testId="checks-fold">
           {scoreCard}
@@ -573,6 +579,12 @@ export function DraftEditor({
         </Fold>
         <Fold icon="eye" title={t('preview.heading')} testId="preview-fold">
           {preview}
+        </Fold>
+        <Fold icon="globe" title={t('aparat.heading')} testId="aparat-fold" open={!!draft.platforms?.aparat}>
+          <AparatPanel draft={draft} update={update} />
+        </Fold>
+        <Fold icon="file" title={t('blog.heading')} testId="blog-fold" open={!!draft.platforms?.blog}>
+          <BlogPanel draft={draft} update={update} />
         </Fold>
         <div>
           <Button variant="danger" size="s" onClick={() => void deleteDraft()}>
@@ -624,6 +636,7 @@ export function DraftEditor({
         <div className="stack">
           <section className="card" aria-label={t('core.draft.details')}>
             {sourceLink}
+            <DraftFlow draft={draft} update={update} />
             {fields}
           </section>
           <section className="card" aria-labelledby={`tpl-${draft.id}`}>
@@ -635,6 +648,14 @@ export function DraftEditor({
               <h2 id={`pv-${draft.id}`}>{t('preview.heading')}</h2>
             </div>
             {preview}
+          </section>
+          <section className="card" aria-labelledby={`ap-${draft.id}`}>
+            <h2 id={`ap-${draft.id}`}>{t('aparat.heading')}</h2>
+            <AparatPanel draft={draft} update={update} />
+          </section>
+          <section className="card" aria-labelledby={`bl-${draft.id}`}>
+            <h2 id={`bl-${draft.id}`}>{t('blog.heading')}</h2>
+            <BlogPanel draft={draft} update={update} />
           </section>
           <div>
             <Button variant="danger" size="s" onClick={() => void deleteDraft()}>

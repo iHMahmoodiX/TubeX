@@ -10,6 +10,13 @@ import { channelInsights } from './channelInsights';
 import { launchers } from './launchers';
 import { bulk } from './bulk';
 import { signin } from './signin';
+import { grow } from './grow';
+import { abtest } from './abtest';
+import { flow } from './flow';
+import { outliers } from './outliers';
+import { aparat } from './aparat';
+import { republish } from './republish';
+import { askStudio } from './askStudio';
 
-export const partsEn = { ...shell.en, ...reports.en, ...seo.en, ...engage.en, ...inpage.en, ...studioContent.en, ...tagTools.en, ...channelInsights.en, ...launchers.en, ...bulk.en, ...signin.en } as const;
-export const partsFa = { ...shell.fa, ...reports.fa, ...seo.fa, ...engage.fa, ...inpage.fa, ...studioContent.fa, ...tagTools.fa, ...channelInsights.fa, ...launchers.fa, ...bulk.fa, ...signin.fa };
+export const partsEn = { ...shell.en, ...reports.en, ...seo.en, ...engage.en, ...inpage.en, ...studioContent.en, ...tagTools.en, ...channelInsights.en, ...launchers.en, ...bulk.en, ...signin.en, ...grow.en, ...abtest.en, ...flow.en, ...outliers.en, ...aparat.en, ...republish.en, ...askStudio.en } as const;
+export const partsFa = { ...shell.fa, ...reports.fa, ...seo.fa, ...engage.fa, ...inpage.fa, ...studioContent.fa, ...tagTools.fa, ...channelInsights.fa, ...launchers.fa, ...bulk.fa, ...signin.fa, ...grow.fa, ...abtest.fa, ...flow.fa, ...outliers.fa, ...aparat.fa, ...republish.fa, ...askStudio.fa };

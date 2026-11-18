@@ -185,7 +185,7 @@ export function Tracking({ canRead }: { canRead: boolean }) {
     return m;
   }, [snapshots.items]);
   const enabled = rank.filter((x) => x.enabled).length;
-  const cap = youtube.dailyUnitCap || 10_000;
+  const cap = youtube.dailySearchCap || 100;
 
   const add = async () => {
     setBusy(true);
@@ -259,7 +259,7 @@ export function Tracking({ canRead }: { canRead: boolean }) {
         <SectionHead
           id="rt-h"
           title={t('seo.rank.listTitle')}
-          sub={t('seo.rank.budget', { n: enabled, units: f.int(enabled * RANK_CHECK_COST), cap: f.int(cap), used: f.int(usage.ytUnits) })}
+          sub={t('seo.rank.budget', { n: enabled, units: f.int(enabled * RANK_CHECK_COST), cap: f.int(cap), used: f.int(usage.ytSearches) })}
         />
         {trackers.loaded && !rank.length ? (
           <Empty icon="trend" title={t('seo.rank.emptyTitle')}>

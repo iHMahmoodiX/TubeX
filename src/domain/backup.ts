@@ -3,6 +3,8 @@
 // switches, AI provider and YouTube settings, connected channels). Keys are included only when the owner
 // ticks the matching box at export; sign-in tokens never are.
 import { COLLECTIONS, nowIso } from './models';
+import { coerceRepublish, type RepublishSettings } from './republish';
+import { coerceAskSettings, type AskSettings } from './askStudio';
 import type { CollectionName, Collections, Lang } from './models';
 import { checkRecord, type RejectReason } from './records';
 
@@ -30,6 +32,10 @@ export interface BackupSettings {
   youtube?: { region: string; language: string; dailyUnitCap: number; apiKey?: string };
   channels?: BackupChannel[];
   activeChannelId?: string;
+  /** Aparat/blog settings and prompt templates (no credentials). */
+  republish?: RepublishSettings;
+  /** Ask Studio method and ready-made questions (the learned request is not exported). */
+  askStudio?: Pick<AskSettings, 'mode' | 'presets'>;
 }
 
 export interface BackupFile {
@@ -42,7 +48,7 @@ export interface BackupFile {
 }
 
 export function emptyData(): BackupData {
-  return { profiles: [], ideas: [], drafts: [], templates: [], keywordLists: [], watchlist: [], replies: [] };
+  return { profiles: [], ideas: [], drafts: [], templates: [], keywordLists: [], watchlist: [], replies: [], optimize: [], experiments: [] };
 }
 
 export function createBackup(data: BackupData, appVersion: string, settings?: BackupSettings): BackupFile {
@@ -140,6 +146,11 @@ export function coerceBackupSettings(raw: unknown): BackupSettings | undefined {
       .map(coerceChannel)
       .filter((c): c is BackupChannel => !!c);
     if (typeof raw.activeChannelId === 'string' && out.channels.some((c) => c.channelId === raw.activeChannelId)) out.activeChannelId = raw.activeChannelId;
+  }
+  if (isObj(raw.republish)) out.republish = coerceRepublish(raw.republish);
+  if (isObj(raw.askStudio)) {
+    const a = coerceAskSettings({ mode: raw.askStudio.mode, presets: raw.askStudio.presets });
+    out.askStudio = { mode: a.mode, presets: a.presets };
   }
   return Object.keys(out).length ? out : undefined;
 }

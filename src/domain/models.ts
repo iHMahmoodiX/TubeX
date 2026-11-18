@@ -34,12 +34,32 @@ export interface Profile extends BaseRecord {
 export type IdeaStatus = 'inbox' | 'planned' | 'used' | 'dropped';
 export const IDEA_STATUSES: IdeaStatus[] = ['inbox', 'planned', 'used', 'dropped'];
 
+/** What the viewer wants from a topic (rough search intent, chosen by the owner or inferred from words). */
+export type Intent = 'learn' | 'compare' | 'buy' | 'fix' | 'news' | 'entertain';
+export const INTENTS: Intent[] = ['learn', 'compare', 'buy', 'fix', 'news', 'entertain'];
+
+/**
+ * Research context carried from Research/YouTube pages into an Idea and on to its Draft (#14). Signals are
+ * public numbers as seen at `retrievedAt` (sampled, not live) and are shown with that date.
+ */
+export interface ResearchRef {
+  topic?: string;
+  keyword?: string;
+  language?: Lang;
+  intent?: Intent;
+  /** Connected Google channel the idea is for (never mixed with another channel's queue). */
+  channelId?: string;
+  retrievedAt?: string;
+  signals?: Record<string, number | string>;
+}
+
 export interface Idea extends BaseRecord {
   text: string;
   notes: string;
   status: IdeaStatus;
   profileId?: string;
   source?: SourceRef;
+  research?: ResearchRef;
 }
 
 export interface Draft extends BaseRecord {
@@ -51,6 +71,119 @@ export interface Draft extends BaseRecord {
   title: string;
   description: string;
   tags: string[];
+  research?: ResearchRef;
+  /** Optional per-platform packages; YouTube stays the draft's own fields (A1, #17). */
+  platforms?: { aparat?: AparatPackage; blog?: BlogPackage };
+}
+
+export type PublishStatus = 'prepared' | 'uploaded' | 'published' | 'manual-check';
+export const PUBLISH_STATUSES: PublishStatus[] = ['prepared', 'uploaded', 'published', 'manual-check'];
+
+/** Aparat metadata prepared from a draft. Never uploaded by TubeX: the owner publishes in Aparat's own page. */
+export interface AparatPackage {
+  title: string;
+  description: string;
+  tags: string[];
+  category: string;
+  playlist: string;
+  /** Cover/thumbnail notes (the image itself stays a local file the owner uploads). */
+  coverNote: string;
+  scheduleNote: string;
+  status: PublishStatus;
+  /** Aparat video page, entered by the owner after publishing. */
+  url?: string;
+  statusAt: string;
+}
+
+/** A WordPress blog version of the video (text + embedded videos). Prepared locally; the owner publishes in WordPress. */
+export interface BlogPackage {
+  /** Blog address, e.g. https://example.com/blog (owner's own site). */
+  site: string;
+  title: string;
+  /** Latin URL slug. */
+  slug: string;
+  metaDescription: string;
+  focusKeyword: string;
+  excerpt: string;
+  category: string;
+  tags: string[];
+  /** Article body as WordPress block HTML. */
+  html: string;
+  /** Call-to-action link (course/product) remembered per site. */
+  ctaUrl: string;
+  status: PublishStatus;
+  url?: string;
+  statusAt: string;
+  /** WordPress draft created from this package (D-028), on the site's origin. */
+  wp?: { origin: string; postId: number; savedAt: string };
+}
+
+// ---------------------------------------------------------------- Optimize queue (#10)
+
+export type QueueStatus = 'open' | 'doing' | 'done' | 'snoozed' | 'dismissed';
+export const QUEUE_STATUSES: QueueStatus[] = ['open', 'doing', 'done', 'snoozed', 'dismissed'];
+
+/** Own-channel numbers at one moment, each optional (unknown stays unknown, never 0). */
+export interface MetricSnap {
+  at: string;
+  /** Period the numbers cover, e.g. last 28 days ending at `at`. */
+  periodDays: number;
+  views?: number;
+  impressions?: number;
+  /** Impressions click-through rate in percent. */
+  ctr?: number;
+  avgViewPercent?: number;
+}
+
+export type QueueAction = 'title' | 'thumbnail' | 'description' | 'tags' | 'note' | 'status';
+export interface QueueLogEntry {
+  at: string;
+  action: QueueAction;
+  before?: string;
+  after?: string;
+  note?: string;
+}
+
+/** One existing video in the Improve queue. id = `${channelId}:${videoId}` so channels never mix. */
+export interface OptimizeItem extends BaseRecord {
+  channelId: string;
+  videoId: string;
+  title: string;
+  status: QueueStatus;
+  snoozeUntil?: string;
+  /** Measured numbers when work started (the "before" of the observation log). */
+  baseline?: MetricSnap;
+  log: QueueLogEntry[];
+  draftId?: string;
+}
+
+// ---------------------------------------------------------------- A/B test assistant (#12, #13)
+
+export interface Variant {
+  id: string;
+  title: string;
+  /** Small JPEG/PNG data URL (TubeX keeps it under ~300 KB). */
+  thumb?: string;
+  thumbNote: string;
+  rationale: string;
+}
+
+export type ExperimentStatus = 'draft' | 'running' | 'finished' | 'abandoned';
+export const EXPERIMENT_STATUSES: ExperimentStatus[] = ['draft', 'running', 'finished', 'abandoned'];
+
+export interface Experiment extends BaseRecord {
+  channelId: string;
+  videoId: string;
+  videoTitle: string;
+  hypothesis: string;
+  status: ExperimentStatus;
+  startedAt?: string;
+  endedAt?: string;
+  variants: Variant[];
+  /** Results copied by the owner from Studio's Test & Compare (watch-time share in percent). */
+  results: { variantId: string; share?: number; note: string }[];
+  winnerId?: string;
+  decision: string;
 }
 
 export interface Template extends BaseRecord {
@@ -93,9 +226,11 @@ export interface Collections {
   keywordLists: KeywordList;
   watchlist: WatchedChannel;
   replies: Reply;
+  optimize: OptimizeItem;
+  experiments: Experiment;
 }
 export type CollectionName = keyof Collections;
-export const COLLECTIONS: CollectionName[] = ['profiles', 'ideas', 'drafts', 'templates', 'keywordLists', 'watchlist', 'replies'];
+export const COLLECTIONS: CollectionName[] = ['profiles', 'ideas', 'drafts', 'templates', 'keywordLists', 'watchlist', 'replies', 'optimize', 'experiments'];
 
 export function nowIso(): string {
   return new Date().toISOString();

@@ -224,7 +224,7 @@ function RecBody({ videoId, values }: { videoId: string; values: StudioValues })
       {topState === 'ask' && (
         <div className="tx-confirm" role="group" aria-label={t('tt.rec.fromTop')}>
           <Icon name="info" />
-          <p className="grow small">{t('tt.rec.topCost', { k: keyword, units: f.int(KEYWORD_SCORE_UNITS + 1) })}</p>
+          <p className="grow small">{t('tt.rec.topCost', { k: keyword, units: f.int(KEYWORD_SCORE_UNITS) })}</p>
           <Button size="s" variant="primary" autoFocus onClick={() => void runTop()}>
             {t('inpage.search.run')}
           </Button>
@@ -266,7 +266,7 @@ function RecBody({ videoId, values }: { videoId: string; values: StudioValues })
       {asking && (
         <div className="tx-confirm" role="group" aria-label={t('tt.scoreSome', { n: unscored.length })}>
           <Icon name="alert" />
-          <p className="grow small">{t('tt.scoreCost', { n: unscored.length, units: f.int(unscored.length * (KEYWORD_SCORE_UNITS + 1)) })}</p>
+          <p className="grow small">{t('tt.scoreCost', { n: unscored.length, units: f.int(unscored.length * KEYWORD_SCORE_UNITS) })}</p>
           <Button size="s" variant="primary" autoFocus onClick={() => void scoreSome()}>
             {t('tt.research')}
           </Button>

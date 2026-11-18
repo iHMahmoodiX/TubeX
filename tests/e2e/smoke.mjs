@@ -10,7 +10,7 @@ import { chromium } from 'playwright-core';
 const EXT = resolve('.output/chrome-mv3');
 const ART = resolve('tests/e2e/artifacts');
 const PORT = Number(process.env.CDP_PORT ?? 9333);
-const EXE = process.env.CHROMIUM_PATH ?? '/opt/pw-browsers/chromium-1194/chrome-linux/chrome';
+const EXE = process.env.CHROMIUM_PATH ?? '/opt/pw-browsers/chromium-1243/chrome-linux64/chrome';
 const VIDEO_1 = 'dQw4w9WgXcQ';
 const VIDEO_2 = 'abcdefghijk';
 mkdirSync(ART, { recursive: true });
@@ -256,7 +256,7 @@ await step('workspace is keyboard reachable and fits 320px', async () => {
 
 let backupPath;
 await step('export backup downloads every record', async () => {
-  await ws.goto(ext('workspace.html#settings'));
+  await ws.goto(ext('workspace.html#settings/set-data'));
   const [download] = await Promise.all([ws.waitForEvent('download'), ws.getByRole('button', { name: 'خروجی پشتیبان' }).click()]);
   backupPath = join(userDir, 'backup.json');
   await download.saveAs(backupPath);
@@ -316,11 +316,11 @@ await step('research, competitors, comments and connection settings render witho
   await ws.getByLabel('متن پاسخ').first().fill('ممنون از *همراهی* شما');
   await ws.getByRole('button', { name: 'ذخیرهٔ پاسخ' }).click();
   await ws.locator('strong', { hasText: 'همراهی' }).first().waitFor();
-  await ws.goto(ext('workspace.html#settings'));
+  await ws.goto(ext('workspace.html#settings/set-connections'));
   const ai = ws.getByTestId('ai-settings');
   await ai.getByRole('radiogroup', { name: 'سرویس' }).getByRole('radio', { name: /Gemini/ }).click();
   assert((await ai.getByLabel('نشانی پایه').inputValue()) === 'https://generativelanguage.googleapis.com/v1beta/openai', 'gemini preset url');
-  assert((await ai.getByLabel('مدل').inputValue()) === 'gemini-2.5-flash', 'gemini preset model');
+  assert((await ai.getByLabel('مدل').inputValue()) === 'gemini-3.5-flash-lite', 'gemini preset model');
   await ws.getByTestId('yt-settings').waitFor();
   await ws.screenshot({ path: join(ART, 'settings-connections.png'), fullPage: true });
 });

@@ -20,7 +20,8 @@ import {
   studioEditorSpot,
   studioFields,
   typeTags,
-  uploadDialogSpot,
+  reuseDetailsButton,
+  uploadButtonSpot,
   videoIdFromHref,
   watchCardSpot,
   watchVideoId,
@@ -116,7 +117,7 @@ describe('Studio editor', () => {
     expect(v.description).toBe('Learn auto layout in Figma.\n0:00 Intro\n0:30 Basics\n2:00 Advanced');
     expect(v.tags).toEqual(['figma', 'auto layout']);
     expect(v.found).toEqual({ title: true, description: true, tags: true });
-    expect(uploadDialogSpot(doc)).toBeNull();
+    expect(uploadButtonSpot(doc)).toBeNull();
   });
   it('writes text into contenteditable fields and fires input events', () => {
     const doc = load('inpage-studio-editor.html');
@@ -140,15 +141,33 @@ describe('Studio editor', () => {
 });
 
 describe('Studio upload dialog', () => {
-  it('anchors inside the details step and exposes its fields', () => {
+  it('puts the compact button right after Studio\'s Reuse details button and exposes the fields', () => {
     const doc = load('inpage-studio-upload.html');
-    const spot = uploadDialogSpot(doc)!;
+    const spot = uploadButtonSpot(doc)!;
+    expect(spot.append).toBe('after');
+    expect(spot.el.id).toBe('reuse-details-button');
     expect(spot.el.closest('ytcp-uploads-dialog')).not.toBeNull();
     const f = studioFields(doc.querySelector('ytcp-uploads-dialog')!);
     expect(f.title).not.toBeNull();
     expect(f.description).not.toBeNull();
     expect(f.tagsInput).not.toBeNull();
     expect(f.tags).toEqual([]);
+  });
+  it('finds Reuse details by its label (English or Persian) when the id changes', () => {
+    const doc = load('inpage-studio-upload.html');
+    const old = doc.getElementById('reuse-details-button')!;
+    const btn = doc.createElement('ytcp-button');
+    btn.innerHTML = '<div>استفاده مجدد از جزئیات</div>';
+    old.replaceWith(btn);
+    expect(reuseDetailsButton(doc.querySelector('ytcp-uploads-dialog')!)).toBe(btn);
+    btn.innerHTML = '<div>Reuse details</div>';
+    expect(uploadButtonSpot(doc)!.el).toBe(btn);
+  });
+  it('without a Reuse button, falls back to just above the title field', () => {
+    const doc = load('inpage-studio-upload.html');
+    doc.getElementById('reuse-details-button')!.remove();
+    const spot = uploadButtonSpot(doc)!;
+    expect(spot).toEqual({ el: doc.querySelector('ytcp-video-title'), append: 'before' });
   });
 });
 

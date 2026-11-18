@@ -56,7 +56,8 @@ describe('rank tracking', () => {
     const h = await rankHistory(tr.id);
     expect(h).toHaveLength(1);
     expect(h[0]!.position).toBe(1);
-    expect((await loadUsage()).ytUnits).toBe(202);
+    expect((await loadUsage()).ytUnits).toBe(2); // 2 videos.list reads; the 2 searches use the search bucket
+    expect((await loadUsage()).ytSearches).toBe(2);
   });
 });
 

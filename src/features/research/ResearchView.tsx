@@ -17,9 +17,10 @@ import { KeywordLists } from './Lists';
 import { NeedsAccess } from './parts';
 import { useAsync } from './shared';
 import { Trending } from './Trending';
+import { Outliers } from './Outliers';
 import './seo.css';
 
-type Tab = 'explore' | 'compare' | 'insights' | 'language' | 'trending' | 'lists';
+type Tab = 'explore' | 'compare' | 'insights' | 'language' | 'trending' | 'outliers' | 'lists';
 
 export function ResearchView({ query }: { query?: string }) {
   const { t } = useI18n();
@@ -61,7 +62,7 @@ export function ResearchView({ query }: { query?: string }) {
     <div className="stack-l">
       <PageHeader kicker={t('shell.group.grow')} title={t('research.heading')} desc={t('seo.research.desc')} />
       {access.loaded && !access.ok && tab !== 'lists' && <NeedsAccess />}
-      {tab !== 'lists' && tab !== 'trending' && tab !== 'compare' && (
+      {tab !== 'lists' && tab !== 'trending' && tab !== 'outliers' && tab !== 'compare' && (
         <form
           className="seo-searchbar"
           role="search"
@@ -91,7 +92,7 @@ export function ResearchView({ query }: { query?: string }) {
           </button>
         </form>
       )}
-      {tab !== 'lists' && tab !== 'trending' && tab !== 'compare' && <p className="seo-cost" style={{ marginBlockStart: -12 }}>{t('seo.research.cost')}</p>}
+      {tab !== 'lists' && tab !== 'trending' && tab !== 'outliers' && tab !== 'compare' && <p className="seo-cost" style={{ marginBlockStart: -12 }}>{t('seo.research.cost')}</p>}
       <Tabs
         label={t('research.heading')}
         value={tab}
@@ -102,6 +103,7 @@ export function ResearchView({ query }: { query?: string }) {
           { id: 'insights', label: t('seo.tab.insights'), icon: 'chart' },
           { id: 'language', label: t('seo.tab.language'), icon: 'translate' },
           { id: 'trending', label: t('research.tab.trending'), icon: 'trend' },
+          { id: 'outliers', label: t('outl.tab'), icon: 'star' },
           { id: 'lists', label: t('research.tab.lists'), icon: 'list' },
         ]}
       />
@@ -123,6 +125,7 @@ export function ResearchView({ query }: { query?: string }) {
       {tab === 'insights' && <Insights data={kw.data} onExplore={explore} />}
       {tab === 'language' && <Language data={kw.data} />}
       {tab === 'trending' && <Trending onExplore={explore} canRead={access.ok} />}
+      {tab === 'outliers' && <Outliers canRead={access.ok} initialTopic={q} />}
       {tab === 'lists' && <KeywordLists onExplore={explore} />}
     </div>
   );

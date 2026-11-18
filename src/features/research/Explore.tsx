@@ -13,6 +13,8 @@ import { useGoogle, useIntegrations } from '../connections/useConnections';
 import { createRankTracker } from '../ranks/service';
 import type { KeywordData } from './keywordData';
 import { SaveKeyword } from './Lists';
+import { WorkflowButtons } from '../ideas/WorkflowButtons';
+import { researchFromKeyword } from '../../domain/workflow';
 import { SectionHead, VideoTracks } from './parts';
 import { TermChips, useFormat } from './shared';
 
@@ -175,6 +177,11 @@ export function Explore({
           )}
           <p className="xsmall faint">{t('research.sampleLabel', { n: s!.videos.length, region: s!.region, lang: s!.language, when: f.age(s!.fetchedAt) })}</p>
           <div className="row" style={{ marginBlockStart: 4 }}>
+            <WorkflowButtons
+              text={s!.query}
+              research={researchFromKeyword({ keyword: s!.query, score: sc.sampleSize ? sc.score : undefined, sampleSize: sc.sampleSize, medianViews: sc.parts.competition.medianViews, retrievedAt: s!.fetchedAt, channelId: active?.channelId })}
+              source={{ kind: 'search', url: `https://www.youtube.com/results?search_query=${encodeURIComponent(s!.query)}`, searchQuery: s!.query, capturedAt: s!.fetchedAt, origin: 'url' }}
+            />
             <SaveKeyword term={s!.query} />
             <Button size="s" onClick={() => onCompare(s!.query)}>
               {t('seo.compare.add')}

@@ -31,6 +31,7 @@ export function useFormat() {
     compact: (n: number | undefined) => compactNumber(n, lang),
     int: (n: number | undefined) => (n === undefined ? '—' : int.format(n)),
     pct: (n: number | undefined) => (n === undefined ? '—' : pct.format(n)),
+    date: (iso: string) => (Number.isNaN(Date.parse(iso)) ? '—' : new Intl.DateTimeFormat(lang === 'fa' ? 'fa-IR' : 'en-US', { dateStyle: 'medium' }).format(new Date(iso))),
     age: (iso: string) => {
       const d = daysSince(iso);
       return d < 1 ? int.format(Math.max(1, Math.round(d * 24))) + (lang === 'fa' ? ' ساعت' : 'h') : d < 60 ? int.format(Math.round(d)) + (lang === 'fa' ? ' روز' : 'd') : int.format(Math.round(d / 30)) + (lang === 'fa' ? ' ماه' : 'mo');

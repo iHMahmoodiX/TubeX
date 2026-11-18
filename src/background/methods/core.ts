@@ -1,5 +1,6 @@
 // Core RPC methods available to content scripts and pages. Each method validates its own arguments:
 // callers are TubeX's own scripts, but content scripts run next to an untrusted page.
+import { cleanResearch } from '../../domain/records';
 import { browser } from 'wxt/browser';
 import { parsePageUrl } from '../../domain/pageContext';
 import { captureIdea } from '../../features/ideas/ideaActions';
@@ -97,9 +98,10 @@ export const coreMethods: Record<string, (...args: any[]) => Promise<unknown>> =
   'ai.json': async (req: unknown) => runAiJson(obj(req) as JsonAiRequest),
 
   // ---- local library ----
-  'ideas.capture': async (text: unknown, url: unknown, title?: unknown) => {
+  'ideas.capture': async (text: unknown, url: unknown, title?: unknown, research?: unknown) => {
     const ctx = { ...parsePageUrl(str(url, 2000)), title: typeof title === 'string' ? title.slice(0, 300) : undefined };
-    return captureIdea({ text: str(text, 5000), ctx, link: true });
+    // Page data is untrusted: the research record goes through the same validation as stored records.
+    return captureIdea({ text: str(text, 5000), ctx, link: true, research: cleanResearch(research) });
   },
   'templates.list': async () => (await list('templates')).items,
   'drafts.list': async () => (await list('drafts')).items,

@@ -22,6 +22,11 @@ export interface YouTubeSettings {
   language: string;
   /** Local stop before the project's daily quota (units, approximate). */
   dailyUnitCap: number;
+  /**
+   * Local stop for search.list calls. Since 2026 Google gives search.list its own bucket (default 100 calls a day)
+   * separate from the 10,000-unit pool (determine_quota_cost, updated 2026-11-12; Verified via fetch 2026-11-18).
+   */
+  dailySearchCap: number;
 }
 
 export interface Integrations {
@@ -31,7 +36,7 @@ export interface Integrations {
 
 export const DEFAULT_INTEGRATIONS: Integrations = {
   ai: { enabled: false, baseUrl: 'http://localhost:11434/v1', model: 'qwen3:8b', apiKey: '', monthlyRequestCap: 1000 },
-  youtube: { apiKey: '', region: 'US', language: 'fa', dailyUnitCap: 8000 },
+  youtube: { apiKey: '', region: 'US', language: 'fa', dailyUnitCap: 8000, dailySearchCap: 100 },
 };
 
 const KEY = 'integrations';
@@ -57,6 +62,7 @@ export function coerceIntegrations(raw: unknown): Integrations {
       region: /^[A-Z]{2}$/.test(String(yt.region)) ? String(yt.region) : d.youtube.region,
       language: /^[a-z]{2,3}$/.test(String(yt.language)) ? String(yt.language) : d.youtube.language,
       dailyUnitCap: num(yt.dailyUnitCap, d.youtube.dailyUnitCap),
+      dailySearchCap: num(yt.dailySearchCap, d.youtube.dailySearchCap),
     },
   };
 }
@@ -88,6 +94,8 @@ export interface Usage {
   /** YouTube quota resets at midnight Pacific time. */
   ytDay: string; // YYYY-MM-DD in America/Los_Angeles
   ytUnits: number;
+  /** search.list calls today (separate Google bucket). */
+  ytSearches: number;
 }
 const USAGE_KEY = 'usage';
 
@@ -111,6 +119,7 @@ export function rollUsage(raw: unknown, now = new Date()): Usage {
     aiOutputTokens: sameMonth ? num(r.aiOutputTokens, 0) : 0,
     ytDay: day,
     ytUnits: sameDay ? num(r.ytUnits, 0) : 0,
+    ytSearches: sameDay ? num(r.ytSearches, 0) : 0,
   };
 }
 
@@ -118,7 +127,7 @@ export async function loadUsage(): Promise<Usage> {
   return rollUsage((await browser.storage.local.get(USAGE_KEY))[USAGE_KEY]);
 }
 
-export async function addUsage(delta: Partial<Pick<Usage, 'aiRequests' | 'aiInputTokens' | 'aiOutputTokens' | 'ytUnits'>>): Promise<Usage> {
+export async function addUsage(delta: Partial<Pick<Usage, 'aiRequests' | 'aiInputTokens' | 'aiOutputTokens' | 'ytUnits' | 'ytSearches'>>): Promise<Usage> {
   const u = await loadUsage();
   const next: Usage = {
     ...u,
@@ -126,6 +135,7 @@ export async function addUsage(delta: Partial<Pick<Usage, 'aiRequests' | 'aiInpu
     aiInputTokens: u.aiInputTokens + (delta.aiInputTokens ?? 0),
     aiOutputTokens: u.aiOutputTokens + (delta.aiOutputTokens ?? 0),
     ytUnits: u.ytUnits + (delta.ytUnits ?? 0),
+    ytSearches: u.ytSearches + (delta.ytSearches ?? 0),
   };
   await browser.storage.local.set({ [USAGE_KEY]: next });
   return next;

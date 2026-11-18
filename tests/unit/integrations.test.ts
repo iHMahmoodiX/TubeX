@@ -103,13 +103,28 @@ describe('YouTube client', () => {
     expect(fetcher).toHaveBeenCalledTimes(1);
     expect(r2.fromCache).toBe(true);
     expect(String((fetcher.mock.calls[0] as unknown as [URL])[0])).toContain('key=KEY');
-    expect((await loadUsage()).ytUnits).toBe(100);
+    // 2026 quota model: search.list has its own bucket of calls; it does not draw on the 10,000-unit pool.
+    expect((await loadUsage()).ytUnits).toBe(0);
+    expect((await loadUsage()).ytSearches).toBe(1);
   });
 
-  it('stops at the local daily cap', async () => {
-    await saveIntegrations({ ...DEFAULT_INTEGRATIONS, youtube: { ...DEFAULT_INTEGRATIONS.youtube, apiKey: 'K', dailyUnitCap: 50 } });
+  it('stops at the local daily unit cap', async () => {
+    await saveIntegrations({ ...DEFAULT_INTEGRATIONS, youtube: { ...DEFAULT_INTEGRATIONS.youtube, apiKey: 'K', dailyUnitCap: 1 } });
     vi.spyOn(fakeBrowser.permissions, 'contains').mockImplementation((async () => true) as never);
-    await expect(ytGet('search', { q: 'b' }, 1000, { fetcher: (async () => json({})) as typeof fetch })).rejects.toEqual(new YtError('budget'));
+    await fakeBrowser.storage.local.set({ usage: { ytDay: pacificDay(), ytUnits: 1 } });
+    await expect(ytGet('videos', { id: 'b' }, 1000, { fetcher: (async () => json({})) as typeof fetch })).rejects.toEqual(new YtError('budget'));
+  });
+
+  it('stops search at the separate daily search-call cap, leaving the unit pool alone', async () => {
+    await saveIntegrations({ ...DEFAULT_INTEGRATIONS, youtube: { ...DEFAULT_INTEGRATIONS.youtube, apiKey: 'K', dailySearchCap: 2 } });
+    vi.spyOn(fakeBrowser.permissions, 'contains').mockImplementation((async () => true) as never);
+    const fetcher = (async () => json({ items: [] })) as typeof fetch;
+    await ytGet('search', { q: 'one' }, 1000, { fetcher });
+    await ytGet('search', { q: 'two' }, 1000, { fetcher });
+    await expect(ytGet('search', { q: 'three' }, 1000, { fetcher })).rejects.toMatchObject({ code: 'budget', detail: 'search' });
+    await expect(ytGet('videos', { id: 'v' }, 1000, { fetcher })).resolves.toBeTruthy();
+    const u = await loadUsage();
+    expect([u.ytSearches, u.ytUnits]).toEqual([2, 1]);
   });
 
   it('normalizes videos and channels', () => {

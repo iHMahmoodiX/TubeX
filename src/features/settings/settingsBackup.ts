@@ -5,6 +5,8 @@ import type { BackupSettings } from '../../domain/backup';
 import { loadGoogleState, mergeChannels, setActiveChannel } from '../../integrations/google/auth';
 import { loadIntegrations, saveIntegrations } from '../../storage/integrations';
 import { loadPrefs, updatePrefs } from '../../storage/prefs';
+import { loadRepublish, saveRepublish } from '../../storage/republish';
+import { loadAskSettings, updateAskSettings } from '../../storage/askStudio';
 
 export interface SettingsExportOptions {
   includeAiKey: boolean;
@@ -12,7 +14,7 @@ export interface SettingsExportOptions {
 }
 
 export async function collectSettings(o: SettingsExportOptions): Promise<BackupSettings> {
-  const [p, i, g] = await Promise.all([loadPrefs(), loadIntegrations(), loadGoogleState()]);
+  const [p, i, g, rp, ask] = await Promise.all([loadPrefs(), loadIntegrations(), loadGoogleState(), loadRepublish(), loadAskSettings()]);
   return {
     prefs: { uiLanguage: p.uiLanguage, theme: p.theme, pageAdapterEnabled: p.pageAdapterEnabled, ...(p.inpage && { inpage: p.inpage }) },
     ai: {
@@ -38,6 +40,8 @@ export async function collectSettings(o: SettingsExportOptions): Promise<BackupS
       ...(c.sub && { sub: c.sub }),
     })),
     ...(g.activeChannelId && { activeChannelId: g.activeChannelId }),
+    republish: rp,
+    askStudio: { mode: ask.mode, presets: ask.presets },
   };
 }
 
@@ -66,6 +70,8 @@ export async function restoreSettings(s: BackupSettings): Promise<SettingsRestor
     r.youtube = !!s.youtube;
     r.keys = (s.ai?.apiKey ? 1 : 0) + (s.youtube?.apiKey ? 1 : 0);
   }
+  if (s.republish) await saveRepublish(s.republish);
+  if (s.askStudio) await updateAskSettings((cur) => ({ ...cur, mode: s.askStudio!.mode, presets: s.askStudio!.presets }));
   if (s.channels?.length) {
     const hadActive = !!(await loadGoogleState()).activeChannelId;
     r.channelsAdded = await mergeChannels(s.channels);

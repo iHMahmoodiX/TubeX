@@ -11,7 +11,7 @@ import { chromium } from 'playwright-core';
 
 process.env.PW_EXPERIMENTAL_SERVICE_WORKER_NETWORK_EVENTS = '1';
 const SRC = resolve(process.env.EXT_DIR ?? '.output/chrome-mv3');
-const EXE = process.env.CHROMIUM_PATH ?? '/opt/pw-browsers/chromium-1194/chrome-linux/chrome';
+const EXE = process.env.CHROMIUM_PATH ?? '/opt/pw-browsers/chromium-1243/chrome-linux64/chrome';
 const [outDir = '/tmp/tubex-ci-shots', ...asked] = process.argv.slice(2);
 mkdirSync(outDir, { recursive: true });
 const width = Number(process.env.WIDTH ?? 1280);

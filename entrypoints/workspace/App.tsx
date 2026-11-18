@@ -17,6 +17,10 @@ import { PlaylistsView } from '../../src/features/playlists/PlaylistsView';
 import { ProfilesView } from '../../src/features/profiles/ProfilesView';
 import { RanksView } from '../../src/features/ranks/RanksView';
 import { ReportsView } from '../../src/features/reports/ReportsView';
+import { OptimizeView } from '../../src/features/optimize/OptimizeView';
+import { ExperimentsView } from '../../src/features/experiments/ExperimentsView';
+import { AparatView } from '../../src/features/aparat/AparatView';
+import { AskStudioView } from '../../src/features/askstudio/AskStudioView';
 import { ResearchView } from '../../src/features/research/ResearchView';
 import { ScheduleView } from '../../src/features/schedule/ScheduleView';
 import { SettingsView } from '../../src/features/settings/SettingsView';
@@ -54,7 +58,15 @@ const NAV: { group?: MessageKey; items: NavItem[] }[] = [
       { route: 'competitors', label: 'nav.competitors', icon: 'users' },
     ],
   },
-  { group: 'shell.group.analyze', items: [{ route: 'reports', label: 'nav.reports', icon: 'chart' }] },
+  {
+    group: 'shell.group.analyze',
+    items: [
+      { route: 'optimize', label: 'nav.optimize', icon: 'rocket' },
+      { route: 'reports', label: 'nav.reports', icon: 'chart' },
+      { route: 'experiments', label: 'nav.experiments', icon: 'layers' },
+      { route: 'askstudio', label: 'nav.askstudio', icon: 'sparkle' },
+    ],
+  },
   {
     group: 'shell.group.manage',
     items: [
@@ -63,6 +75,8 @@ const NAV: { group?: MessageKey; items: NavItem[] }[] = [
       { route: 'schedule', label: 'nav.schedule', icon: 'calendar' },
       { route: 'thumbs', label: 'nav.thumbs', icon: 'image' },
       { route: 'kids', label: 'nav.kids', icon: 'shield' },
+      { route: 'aparat', label: 'nav.aparat', icon: 'globe' },
+      { route: 'blog', label: 'nav.blog', icon: 'file' },
     ],
   },
   {
@@ -131,6 +145,11 @@ export function App() {
     case 'ranks': view = <RanksView tab={loc.id} />; break;
     case 'competitors': view = <CompetitorsView />; break;
     case 'reports': view = <ReportsView tab={loc.id} />; break;
+    case 'optimize': view = <OptimizeView videoId={loc.id} />; break;
+    case 'experiments': view = <ExperimentsView id={loc.id} />; break;
+    case 'askstudio': view = <AskStudioView />; break;
+    case 'aparat': view = <AparatView platform="aparat" />; break;
+    case 'blog': view = <AparatView platform="blog" />; break;
     case 'bulk': view = <BulkView />; break;
     case 'playlists': view = <PlaylistsView tab={loc.id} />; break;
     case 'schedule': view = <ScheduleView tab={loc.id} />; break;
@@ -139,7 +158,7 @@ export function App() {
     case 'comments': view = <CommentsView tab={loc.id} />; break;
     case 'alerts': view = <AlertsView tab={loc.id} />; break;
     case 'channels': view = <ProfilesView />; break;
-    case 'settings': view = <SettingsView />; break;
+    case 'settings': view = <SettingsView section={loc.id} />; break;
     default: view = <MyChannelView />;
   }
 

@@ -13,6 +13,9 @@
       h2 { margin: 0; padding: 16px 24px; font-size: 22px; }
       #scrollable-content { padding: 0 24px 24px; }
       ytcp-uploads-details { display: block; max-width: 640px; }
+      .header-row { display: flex; align-items: center; gap: 8px; margin-block: 8px 16px; }
+      .header-row h1 { font-size: 24px; margin: 0; flex: 1; }
+      ytcp-button.reuse { display: inline-flex; align-items: center; height: 36px; padding: 0 16px; border-radius: 18px; background: #3f3f3f; cursor: pointer; }
       .box { border: 1px solid #606060; border-radius: 4px; padding: 8px 12px; margin-bottom: 16px; }
       .box label { font-size: 12px; color: #aaa; display: block; }
       #textbox { outline: none; min-height: 24px; white-space: pre-wrap; }
@@ -25,6 +28,10 @@
         <h2>my_new_video.mp4</h2>
         <div id="scrollable-content">
           <ytcp-uploads-details>
+            <div id="details-header" class="header-row">
+              <h1 class="title">Details</h1>
+              <ytcp-button id="reuse-details-button" class="reuse"><div class="label">Reuse details</div></ytcp-button>
+            </div>
             <ytcp-video-metadata-editor>
               <ytcp-video-title>
                 <div id="title-textarea" class="box"><label>Title (required)</label><div id="textbox" contenteditable="true">my_new_video</div></div>

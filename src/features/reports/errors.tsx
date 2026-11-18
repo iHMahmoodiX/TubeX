@@ -98,9 +98,9 @@ function ReportErrorText({ what, reason, detail, settings, tone, t }: { what: Re
           </p>
         </details>
       )}
-      {settings && location.hash !== '#settings' && (
+      {settings && !location.hash.startsWith('#settings') && (
         <div>
-          <Button size="s" onClick={() => void openWorkspace('settings')}>
+          <Button size="s" onClick={() => void openWorkspace('settings', 'set-connections')}>
             {t('conn.openSettings')}
           </Button>
         </div>

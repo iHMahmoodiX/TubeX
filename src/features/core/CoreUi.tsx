@@ -145,7 +145,9 @@ export function ArtTile({ videoId, icon, width = 64 }: { videoId?: string; icon:
 }
 
 /** Section of a settings-like page with a heading anchor. */
-export function Section({ id, title, desc, children, icon }: { id: string; title: string; desc?: ReactNode; children: ReactNode; icon?: IconName }) {
+export function Section({ id, title, desc, children, icon, active }: { id: string; title: string; desc?: ReactNode; children: ReactNode; icon?: IconName; active?: boolean }) {
+  // active=false keeps the section mounted but hidden (Settings shows one section at a time).
+  if (active === false) return null;
   return (
     <section id={id} className="core-section" aria-labelledby={`${id}-h`}>
       <div className="core-section-head">

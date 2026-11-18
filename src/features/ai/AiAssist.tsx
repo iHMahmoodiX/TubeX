@@ -76,7 +76,7 @@ export function AiAssist({
       <Notice>
         <p>{t('ai.off')}</p>
         <div>
-          <Button size="s" onClick={() => (location.pathname.endsWith('workspace.html') ? (location.hash = 'settings') : void openWorkspace('settings'))}>
+          <Button size="s" onClick={() => (location.pathname.endsWith('workspace.html') ? (location.hash = 'settings/set-connections') : void openWorkspace('settings', 'set-connections'))}>
             {t('conn.openSettings')}
           </Button>
         </div>
