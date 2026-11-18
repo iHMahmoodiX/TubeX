@@ -376,11 +376,11 @@ export function snippetDiff(before: SnippetFields, after: SnippetFields): Snippe
   return d;
 }
 
-/** Quota cost of checking where a video ranks for each tag (one search.list per tag, Inferred 100 units). */
-export const TAG_RANK_UNITS = 100;
+/** Search calls for checking where a video ranks for each tag (one search.list per tag; search has its own daily bucket). */
+export const TAG_RANK_UNITS = 1;
 export const tagRankCost = (n: number) => n * TAG_RANK_UNITS;
-/** search.list + videos.list for one keyword score (Inferred). */
-export const KEYWORD_SCORE_UNITS = 101;
+/** Search calls for one keyword score (one search.list; the videos.list read adds 1 pool unit). */
+export const KEYWORD_SCORE_UNITS = 1;
 /** videos.update (50) plus the re-read (1), Inferred. */
 export const UPDATE_UNITS = 51;
 

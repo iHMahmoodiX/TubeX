@@ -320,7 +320,7 @@ await step('research, competitors, comments and connection settings render witho
   const ai = ws.getByTestId('ai-settings');
   await ai.getByRole('radiogroup', { name: 'سرویس' }).getByRole('radio', { name: /Gemini/ }).click();
   assert((await ai.getByLabel('نشانی پایه').inputValue()) === 'https://generativelanguage.googleapis.com/v1beta/openai', 'gemini preset url');
-  assert((await ai.getByLabel('مدل').inputValue()) === 'gemini-2.5-flash', 'gemini preset model');
+  assert((await ai.getByLabel('مدل').inputValue()) === 'gemini-3.5-flash-lite', 'gemini preset model');
   await ws.getByTestId('yt-settings').waitFor();
   await ws.screenshot({ path: join(ART, 'settings-connections.png'), fullPage: true });
 });

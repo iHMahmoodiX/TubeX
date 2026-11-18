@@ -165,7 +165,7 @@ function SortTool({ values, keyword, writer }: { values: StudioValues; keyword: 
           {asking && (
             <div className="tx-confirm" role="group" aria-label={t('tt.scoreSome', { n: batch.length })}>
               <Icon name="alert" />
-              <p className="grow small">{t('tt.scoreCost', { n: batch.length, units: f.int(batch.length * (KEYWORD_SCORE_UNITS + 1)) })}</p>
+              <p className="grow small">{t('tt.scoreCost', { n: batch.length, units: f.int(batch.length * KEYWORD_SCORE_UNITS) })}</p>
               <Button size="s" variant="primary" autoFocus onClick={() => void scoreSome()}>
                 {t('tt.research')}
               </Button>

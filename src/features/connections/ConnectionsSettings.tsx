@@ -6,6 +6,7 @@ import { Avatar, Button, Card, ConfirmButton, Field, Meter, Notice, Switch } fro
 import { useToast } from '../../components/toasts';
 import { useI18n } from '../../i18n';
 import { AI_PRESETS, AiError, listModels, presetOf, type AiPreset } from '../../integrations/ai/provider';
+import { geminiModelNotice, isGeminiUrl, suggestGeminiModel } from '../../domain/aiModels';
 import { YT_BASE } from '../../integrations/youtube/client';
 import { videoCategories } from '../../integrations/youtube/api';
 import { hasOrigin, originPattern, requestOrigin } from '../../platform/permissions';
@@ -72,6 +73,9 @@ function UsageSummary() {
         </span>
         <Meter value={ytPct} tone={ytCap ? meterTone(ytPct) : 'muted'} label={t('core.conn.ytToday')} />
         <span className="xsmall faint">{t('core.conn.ytTodayHelp')}</span>
+        <span className="xsmall faint" data-testid="yt-searches">
+          {t('core.conn.ytSearchesToday', { n: num.format(usage.ytSearches), cap: saved.youtube.dailySearchCap ? num.format(saved.youtube.dailySearchCap) : '∞' })}
+        </span>
       </div>
       <div>
         <span className="small muted">{t('core.conn.aiMonth')}</span>
@@ -102,6 +106,9 @@ function AiSection() {
   const [testing, setTesting] = useState(false);
   const [error, setError] = useState<unknown>(null);
   const [ok, setOk] = useState<string | null>(null);
+  const [suggested, setSuggested] = useState<string | null>(null);
+  const notice = geminiModelNotice(ai.baseUrl, ai.model);
+  const replacement = notice ? suggestGeminiModel(ai.model, models) : suggested && suggested !== ai.model ? suggested : null;
 
   useEffect(() => {
     if (saved.loaded) setAi(saved.ai);
@@ -138,6 +145,7 @@ function AiSection() {
       const ids = await listModels(ai);
       setModels(ids);
       setOk(ids.includes(ai.model) || ids.length === 0 ? t('conn.aiOk', { n: ids.length }) : t('conn.aiModelMissing', { model: ai.model, n: ids.length }));
+      if (isGeminiUrl(ai.baseUrl) && ids.length && !ids.includes(ai.model)) setSuggested(suggestGeminiModel(ai.model, ids));
     } catch (e) {
       setError(e);
     } finally {
@@ -233,6 +241,25 @@ function AiSection() {
         })}
       </p>
       {granted === false && ai.enabled && validUrl && <Notice tone="warning">{t('conn.needsPermission')}</Notice>}
+      {(notice || replacement) && (
+        <Notice tone={notice?.past ? 'error' : 'warning'}>
+          <div className="stack-s" data-testid="ai-model-notice">
+            <p>
+              {notice
+                ? t(notice.past ? 'conn.modelRetired' : 'conn.modelRetiring', { model: notice.model, date: notice.retirement.date, to: notice.retirement.to })
+                : t('conn.modelSuggest', { model: ai.model })}
+            </p>
+            {replacement && (
+              <div className="row">
+                <Button size="s" variant="primary" onClick={() => setAi({ ...ai, model: replacement })}>
+                  {t('conn.modelSwitch', { model: replacement })}
+                </Button>
+                <span className="xsmall muted">{t('conn.modelSwitchHelp')}</span>
+              </div>
+            )}
+          </div>
+        </Notice>
+      )}
       <div className="row">
         <Button variant="primary" onClick={() => void save()} disabled={!dirty && granted !== false}>
           {t('conn.saveAndAllow')}
@@ -350,6 +377,20 @@ function YouTubeSection() {
               step={500}
               value={yt.dailyUnitCap}
               onChange={(e) => setYt({ ...yt, dailyUnitCap: Math.max(0, Math.floor(Number(e.target.value) || 0)) })}
+            />
+          )}
+        </Field>
+        <Field label={t('conn.dailySearchCap')} help={t('conn.dailySearchCapHelp')}>
+          {({ id, describedBy }) => (
+            <input
+              id={id}
+              aria-describedby={describedBy}
+              className="input"
+              type="number"
+              min={0}
+              step={10}
+              value={yt.dailySearchCap}
+              onChange={(e) => setYt({ ...yt, dailySearchCap: Math.max(0, Math.floor(Number(e.target.value) || 0)) })}
             />
           )}
         </Field>

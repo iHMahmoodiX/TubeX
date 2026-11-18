@@ -2,7 +2,7 @@
 // Ticks run every 15 minutes while the browser is open; each one is throttled per tracker and skips work
 // when the remaining daily YouTube unit budget is low (a reserve is kept for the owner's own actions).
 import { browser } from 'wxt/browser';
-import { isDue, RANK_CHECK_COST, SEARCH_COST, spendable } from '../../domain/seo';
+import { isDue, RANK_CHECK_COST, SEARCH_COST, spendable, spendableSearches } from '../../domain/seo';
 import {
   checkBrand,
   checkCompetitor,
@@ -45,6 +45,12 @@ async function budget(): Promise<number> {
   return spendable(usage.ytUnits, youtube.dailyUnitCap);
 }
 
+async function searchBudget(): Promise<number> {
+  const [{ youtube }, usage] = await Promise.all([loadIntegrations(), loadUsage()]);
+  if (spendable(usage.ytUnits, youtube.dailyUnitCap) < 1) return 0; // the videos.list half still needs pool units
+  return spendableSearches(usage.ytSearches, youtube.dailySearchCap);
+}
+
 /** Public reads need an API key or a signed-in channel. */
 async function canRead(): Promise<boolean> {
   const { youtube } = await loadIntegrations();
@@ -56,7 +62,7 @@ async function rankTick(now: Date): Promise<void> {
   const due = (await all('trackers')).filter((t) => t.kind === 'rank' && t.enabled && isDue(t.lastCheckedAt, DAILY, now.getTime()));
   let searches = 0;
   for (const t of due.sort((a, b) => (a.lastCheckedAt ?? '').localeCompare(b.lastCheckedAt ?? ''))) {
-    if (searches >= MAX_SEARCHES_PER_TICK || (await budget()) < RANK_CHECK_COST) return;
+    if (searches >= MAX_SEARCHES_PER_TICK || (await searchBudget()) < RANK_CHECK_COST) return;
     searches++;
     await checkRank(t.id, notify).catch((e) => console.warn('[TubeX] rank check failed', t.label, e));
   }
@@ -66,7 +72,7 @@ async function brandTick(now: Date): Promise<void> {
   const due = (await all('trackers')).filter((t) => t.kind === 'brand' && t.enabled && isDue(t.lastCheckedAt, BRAND_EVERY, now.getTime()));
   let searches = 0;
   for (const t of due) {
-    if (searches >= MAX_SEARCHES_PER_TICK || (await budget()) < SEARCH_COST) return;
+    if (searches >= MAX_SEARCHES_PER_TICK || (await searchBudget()) < SEARCH_COST) return;
     searches++;
     await checkBrand(t.id, notify).catch((e) => console.warn('[TubeX] brand check failed', t.label, e));
   }

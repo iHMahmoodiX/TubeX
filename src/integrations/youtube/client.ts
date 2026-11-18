@@ -7,7 +7,9 @@ import { hasOrigin } from '../../platform/permissions';
 import { getToken, loadGoogleState } from '../google/auth';
 
 export const YT_BASE = 'https://www.googleapis.com/youtube/v3';
-export const COST = { search: 100, videos: 1, channels: 1, playlistItems: 1, videoCategories: 1, commentThreads: 1 } as const;
+// Units from the shared 10,000/day pool. search.list draws on its own bucket of calls (default 100/day) instead,
+// so it costs 0 pool units here and is counted in usage.ytSearches (Verified 2026-11-18, determine_quota_cost).
+export const COST = { search: 0, videos: 1, channels: 1, playlistItems: 1, videoCategories: 1, commentThreads: 1 } as const;
 export type YtResource = keyof typeof COST;
 
 export type YtErrorCode = 'no-key' | 'permission' | 'budget' | 'quota' | 'bad-key' | 'forbidden' | 'not-found' | 'bad-request' | 'unreachable' | 'server';
@@ -64,13 +66,15 @@ export async function ytGet<T>(
   const cost = COST[resource];
   const usage = await loadUsage();
   if (youtube.dailyUnitCap > 0 && usage.ytUnits + cost > youtube.dailyUnitCap) throw new YtError('budget');
+  const isSearch = resource === 'search';
+  if (isSearch && youtube.dailySearchCap > 0 && usage.ytSearches + 1 > youtube.dailySearchCap) throw new YtError('budget', 'search');
 
   const url = new URL(`${YT_BASE}/${resource}`);
   for (const [k, v] of Object.entries(clean)) url.searchParams.set(k, v);
   if (youtube.apiKey) url.searchParams.set('key', youtube.apiKey);
   const headers: Record<string, string> = signedIn ? { Authorization: `Bearer ${await getToken(signedIn)}` } : {};
 
-  await addUsage({ ytUnits: cost });
+  await addUsage(isSearch ? { ytSearches: 1 } : { ytUnits: cost });
   let res: Response;
   try {
     res = await (opts.fetcher ?? fetch)(url, { headers, signal: AbortSignal.timeout(20_000) });

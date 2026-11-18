@@ -1,10 +1,11 @@
 // OpenAI-compatible chat client (Ollama, Gemini's OpenAI endpoint, or any compatible server).
 // AI is optional and always user-triggered; model output is untrusted text, never instructions.
+import { GEMINI_BASE_URL, GEMINI_DEFAULT_MODEL } from '../../domain/aiModels';
 import type { AiSettings } from '../../storage/integrations';
 
 export const AI_PRESETS = {
   ollama: { baseUrl: 'http://localhost:11434/v1', model: 'qwen3:8b', needsKey: false },
-  gemini: { baseUrl: 'https://generativelanguage.googleapis.com/v1beta/openai', model: 'gemini-2.5-flash', needsKey: true },
+  gemini: { baseUrl: GEMINI_BASE_URL, model: GEMINI_DEFAULT_MODEL, needsKey: true },
 } as const;
 export type AiPreset = keyof typeof AI_PRESETS | 'custom';
 

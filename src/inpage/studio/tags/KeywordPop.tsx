@@ -201,7 +201,7 @@ function Pop({ target }: { target: PopTarget }) {
       {readable && !data && !busy && cached === false && (
         <div className="tx-confirm" role="group" aria-label={t('tt.research')}>
           <Icon name="info" />
-          <p className="grow small">{t('tt.researchCost', { k: kw, units: f.int(KEYWORD_SCORE_UNITS + 1) })}</p>
+          <p className="grow small">{t('tt.researchCost', { k: kw, units: f.int(KEYWORD_SCORE_UNITS) })}</p>
           <Button size="s" variant="primary" onClick={() => void run(kw)}>
             {t('tt.research')}
           </Button>
