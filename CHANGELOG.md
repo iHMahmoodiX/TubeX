@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.6.1 — 2026-11-18 — Aparat page
+- New workspace page "Aparat" (Manage group): every YouTube upload with its Aparat state (not prepared, prepared, uploaded, published with link), filters and search. One click prepares a video's Aparat package from its YouTube title, description (YouTube links removed) and tags, reusing the video's draft if there is one, and opens it.
+- The last category you chose is filled in for the next package.
+- The Aparat package shows in every draft without a setting; the Settings switch now only controls reading Aparat tabs in the side panel.
+- My channel → videos: an "Aparat" button per video.
+
 ## 0.6.0 — 2026-11-18 — grow the channel: improve queue, A/B assistant, research workflow, outliers, Aparat package
 - Studio upload: the upload profile is now a small "Upload profile" button next to Studio's "Reuse details"; the panel opens only on click and floats above the dialog without changing its layout.
 - 2026 YouTube quota (D-021): searches have their own daily limit (default 100, with a reserve for manual research); research costs are shown in searches.

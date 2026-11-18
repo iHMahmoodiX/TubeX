@@ -18,6 +18,7 @@ import { useAsync, useFormat, videosCsv } from '../research/shared';
 import { checkLabel } from '../reports/AuditTab';
 import { draftKeywords, loadChannelStats, studioUrl, TOTAL_METRICS, videoToDraft, youtubeUrl, type RVideo } from '../reports/data';
 import { useChannel, useOwnVideos } from '../reports/hooks';
+import { openAparatDraft, prepareForAparat } from '../aparat/aparatActions';
 import { REPORT_META, REPORT_TABS } from '../reports/ReportsView';
 import { PeriodPills, RankedList, Section, SignedOut, StatSkeleton, TrackSkeleton, useDelta, VideoTrack } from '../reports/shared';
 import '../reports/reports.css';
@@ -463,6 +464,9 @@ function Videos({ videos, channelName }: { videos: RVideo[]; channelName: string
                     <Score value={r.score} label={t('reports.audit.score')} />
                     <Button size="s" variant="ghost" onClick={() => void toDraft(v)}>
                       {t('mc.toDraft')}
+                    </Button>
+                    <Button size="s" variant="ghost" onClick={() => void prepareForAparat(v).then((d) => openAparatDraft(d.id))} title={t('aparat.prepare')}>
+                      {t('nav.aparat')}
                     </Button>
                   </>
                 }

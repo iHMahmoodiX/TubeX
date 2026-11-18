@@ -123,6 +123,13 @@ for (const r of routes) {
     await p.locator('[data-testid="aparat-prepare"]').click();
     await p.waitForTimeout(500);
     await p.locator('[data-testid="aparat-panel"]').scrollIntoViewIfNeeded();
+  } else if (r === 'aparat-page' || r === 'aparat-open') {
+    await p.goto(`chrome-extension://${id}/workspace.html#aparat`);
+    await p.waitForTimeout(2500);
+    if (r === 'aparat-open') {
+      await p.locator('[data-testid="aparat-row-open"]').first().click();
+      await p.waitForTimeout(2000);
+    }
   } else if (r === 'outliers') {
     await p.goto(`chrome-extension://${id}/workspace.html#research`);
     await p.waitForTimeout(1500);

@@ -3,7 +3,7 @@
 Updated: 2026-11-18.
 
 ## State
-- Version **0.6.0** on branch `claude/project-thread-2pwd6e` (PR to `main`). Implements the whole plan in [`docs/CLAUDE_IMPLEMENTATION_HANDOFF_2026-11-18.md`](CLAUDE_IMPLEMENTATION_HANDOFF_2026-11-18.md): Y0 (#9 quota/Gemini/CI), Y1 (#10 Improve queue), Y2 (#14 Research → Idea → Draft), Y3 (#12 A/B assistant, #13 context previews), Y4 (#15 coach + Ask Studio), Y5 (#11 Outlier Lite), A0 (#16 [Aparat feasibility](APARAT_FEASIBILITY.md)), A1 (#17 Aparat package). Also: Studio "Upload profile" is a button next to "Reuse details".
+- Version **0.6.1** (0.6.1 adds the Aparat page: one-click package per YouTube video, owner said the draft-only package was not practical) on branch `claude/project-thread-2pwd6e` (PR to `main`). Implements the whole plan in [`docs/CLAUDE_IMPLEMENTATION_HANDOFF_2026-11-18.md`](CLAUDE_IMPLEMENTATION_HANDOFF_2026-11-18.md): Y0 (#9 quota/Gemini/CI), Y1 (#10 Improve queue), Y2 (#14 Research → Idea → Draft), Y3 (#12 A/B assistant, #13 context previews), Y4 (#15 coach + Ask Studio), Y5 (#11 Outlier Lite), A0 (#16 [Aparat feasibility](APARAT_FEASIBILITY.md)), A1 (#17 Aparat package). Also: Studio "Upload profile" is a button next to "Reuse details".
 - Checks: 526/526 unit tests, typecheck, build, fixture e2e 16/16, grow screenshots reviewed (fa, dark). Decisions D-021…D-026 in [DECISIONS.md](DECISIONS.md).
 - **Nothing is live-verified.** Owner runs [LIVE_TEST_MATRIX.md](LIVE_TEST_MATRIX.md); close issues only with that evidence.
 
@@ -14,9 +14,10 @@ Updated: 2026-11-18.
 - Single-video bulk find & replace test before any large run.
 
 ## Next
-1. Fix whatever the live matrix finds (selectors in Studio, Edge sign-in, Aparat URL/limits).
-2. Then the 10 workaround-only TubeBuddy features remain parked until the owner decides.
-3. Never: Aparat login/upload/endpoints, private YouTube endpoints, paid services, store submission.
+1. Aparat auto-fill of the upload form: waiting for the owner's saved Aparat upload page (HTML or screenshot) to write selectors against a real fixture.
+2. Fix whatever the live matrix finds (selectors in Studio, Edge sign-in, Aparat URL/limits).
+3. Then the 10 workaround-only TubeBuddy features remain parked until the owner decides.
+4. Never: Aparat login/upload/endpoints, private YouTube endpoints, paid services, store submission.
 
 ## Landmarks
 - New domain modules: `src/domain/{optimizeQueue,coach,experiments,workflow,outliers,aparat,aiModels}.ts`.

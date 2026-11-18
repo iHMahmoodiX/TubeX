@@ -19,6 +19,7 @@ import { RanksView } from '../../src/features/ranks/RanksView';
 import { ReportsView } from '../../src/features/reports/ReportsView';
 import { OptimizeView } from '../../src/features/optimize/OptimizeView';
 import { ExperimentsView } from '../../src/features/experiments/ExperimentsView';
+import { AparatView } from '../../src/features/aparat/AparatView';
 import { ResearchView } from '../../src/features/research/ResearchView';
 import { ScheduleView } from '../../src/features/schedule/ScheduleView';
 import { SettingsView } from '../../src/features/settings/SettingsView';
@@ -72,6 +73,7 @@ const NAV: { group?: MessageKey; items: NavItem[] }[] = [
       { route: 'schedule', label: 'nav.schedule', icon: 'calendar' },
       { route: 'thumbs', label: 'nav.thumbs', icon: 'image' },
       { route: 'kids', label: 'nav.kids', icon: 'shield' },
+      { route: 'aparat', label: 'nav.aparat', icon: 'globe' },
     ],
   },
   {
@@ -142,6 +144,7 @@ export function App() {
     case 'reports': view = <ReportsView tab={loc.id} />; break;
     case 'optimize': view = <OptimizeView videoId={loc.id} />; break;
     case 'experiments': view = <ExperimentsView id={loc.id} />; break;
+    case 'aparat': view = <AparatView />; break;
     case 'bulk': view = <BulkView />; break;
     case 'playlists': view = <PlaylistsView tab={loc.id} />; break;
     case 'schedule': view = <ScheduleView tab={loc.id} />; break;

@@ -14,9 +14,9 @@ Unit and fixture tests cannot prove these. Each line says what to do and what co
 | 8 | A/B assistant | Analyze → A/B test → new for one video; add 2–3 title or thumbnail variants. | Context previews look right; the Studio checklist matches Studio's Test & Compare. Results are entered by you. |
 | 9 | Research → draft | Research a keyword → "Idea + draft". | The draft opens with the keyword, the research box and the step tracker. On a YouTube watch page the "Save idea" action keeps views and date. |
 | 10 | Outliers | Research → Outliers → My competitors (or a topic) → Find. | Results show views/day, baseline median, sample size and time; "Save idea" works. Cost line matches the units used today. |
-| 11 | Aparat package | Settings → turn on "Aparat helpers" (allow aparat.com) → open a draft → "Prepare for Aparat". | Package fills from the draft without YouTube links; checks match Aparat's form; "Open Aparat upload page" opens the real upload page (confirm `https://www.aparat.com/upload`). |
+| 11 | Aparat package | Manage → Aparat → "Prepare for Aparat" on one video. | Package fills from the draft without YouTube links; checks match Aparat's form; "Open Aparat upload page" opens the real upload page (confirm `https://www.aparat.com/upload`). |
 | 12 | Aparat limits | Compare Aparat's upload form with docs/APARAT_FEASIBILITY.md. | Category names, 3–5 tags, 23-character tags and 2000-character description match; report any difference. |
-| 13 | Aparat tab | Open an Aparat video, open the TubeX side panel. | It shows "Aparat page" with the title and can save it as an idea. |
+| 13 | Aparat tab | Settings → "Read Aparat tabs" (allow aparat.com), open an Aparat video, open the TubeX side panel. | It shows "Aparat page" with the title and can save it as an idea. |
 | 14 | Bulk find & replace | "Test on 1 video first" on one owned video. | Preview, write and undo work on that one video before any larger run. |
 
 Never part of this test: uploads, publishing, deleting, paid calls or store submission.

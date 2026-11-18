@@ -1,7 +1,7 @@
 // Aparat package (A1, #17): one finished video, a second editable package for Aparat. Checked against Aparat's own
 // rules (never YouTube's), copied or downloaded, then published by the owner on Aparat's upload page. TubeX does not
 // upload, sign in to Aparat or call any Aparat endpoint; the owner records the status and URL afterwards.
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Icon } from '../../components/icons';
 import { useToast } from '../../components/toasts';
 import { Button, ConfirmButton, Field, Notice } from '../../components/ui';
@@ -17,6 +17,18 @@ export function AparatPanel({ draft, update }: { draft: Draft; update: (patch: P
   const p = draft.platforms?.aparat;
   const [tagText, setTagText] = useState(p?.tags.join('، ') ?? '');
   useEffect(() => setTagText(p?.tags.join('، ') ?? ''), [draft.id, !!p]); // eslint-disable-line react-hooks/exhaustive-deps
+  // Opened from the Aparat page: bring this card into view once.
+  const ref = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    try {
+      if (sessionStorage.getItem('tubex.focus') !== 'aparat') return;
+      sessionStorage.removeItem('tubex.focus');
+    } catch {
+      return;
+    }
+    const el = ref.current;
+    if (el && el.offsetParent) setTimeout(() => el.scrollIntoView({ block: 'start', behavior: 'smooth' }), 50);
+  }, [draft.id]);
 
   const set = (patch: Partial<AparatPackage>) => p && update({ platforms: { ...draft.platforms, aparat: { ...p, ...patch } } });
   const prepare = () => {
@@ -29,7 +41,7 @@ export function AparatPanel({ draft, update }: { draft: Draft; update: (patch: P
 
   if (!p)
     return (
-      <div className="stack-s" data-testid="aparat-panel">
+      <div className="stack-s" data-testid="aparat-panel" ref={ref}>
         <p className="small muted">{t('aparat.intro')}</p>
         <div>
           <Button size="s" variant="primary" onClick={prepare} data-testid="aparat-prepare">
@@ -45,7 +57,7 @@ export function AparatPanel({ draft, update }: { draft: Draft; update: (patch: P
   const text = () => aparatPackageText(p, labels);
 
   return (
-    <div className="stack" data-testid="aparat-panel">
+    <div className="stack" data-testid="aparat-panel" ref={ref}>
       <p className="small muted">{t('aparat.separate')}</p>
       <Field label={labels.title} counter={`${[...p.title].length}`}>
         {({ id }) => <input id={id} className="input" dir="auto" value={p.title} maxLength={300} onChange={(e) => set({ title: e.target.value })} />}
