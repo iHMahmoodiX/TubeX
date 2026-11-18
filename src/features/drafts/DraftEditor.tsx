@@ -6,6 +6,7 @@ import { canonicalUrl, isCapturable, type PageContext } from '../../domain/pageC
 import { sanitizeRecord } from '../../domain/records';
 import { charCount, utf8Bytes } from '../../domain/text';
 import { useCollection } from '../../components/hooks';
+import { usePrefs } from '../../components/AppShell';
 import { Icon, type IconName } from '../../components/icons';
 import { useToast } from '../../components/toasts';
 import { Button, Field, Notice, Score, Skeleton } from '../../components/ui';
@@ -17,6 +18,7 @@ import { ThumbnailCheck } from '../ai/ThumbnailCheck';
 import { Cover, TagInput } from '../core/CoreUi';
 import { Checks } from './Checks';
 import { DraftFlow } from './DraftFlow';
+import { AparatPanel } from './AparatPanel';
 import { Preview } from './Preview';
 
 type SaveState = 'saved' | 'dirty' | 'saving' | 'failed' | 'conflict';
@@ -88,6 +90,7 @@ export function DraftEditor({
   onBack?: () => void;
 }) {
   const { t, formatDate } = useI18n();
+  const { prefs } = usePrefs();
   const toast = useToast();
   const profiles = useCollection('profiles').items;
   const templates = useCollection('templates').items;
@@ -578,6 +581,11 @@ export function DraftEditor({
         <Fold icon="eye" title={t('preview.heading')} testId="preview-fold">
           {preview}
         </Fold>
+        {prefs.aparatEnabled && (
+          <Fold icon="globe" title={t('aparat.heading')} testId="aparat-fold">
+            <AparatPanel draft={draft} update={update} />
+          </Fold>
+        )}
         <div>
           <Button variant="danger" size="s" onClick={() => void deleteDraft()}>
             <Icon name="trash" />
@@ -641,6 +649,12 @@ export function DraftEditor({
             </div>
             {preview}
           </section>
+          {prefs.aparatEnabled && (
+            <section className="card" aria-labelledby={`ap-${draft.id}`}>
+              <h2 id={`ap-${draft.id}`}>{t('aparat.heading')}</h2>
+              <AparatPanel draft={draft} update={update} />
+            </section>
+          )}
           <div>
             <Button variant="danger" size="s" onClick={() => void deleteDraft()}>
               <Icon name="trash" />

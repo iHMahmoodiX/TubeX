@@ -9,7 +9,7 @@ import type { PageKind } from './pageContext';
 const MAX_TEXT = 20_000;
 const MAX_SHORT = 1_000;
 const MAX_TAGS = 200;
-const KINDS: PageKind[] = ['watch', 'shorts', 'search', 'channel', 'playlist', 'home', 'studio-video', 'studio', 'youtube-other', 'unsupported', 'unknown'];
+const KINDS: PageKind[] = ['watch', 'shorts', 'search', 'channel', 'playlist', 'home', 'studio-video', 'studio', 'youtube-other', 'aparat', 'unsupported', 'unknown'];
 
 type Raw = Record<string, unknown>;
 const isObj = (v: unknown): v is Raw => typeof v === 'object' && v !== null && !Array.isArray(v);

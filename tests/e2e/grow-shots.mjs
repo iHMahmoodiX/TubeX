@@ -79,7 +79,7 @@ await p.waitForTimeout(800);
 await p.evaluate(
   async ({ lang, theme, OWN }) => {
     await chrome.storage.local.set({
-      prefs: { uiLanguage: lang, theme, pageAdapterEnabled: true },
+      prefs: { uiLanguage: lang, theme, pageAdapterEnabled: true, aparatEnabled: true },
       integrations: { youtube: { apiKey: '', region: 'US', language: 'fa', dailyUnitCap: 8000, dailySearchCap: 100 }, ai: { enabled: true, baseUrl: 'https://generativelanguage.googleapis.com/v1beta/openai', model: 'gemini-2.5-flash', apiKey: 'k', monthlyRequestCap: 1000 } },
       google: { channels: [{ channelId: OWN, title: 'Figma Farsi', handle: '@figmafa', uploadsPlaylistId: 'UU' + OWN.slice(2), connectedAt: '2026-10-01', sub: '1' }], activeChannelId: OWN },
     });
@@ -114,6 +114,15 @@ for (const r of routes) {
     await p.locator('[data-testid="flow-draft"]').first().click();
     await p.waitForTimeout(1500);
     await p.locator('[data-testid="draft-flow"] details').first().evaluate((d) => (d.open = true));
+  } else if (r === 'aparat') {
+    await p.goto(`chrome-extension://${id}/workspace.html#research/${encodeURIComponent('آموزش فیگما')}`);
+    await p.waitForTimeout(3000);
+    await p.locator('[data-testid="flow-draft"]').first().click();
+    await p.waitForTimeout(1500);
+    await p.locator('textarea').nth(1).fill('در این ویدیو Auto Layout را یاد می‌گیریم.\nسابسکرایب: https://www.youtube.com/@figmafa');
+    await p.locator('[data-testid="aparat-prepare"]').click();
+    await p.waitForTimeout(500);
+    await p.locator('[data-testid="aparat-panel"]').scrollIntoViewIfNeeded();
   } else if (r === 'outliers') {
     await p.goto(`chrome-extension://${id}/workspace.html#research`);
     await p.waitForTimeout(1500);

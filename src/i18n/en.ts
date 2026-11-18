@@ -51,6 +51,7 @@ export const en = {
   'ctx.kind.studio-video': 'Studio: video',
   'ctx.kind.studio': 'YouTube Studio',
   'ctx.kind.youtube-other': 'YouTube page',
+  'ctx.kind.aparat': 'Aparat page',
   'ctx.kind.unsupported': 'Not a YouTube page',
   'ctx.kind.unknown': 'Page not readable',
   'ctx.unsupportedHelp': 'TubeX only reads YouTube pages. Your ideas and drafts still work here.',

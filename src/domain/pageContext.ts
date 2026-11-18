@@ -10,6 +10,8 @@ export type PageKind =
   | 'studio-video'
   | 'studio'
   | 'youtube-other'
+  /** A public aparat.com page (A1). Read only when the owner turned Aparat on and granted that site. */
+  | 'aparat'
   | 'unsupported'
   | 'unknown';
 
@@ -21,6 +23,8 @@ export interface PageContext {
   channelHandle?: string;
   channelId?: string;
   playlistId?: string;
+  /** Aparat video hash from /v/<hash>. Never treated as a YouTube video id. */
+  aparatHash?: string;
   /** Title from the browser tab or page DOM. */
   title?: string;
   channelName?: string;
@@ -53,6 +57,11 @@ export function parsePageUrl(rawUrl: string | undefined | null): PageContext {
     }
     const channelId = parts[0] === 'channel' && parts[1] && CHANNEL_ID.test(parts[1]) ? parts[1] : undefined;
     return { kind: 'studio', url, channelId, origin: 'url' };
+  }
+
+  if (u.hostname === 'www.aparat.com' || u.hostname === 'aparat.com') {
+    const hash = parts[0] === 'v' && parts[1] && /^[A-Za-z0-9]{3,20}$/.test(parts[1]) ? parts[1] : undefined;
+    return { kind: 'aparat', url: hash ? `https://www.aparat.com/v/${hash}` : url, ...(hash && { aparatHash: hash }), origin: 'url' };
   }
 
   if (u.hostname !== 'www.youtube.com') return { kind: 'unsupported', url, origin: 'url' };
@@ -92,8 +101,8 @@ export function isCapturable(kind: PageKind): boolean {
 /** Strips the " - YouTube" suffix browsers show in tab titles. */
 export function cleanTabTitle(title: string | undefined): string | undefined {
   if (!title) return undefined;
-  const t = title.replace(/^\(\d+\)\s*/, '').replace(/\s+-\s+YouTube( Studio)?$/, '').trim();
-  return t && t !== 'YouTube' && t !== 'YouTube Studio' ? t : undefined;
+  const t = title.replace(/^\(\d+\)\s*/, '').replace(/\s+-\s+YouTube( Studio)?$/, '').replace(/\s+[-|]\s+(آپارات|Aparat)(?:\s.*)?$/u, '').trim();
+  return t && t !== 'YouTube' && t !== 'YouTube Studio' && t !== 'آپارات' ? t : undefined;
 }
 
 /** Canonical link for a context (drops tracking/timestamp params). */

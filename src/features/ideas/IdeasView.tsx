@@ -22,6 +22,7 @@ export function kindIcon(kind?: PageKind): IconName {
   if (kind === 'search') return 'search';
   if (kind === 'channel') return 'users';
   if (kind === 'playlist') return 'playlist';
+  if (kind === 'aparat') return 'globe';
   return 'bulb';
 }
 

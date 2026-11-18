@@ -18,6 +18,8 @@ import type { ThemePref } from '../../storage/prefs';
 import { deleteAllData, exportAll, hasImportSnapshot, importData, undoLastImport } from '../../storage/db';
 import { GOOGLE_ORIGINS } from '../../integrations/google/auth';
 import { originPattern } from '../../platform/permissions';
+
+const APARAT_ORIGIN = 'https://www.aparat.com/*';
 import { collectSettings, restoreSettings } from './settingsBackup';
 
 const SECTIONS: { id: string; label: MessageKey; icon: IconName }[] = [
@@ -158,6 +160,28 @@ export function SettingsView() {
                 <div className="stack-s" style={{ gap: 2 }}>
                   <Switch checked={prefs.pageAdapterEnabled} onChange={(v) => void setPrefs({ pageAdapterEnabled: v })} label={<strong>{t('settings.pageAdapter')}</strong>} />
                   <span className="small muted">{t('settings.pageAdapterHelp')}</span>
+                </div>
+              </div>
+              <div className="core-row-setting">
+                <div className="stack-s" style={{ gap: 2 }}>
+                  <Switch
+                    checked={!!prefs.aparatEnabled}
+                    onChange={(v) => {
+                      if (v) {
+                        // Requested in the click itself so it counts as a user gesture; the package works without it.
+                        void browser.permissions
+                          .request({ origins: [APARAT_ORIGIN] })
+                          .catch(() => false)
+                          .then((ok) => !ok && toast(t('aparat.permDenied')));
+                        void setPrefs({ aparatEnabled: true });
+                      } else {
+                        void browser.permissions.remove({ origins: [APARAT_ORIGIN] }).catch(() => false);
+                        void setPrefs({ aparatEnabled: false });
+                      }
+                    }}
+                    label={<strong>{t('aparat.setting')}</strong>}
+                  />
+                  <span className="small muted">{t('aparat.settingHelp')}</span>
                 </div>
               </div>
             </Card>

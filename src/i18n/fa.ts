@@ -52,6 +52,7 @@ export const fa: Record<MessageKey, string> = {
   'ctx.kind.studio-video': 'استودیو: ویدیو',
   'ctx.kind.studio': 'یوتیوب استودیو',
   'ctx.kind.youtube-other': 'صفحهٔ یوتیوب',
+  'ctx.kind.aparat': 'صفحهٔ آپارات',
   'ctx.kind.unsupported': 'صفحهٔ یوتیوب نیست',
   'ctx.kind.unknown': 'صفحه قابل خواندن نیست',
   'ctx.unsupportedHelp': 'TubeX فقط صفحه‌های یوتیوب را می‌خواند. ایده‌ها و پیش‌نویس‌هایتان این‌جا هم کار می‌کنند.',
