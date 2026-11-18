@@ -1,6 +1,7 @@
 // Actions of the watch page (tiles in the bar's Actions tab, and the Videolytics Tools menu): save as idea, add the channel to competitors, export comments as CSV,
 // embed code builder, open in Studio, and (own videos) inline title/description/tags edit with a diff and
 // an explicit confirmation before anything is written to YouTube.
+import { researchFromVideo } from '../../domain/workflow';
 import { useId, useMemo, useState } from 'react';
 import { Icon, type IconName } from '../../components/icons';
 import { Button, Switch } from '../../components/ui';
@@ -49,7 +50,8 @@ export function useWatchActions({ v, own, activeChannelId, onUpdated }: WatchAct
       title: t('inpage.act.idea'),
       sub: t('inpage.act.ideaSub'),
       run: async () => {
-        const r = await rpc<unknown>('ideas.capture', v.title, `https://www.youtube.com/watch?v=${v.id}`, v.title);
+        const research = researchFromVideo({ title: v.title, views: v.views, publishedAt: v.publishedAt, channelTitle: v.channelTitle, channelId: activeChannelId || undefined, retrievedAt: new Date().toISOString() });
+        const r = await rpc<unknown>('ideas.capture', v.title, `https://www.youtube.com/watch?v=${v.id}`, v.title, research);
         toast(r ? t('inpage.act.ideaDone') : t('error.generic'));
       },
     },

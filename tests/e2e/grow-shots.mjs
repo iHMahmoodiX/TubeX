@@ -9,7 +9,7 @@ import { join, resolve } from 'node:path';
 import { chromium } from 'playwright-core';
 
 const SRC = resolve(process.env.EXT_DIR ?? '.output/chrome-mv3');
-const EXE = process.env.CHROMIUM_PATH ?? '/opt/pw-browsers/chromium-1194/chrome-linux/chrome';
+const EXE = process.env.CHROMIUM_PATH ?? '/opt/pw-browsers/chromium-1243/chrome-linux64/chrome';
 const [outDir = '/tmp/tubex-grow-shots', ...asked] = process.argv.slice(2);
 mkdirSync(outDir, { recursive: true });
 const width = Number(process.env.WIDTH ?? 1200);
@@ -108,6 +108,12 @@ for (const r of routes) {
       await p.locator(sel).getByRole('button', { name: /بارگیری|Load results/ }).click();
       await p.waitForTimeout(1500);
     }
+  } else if (r === 'draft-flow') {
+    await p.goto(`chrome-extension://${id}/workspace.html#research/${encodeURIComponent('آموزش فیگما')}`);
+    await p.waitForTimeout(3000);
+    await p.locator('[data-testid="flow-draft"]').first().click();
+    await p.waitForTimeout(1500);
+    await p.locator('[data-testid="draft-flow"] details').first().evaluate((d) => (d.open = true));
   } else if (r === 'settings-ai') {
     await p.goto(`chrome-extension://${id}/workspace.html#settings`);
     await p.waitForTimeout(1500);

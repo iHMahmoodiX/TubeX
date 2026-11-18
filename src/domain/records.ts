@@ -119,7 +119,7 @@ const VIDEO_ID = /^[\w-]{11}$/;
 const CHANNEL_ID = /^UC[\w-]{22}$/;
 
 /** Research context: every field optional, broken ones dropped; signals keep at most 20 short entries. */
-function research(v: unknown): ResearchRef | undefined {
+export function cleanResearch(v: unknown): ResearchRef | undefined {
   if (!isObj(v)) return undefined;
   const out: ResearchRef = {};
   const topic = optStr(v.topic, MAX_SHORT);
@@ -217,7 +217,7 @@ function idea(r: Raw, o: SanitizeOptions): Idea {
   const src = source(r.source, b.createdAt);
   const profileId = optStr(r.profileId, 100);
   const status = IDEA_STATUSES.includes(r.status as Idea['status']) ? (r.status as Idea['status']) : 'inbox';
-  const rs = research(r.research);
+  const rs = cleanResearch(r.research);
   return { ...b, text, notes: str(r.notes, MAX_TEXT), status, ...(profileId && { profileId }), ...(src && { source: src }), ...(rs && { research: rs }) };
 }
 
@@ -226,7 +226,7 @@ function draft(r: Raw, o: SanitizeOptions): Draft {
   const src = source(r.source, b.createdAt);
   const profileId = optStr(r.profileId, 100);
   const ideaId = optStr(r.ideaId, 100);
-  const rs = research(r.research);
+  const rs = cleanResearch(r.research);
   const ap = isObj(r.platforms) ? aparat(r.platforms.aparat, b.updatedAt) : undefined;
   return {
     ...b,

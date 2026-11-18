@@ -10,7 +10,7 @@ import { chromium } from 'playwright-core';
 const EXT = resolve('.output/chrome-mv3');
 const ART = resolve('tests/e2e/artifacts');
 const PORT = Number(process.env.CDP_PORT ?? 9333);
-const EXE = process.env.CHROMIUM_PATH ?? '/opt/pw-browsers/chromium-1194/chrome-linux/chrome';
+const EXE = process.env.CHROMIUM_PATH ?? '/opt/pw-browsers/chromium-1243/chrome-linux64/chrome';
 const VIDEO_1 = 'dQw4w9WgXcQ';
 const VIDEO_2 = 'abcdefghijk';
 mkdirSync(ART, { recursive: true });

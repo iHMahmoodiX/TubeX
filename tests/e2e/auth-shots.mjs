@@ -7,7 +7,7 @@ import { join, resolve } from 'node:path';
 import { chromium } from 'playwright-core';
 
 const EXT = resolve(process.env.EXT_DIR ?? '.output/chrome-mv3');
-const EXE = process.env.CHROMIUM_PATH ?? '/opt/pw-browsers/chromium-1194/chrome-linux/chrome';
+const EXE = process.env.CHROMIUM_PATH ?? '/opt/pw-browsers/chromium-1243/chrome-linux64/chrome';
 const [outDir = '/tmp/tubex-auth-shots'] = process.argv.slice(2);
 mkdirSync(outDir, { recursive: true });
 const lang = process.env.LANG_UI ?? 'fa';
