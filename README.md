@@ -2,11 +2,13 @@
 
 A personal, local-first YouTube creator workbench as a Chrome/Edge extension, with a Persian-first (RTL) and English interface.
 
-**Status (2026-10-20): local development build `0.2.0`.** Everything local works without credentials. Optional: your own YouTube Data API key (public stats and research) and an AI provider (Ollama, Gemini with your key, or any OpenAI-compatible service). TubeX never signs in to your YouTube account or changes anything on YouTube yet. See [docs/NEXT.md](docs/NEXT.md) for the current state and [docs/FEATURE_MATRIX.md](docs/FEATURE_MATRIX.md) for coverage.
+**Status (2026-11-18): GitHub Release [`v0.5.3`](https://github.com/iHMahmoodiX/TubeX/releases/tag/v0.5.3), merged into `main`.** The GitHub Actions release build passed typecheck, unit tests and packaging. The local-first extension optionally supports Google sign-in, public YouTube Data API access and owner-configured AI (Gemini, Ollama or compatible services). **Live YouTube/Edge and persistent sign-in validation is still pending**: see [issue #9](https://github.com/iHMahmoodiX/TubeX/issues/9) and [docs/NEXT.md](docs/NEXT.md).
 
 ## What it does
 
-**New in 0.2.0**
+**Expanded through 0.5.3:** YouTube/Studio in-page tools (Videolytics, Channelytics, tag tools, bulk menu and Shorts-related-video handoff), authorized multi-channel analytics, reports, keyword and competitor research, comment/playlist tools, scheduling, advanced Persian-aware bulk find and replace with preview/undo and optional persistent sign-in server. Features requiring live credentials, writes or Studio DOM interactions must be validated with the owner's account. See [CHANGELOG.md](CHANGELOG.md).
+
+**Core functionality introduced in 0.2.0**
 - **AI assistant** in every draft: titles, description, tags, hooks/outline, content brief, translation, chapters from a transcript, thumbnail critique. Settings → Connections: choose Ollama, Gemini (your key) or a custom service.
 - **Public stats** in the side panel (with your YouTube API key): video/channel/search stats, view and copy tags, embed code, comment export, channel video export.
 - **Research**: keyword explorer on a labeled search sample, trending, keyword lists (CSV). **Competitors**: watchlist with new-upload badges.
@@ -23,7 +25,7 @@ A personal, local-first YouTube creator workbench as a Chrome/Edge extension, wi
 
 ## Install (unpacked, Chrome or Edge on Windows)
 
-Requires Node.js 22+ and npm.
+Download the [v0.5.3 ZIP](https://github.com/iHMahmoodiX/TubeX/releases/download/v0.5.3/tubex-0.5.3-chrome.zip), extract it and use **Load unpacked** on the extracted extension directory. To build from source instead, Node.js 22+ and npm are required.
 
 ```bash
 npm install
