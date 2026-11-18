@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.6.6 — 2026-11-19 — Ask Studio fixes from the first live test
+- Page method now reads the answer from the whole Ask Studio side panel, including text inside Studio's shadow DOM and tables, skips the shortened question bubble, and no longer waits forever for a spinner. (Studio answered but TubeX timed out.)
+- "TubeX questions" inside Studio's own Ask Studio panel: a button above the question box opens the ready-made questions (this video's first on a video page); one click types and sends it in Ask Studio. Can be hidden in Settings → Ask Studio.
+
 ## 0.6.5 — 2026-11-19 — Ask Studio from TubeX, one settings section at a time
 - Ask Studio page (Analyze): 14 ready-made questions (7 channel, 7 per video), a video picker, the answer shown in TubeX, copy, save as idea and a history of answers. The Improve queue can ask Ask Studio and show the answer inline.
 - Settings → Ask Studio chooses the method (D-030): copy and open Studio; through the Studio page (a background Studio tab, the question typed into Ask Studio, the answer read back, the tab closed); or direct request (Studio's own request, learned once from a page run and replayed with the signed-in session, falling back to the page when it fails). Ready-made questions are editable, with restore to TubeX's.

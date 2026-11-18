@@ -2,6 +2,7 @@ import { defineContentScript } from 'wxt/utils/define-content-script';
 import { registerStudioIslands } from '../../src/inpage/studio';
 import { injectInpageFont } from '../../src/inpage/font';
 import { registerAskStudio } from '../../src/inpage/askStudio';
+import { registerAskStudioBar } from '../../src/inpage/askStudioBar';
 import '../../src/inpage/inpage.css';
 
 // In-page tools in YouTube Studio (shadow roots). Form fields are only filled on an explicit click,
@@ -14,6 +15,8 @@ export default defineContentScript({
     injectInpageFont();
     // Ask Studio bridge: acts only on a TubeX request from the background (Settings → Ask Studio).
     registerAskStudio();
+    // Ready-made TubeX questions inside Studio's Ask Studio panel (Settings → Ask Studio can hide them).
+    registerAskStudioBar();
     // Islands follow Settings → In-page tools live (each checks its own switch), so they register even when off.
     await registerStudioIslands(ctx);
   },

@@ -99,3 +99,54 @@ describe('Ask Studio: page automation on a fixture', () => {
     vi.useRealTimers();
   });
 });
+
+describe('Ask Studio: reading the real side panel', () => {
+  it('skips a shortened question bubble and keeps the whole answer', () => {
+    const before = 'Ask Studio\nچطور کمکت کنم؟\nAI can make mistakes.';
+    const after = 'تحلیل عملکرد هفتگی کانال\nعملکرد کانالم را در ۷ روز گذشته با ۷ روز قبلش مقایسه کن. بازدید…\nدر ادامه مقایسه عملکرد کانال آورده شده است.\nبازدید | ۲٬۴۳۰ | ۲٬۷۱۵ |\nAI can make mistakes.';
+    const q = 'عملکرد کانالم را در ۷ روز گذشته با ۷ روز قبلش مقایسه کن. بازدید، زمان تماشا، مشترک جدید و CTR را بگو.';
+    expect(answerFromPanel(before, after, q)).toBe('در ادامه مقایسه عملکرد کانال آورده شده است.\nبازدید | ۲٬۴۳۰ | ۲٬۷۱۵ |');
+  });
+
+  it('reads text inside shadow roots and slots, without the typed question box', async () => {
+    const { deepText } = await import('../../src/inpage/askStudio');
+    const host = document.createElement('ytcp-message');
+    host.attachShadow({ mode: 'open' }).innerHTML = '<div>جواب <b>مهم</b></div><table><tr><td>بازدید</td><td>۱۰</td></tr></table><slot></slot>';
+    host.innerHTML = '<p>بخش اسلات</p>';
+    const wrap = document.createElement('div');
+    wrap.append(host, Object.assign(document.createElement('textarea'), { value: 'متن تایپ‌شده' }));
+    document.body.append(wrap);
+    const text = deepText(wrap);
+    expect(text).toContain('جواب مهم');
+    expect(text).toContain('بازدید | ۱۰ |');
+    expect(text).toContain('بخش اسلات');
+    expect(text).not.toContain('متن تایپ‌شده');
+    wrap.remove();
+  });
+});
+
+describe('TubeX questions inside the Ask Studio panel', () => {
+  beforeEach(() => {
+    vi.spyOn(Element.prototype, 'getBoundingClientRect').mockReturnValue({ width: 300, height: 40, top: 0, left: 0, right: 300, bottom: 40, x: 0, y: 0, toJSON: () => ({}) } as DOMRect);
+  });
+  afterEach(() => {
+    vi.restoreAllMocks();
+    document.body.innerHTML = '';
+  });
+
+  it('recognises the Ask Studio box, puts the strip above it and sends a question with one click', async () => {
+    const { isAskStudioInput, inputBox, sendInPanel } = await import('../../src/inpage/askStudioBar');
+    document.body.innerHTML = '<aside id="side"><div class="conv">سلام</div><div class="box"><textarea></textarea><button aria-label="Send">→</button></div><div>AI can make mistakes.</div></aside><div id="desc"><textarea id="other"></textarea></div>';
+    const ta = document.querySelector('#side textarea') as HTMLTextAreaElement;
+    expect(isAskStudioInput(ta)).toBe(true);
+    expect(isAskStudioInput(document.getElementById('other') as HTMLElement)).toBe(false);
+    expect(inputBox(ta)).toBeTruthy();
+    let sent = '';
+    document.querySelector('#side button')!.addEventListener('click', () => (sent = ta.value));
+    vi.useFakeTimers();
+    expect(sendInPanel('بهترین زمان انتشار؟')).toBe(true);
+    vi.advanceTimersByTime(400);
+    vi.useRealTimers();
+    expect(sent).toBe('بهترین زمان انتشار؟');
+  });
+});

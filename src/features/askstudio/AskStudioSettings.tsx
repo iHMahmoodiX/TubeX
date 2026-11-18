@@ -149,6 +149,13 @@ export function AskStudioSettings() {
           )}
         </div>
       )}
+      <label className="check">
+        <input type="checkbox" role="switch" className="switch" checked={s.showInStudio} onChange={(e) => void updateAskSettings((x) => ({ ...x, showInStudio: e.target.checked }))} data-testid="ask-show-in-studio" />
+        <span className="stack-s" style={{ gap: 2 }}>
+          <strong className="small">{t('ask.showInStudio')}</strong>
+          <span className="xsmall muted">{t('ask.showInStudioHelp')}</span>
+        </span>
+      </label>
       <p className="xsmall faint">{t('ask.risk')}</p>
       <hr className="divider" />
       <h3>{t('ask.presets')}</h3>

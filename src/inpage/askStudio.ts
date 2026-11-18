@@ -46,20 +46,76 @@ export function findLauncher(root: ParentNode = document): HTMLElement | null {
   return (hit as HTMLElement) ?? null;
 }
 
-function panelOf(el: Element): Element {
+const up = (el: Element): Element | null => el.parentElement ?? (((el.getRootNode() as ShadowRoot).host as Element | undefined) ?? null);
+
+/** The labelled ancestor (ask/chat/dialog) closest to an element; used to score inputs. */
+function labelledAncestor(el: Element): Element {
   let cur: Element | null = el;
   for (let i = 0; cur && i < 25; i++) {
     if (PANEL_RE.test(label(cur)) || cur.getAttribute('role') === 'dialog' || cur.getAttribute('role') === 'complementary') return cur;
-    cur = (cur.parentElement ?? ((cur.getRootNode() as ShadowRoot).host as Element | undefined)) ?? null;
+    cur = up(cur);
   }
   return el.parentElement ?? el;
+}
+
+/**
+ * The whole Ask Studio side panel around the question box: the highest ancestor (crossing shadow roots) that is
+ * still a side column, i.e. narrower than 60% of the window. It holds the conversation, not only the input.
+ */
+export function panelOf(el: Element): Element {
+  const maxW = Math.max(320, window.innerWidth * 0.6);
+  let best: Element = labelledAncestor(el);
+  let cur: Element | null = el;
+  for (let i = 0; cur && i < 40; i++) {
+    const r = cur.getBoundingClientRect();
+    if (r.width > maxW || cur === document.body || cur === document.documentElement) break;
+    if (r.height > 0) best = cur;
+    cur = up(cur);
+  }
+  return best;
+}
+
+const BLOCK = new Set(['DIV', 'P', 'LI', 'TR', 'H1', 'H2', 'H3', 'H4', 'H5', 'H6', 'BR', 'TABLE', 'UL', 'OL', 'SECTION', 'ARTICLE', 'PRE', 'BLOCKQUOTE']);
+const SKIP = new Set(['SCRIPT', 'STYLE', 'TEXTAREA', 'INPUT', 'SVG', 'svg', 'NOSCRIPT', 'TEMPLATE']);
+
+/** Visible text of an element including open shadow roots and slotted content (innerText skips shadow DOM). */
+export function deepText(root: Node): string {
+  const out: string[] = [];
+  const walk = (n: Node) => {
+    if (n.nodeType === Node.TEXT_NODE) {
+      out.push(n.textContent ?? '');
+      return;
+    }
+    if (n.nodeType !== Node.ELEMENT_NODE && n.nodeType !== Node.DOCUMENT_FRAGMENT_NODE) return;
+    const el = n as Element;
+    if (n.nodeType === Node.ELEMENT_NODE) {
+      if (SKIP.has(el.tagName)) return;
+      if ((el as HTMLElement).hidden || el.getAttribute('aria-hidden') === 'true') return;
+      const cs = getComputedStyle(el);
+      if (cs.display === 'none' || cs.visibility === 'hidden') return;
+    }
+    const block = n.nodeType === Node.ELEMENT_NODE && BLOCK.has(el.tagName);
+    if (block) out.push('\n');
+    if (el.tagName === 'SLOT') (el as HTMLSlotElement).assignedNodes({ flatten: true }).forEach(walk);
+    else if ((el as Element).shadowRoot) walk((el as Element).shadowRoot!);
+    else n.childNodes.forEach(walk);
+    if (el.tagName === 'TD' || el.tagName === 'TH') out.push(' | ');
+    if (block) out.push('\n');
+  };
+  walk(root);
+  return out
+    .join('')
+    .replace(/[ \t\u00a0]+/g, ' ')
+    .replace(/ ?\n ?/g, '\n')
+    .replace(/\n{3,}/g, '\n\n')
+    .trim();
 }
 
 /** The question box of the open Ask Studio panel. */
 export function findInput(root: ParentNode = document): HTMLElement | null {
   const inputs = deepAll(root, 'textarea, [contenteditable="true"], [contenteditable=""], input[type="text"]').filter(visible) as HTMLElement[];
-  const inPanel = inputs.filter((i) => PANEL_RE.test(label(panelOf(i))) || PANEL_RE.test(label(i)) || ASK_RE.test(i.getAttribute('placeholder') ?? ''));
-  const scored = (inPanel.length ? inPanel : inputs).map((i) => ({ i, s: (PANEL_RE.test(label(panelOf(i))) ? 2 : 0) + (/ask|question|prompt|پرس/i.test(`${i.getAttribute('placeholder') ?? ''} ${i.getAttribute('aria-label') ?? ''}`) ? 2 : 0) }));
+  const inPanel = inputs.filter((i) => PANEL_RE.test(label(labelledAncestor(i))) || PANEL_RE.test(label(i)) || ASK_RE.test(i.getAttribute('placeholder') ?? ''));
+  const scored = (inPanel.length ? inPanel : inputs).map((i) => ({ i, s: (PANEL_RE.test(label(labelledAncestor(i))) ? 2 : 0) + (/ask|question|prompt|پرس/i.test(`${i.getAttribute('placeholder') ?? ''} ${i.getAttribute('aria-label') ?? ''}`) ? 2 : 0) }));
   scored.sort((a, b) => b.s - a.s);
   return scored[0]?.i ?? null;
 }
@@ -79,7 +135,7 @@ export function typeInto(el: HTMLElement, text: string): void {
   }
 }
 
-function findSend(panel: Element): HTMLElement | null {
+export function findSend(panel: Element): HTMLElement | null {
   const btns = deepAll(panel, 'button, [role="button"], ytcp-icon-button, tp-yt-paper-icon-button').filter(visible) as HTMLElement[];
   return btns.find((b) => /send|submit|ارسال|بفرست/i.test(label(b)) && !b.hasAttribute('disabled') && b.getAttribute('aria-disabled') !== 'true') ?? null;
 }
@@ -88,7 +144,7 @@ function busy(panel: Element): boolean {
   return deepAll(panel, '[role="progressbar"], tp-yt-paper-spinner[active], tp-yt-paper-spinner-lite[active], .loading, [aria-busy="true"]').some(visible);
 }
 
-const textOf = (el: Element) => ((el as HTMLElement).innerText ?? el.textContent ?? '').trim();
+const textOf = (el: Element) => deepText(el);
 
 async function waitFor<T>(fn: () => T | null, ms: number, step = 250): Promise<T | null> {
   const end = Date.now() + ms;
@@ -114,7 +170,9 @@ async function waitAnswer(panel: Element, before: string, question: string, time
       continue;
     }
     const answer = answerFromPanel(before, now, question);
-    if (answer.length > 2 && !busy(panel) && Date.now() - since >= quiet) return answer;
+    // Done when the text stopped changing; a spinner that never goes away is ignored after a longer quiet time.
+    const still = Date.now() - since;
+    if (answer.length > 2 && ((still >= quiet && !busy(panel)) || still >= quiet * 3)) return answer;
   }
   const partial = answerFromPanel(before, last, question);
   if (partial.length > 2) return partial;
@@ -166,7 +224,7 @@ async function learn(cap: { url: string; body: string; headers: Record<string, s
 
 export async function askOnPage(question: string, timeoutMs = 150_000): Promise<AskReply> {
   let input = findInput();
-  if (!input || !PANEL_RE.test(label(panelOf(input)))) {
+  if (!input || !PANEL_RE.test(label(labelledAncestor(input)))) {
     const launcher = await waitFor(() => findLauncher(), 15_000);
     if (!launcher) return { ok: false, code: 'no-launcher' };
     launcher.click();

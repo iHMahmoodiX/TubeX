@@ -32,6 +32,8 @@ export interface LearnedRequest {
 
 export interface AskSettings {
   mode: AskMode;
+  /** Show the ready-made questions inside Studio's own Ask Studio panel. */
+  showInStudio: boolean;
   presets: AskPreset[];
   learned?: LearnedRequest;
 }
@@ -69,7 +71,7 @@ export const DEFAULT_PRESETS: AskPreset[] = [
 const str = (v: unknown, max: number) => (typeof v === 'string' ? v.slice(0, max) : '');
 
 export function defaultAskSettings(): AskSettings {
-  return { mode: 'page', presets: DEFAULT_PRESETS.map((p) => ({ ...p })) };
+  return { mode: 'page', showInStudio: true, presets: DEFAULT_PRESETS.map((p) => ({ ...p })) };
 }
 
 export function coerceAskSettings(raw: unknown): AskSettings {
@@ -77,6 +79,7 @@ export function coerceAskSettings(raw: unknown): AskSettings {
   if (typeof raw !== 'object' || raw === null) return out;
   const r = raw as Record<string, unknown>;
   if (ASK_MODES.includes(r.mode as AskMode)) out.mode = r.mode as AskMode;
+  out.showInStudio = r.showInStudio !== false;
   if (Array.isArray(r.presets)) {
     const seen = new Set<string>();
     out.presets = [];
@@ -236,9 +239,18 @@ export function answerFromPanel(before: string, after: string, question: string)
   let suf = 0;
   while (suf < before.length - pre && suf < after.length - pre && before[before.length - 1 - suf] === after[after.length - 1 - suf]) suf++;
   let t = after.slice(pre, after.length - suf);
-  const head = question.trim().slice(0, 40);
-  const i = head ? t.lastIndexOf(head) : -1;
-  if (i >= 0) t = t.slice(i + question.trim().length);
+  // Skip the echoed question. Studio may show it shortened ("…") or wrapped, so match its start and skip that block.
+  const full = question.trim();
+  const fi = t.lastIndexOf(full);
+  if (fi >= 0) t = t.slice(fi + full.length);
+  else {
+    const head = full.slice(0, 30);
+    const i = head ? t.lastIndexOf(head) : -1;
+    if (i >= 0) {
+      const nl = t.indexOf('\n', i);
+      t = nl >= 0 ? t.slice(nl + 1) : '';
+    }
+  }
   return t
     .split('\n')
     .map((l) => l.trimEnd())
