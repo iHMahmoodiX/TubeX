@@ -148,7 +148,11 @@ for (const r of routes) {
       await p.locator('[data-testid="auto-run-selected"]').click();
       await p.waitForTimeout(4000);
     }
-  } else if (r === 'settings-blog' || r === 'settings-aparat') {
+  } else if (r === 'askstudio') {
+    await p.goto(`chrome-extension://${id}/workspace.html#askstudio`);
+    await p.waitForTimeout(2500);
+    await p.locator('[data-testid="ask-presets"] button').first().click();
+  } else if (r === 'settings-blog' || r === 'settings-aparat' || r === 'settings-askstudio') {
     await p.goto(`chrome-extension://${id}/workspace.html#settings/set-${r.slice(9)}`);
     await p.waitForTimeout(2000);
   } else if (r === 'blog-open') {
@@ -169,7 +173,7 @@ for (const r of routes) {
     await p.locator('[data-testid="outl-run"]').click();
     await p.waitForTimeout(2000);
   } else if (r === 'settings-ai') {
-    await p.goto(`chrome-extension://${id}/workspace.html#settings`);
+    await p.goto(`chrome-extension://${id}/workspace.html#settings/set-connections`);
     await p.waitForTimeout(1500);
     await p.locator('[data-testid="ai-settings"]').scrollIntoViewIfNeeded();
   } else {

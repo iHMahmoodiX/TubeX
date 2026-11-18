@@ -20,6 +20,7 @@ import { ReportsView } from '../../src/features/reports/ReportsView';
 import { OptimizeView } from '../../src/features/optimize/OptimizeView';
 import { ExperimentsView } from '../../src/features/experiments/ExperimentsView';
 import { AparatView } from '../../src/features/aparat/AparatView';
+import { AskStudioView } from '../../src/features/askstudio/AskStudioView';
 import { ResearchView } from '../../src/features/research/ResearchView';
 import { ScheduleView } from '../../src/features/schedule/ScheduleView';
 import { SettingsView } from '../../src/features/settings/SettingsView';
@@ -63,6 +64,7 @@ const NAV: { group?: MessageKey; items: NavItem[] }[] = [
       { route: 'optimize', label: 'nav.optimize', icon: 'rocket' },
       { route: 'reports', label: 'nav.reports', icon: 'chart' },
       { route: 'experiments', label: 'nav.experiments', icon: 'layers' },
+      { route: 'askstudio', label: 'nav.askstudio', icon: 'sparkle' },
     ],
   },
   {
@@ -145,6 +147,7 @@ export function App() {
     case 'reports': view = <ReportsView tab={loc.id} />; break;
     case 'optimize': view = <OptimizeView videoId={loc.id} />; break;
     case 'experiments': view = <ExperimentsView id={loc.id} />; break;
+    case 'askstudio': view = <AskStudioView />; break;
     case 'aparat': view = <AparatView platform="aparat" />; break;
     case 'blog': view = <AparatView platform="blog" />; break;
     case 'bulk': view = <BulkView />; break;

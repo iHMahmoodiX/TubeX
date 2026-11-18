@@ -52,7 +52,7 @@ export function SignInEmpty({ icon, why }: { icon: IconName; why: MessageKey }) 
       action={
         <span className="row" style={{ justifyContent: 'center' }}>
           <ReconnectButton />
-          <a className="btn btn-s" href="#settings">
+          <a className="btn btn-s" href="#settings/set-connections">
             {t('conn.openSettings')}
           </a>
         </span>

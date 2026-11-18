@@ -256,7 +256,7 @@ await step('workspace is keyboard reachable and fits 320px', async () => {
 
 let backupPath;
 await step('export backup downloads every record', async () => {
-  await ws.goto(ext('workspace.html#settings'));
+  await ws.goto(ext('workspace.html#settings/set-data'));
   const [download] = await Promise.all([ws.waitForEvent('download'), ws.getByRole('button', { name: 'خروجی پشتیبان' }).click()]);
   backupPath = join(userDir, 'backup.json');
   await download.saveAs(backupPath);
@@ -316,7 +316,7 @@ await step('research, competitors, comments and connection settings render witho
   await ws.getByLabel('متن پاسخ').first().fill('ممنون از *همراهی* شما');
   await ws.getByRole('button', { name: 'ذخیرهٔ پاسخ' }).click();
   await ws.locator('strong', { hasText: 'همراهی' }).first().waitFor();
-  await ws.goto(ext('workspace.html#settings'));
+  await ws.goto(ext('workspace.html#settings/set-connections'));
   const ai = ws.getByTestId('ai-settings');
   await ai.getByRole('radiogroup', { name: 'سرویس' }).getByRole('radio', { name: /Gemini/ }).click();
   assert((await ai.getByLabel('نشانی پایه').inputValue()) === 'https://generativelanguage.googleapis.com/v1beta/openai', 'gemini preset url');

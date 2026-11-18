@@ -9,5 +9,6 @@ import { tagToolsMethods } from './tagTools';
 import { channelInsightsMethods } from './channelInsights';
 import { launchersMethods } from './launchers';
 import { bulkMethods } from './bulk';
+import { askStudioMethods } from './askStudio';
 
-export const METHODS: Record<string, (...args: any[]) => Promise<unknown>> = { ...coreMethods, ...reportsMethods, ...seoMethods, ...engageMethods, ...inpageMethods, ...studioContentMethods, ...tagToolsMethods, ...channelInsightsMethods, ...launchersMethods, ...bulkMethods };
+export const METHODS: Record<string, (...args: any[]) => Promise<unknown>> = { ...coreMethods, ...reportsMethods, ...seoMethods, ...engageMethods, ...inpageMethods, ...studioContentMethods, ...tagToolsMethods, ...channelInsightsMethods, ...launchersMethods, ...bulkMethods, ...askStudioMethods };

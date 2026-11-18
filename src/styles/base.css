@@ -488,3 +488,6 @@ h1[tabindex="-1"]:focus { outline: none; }
 .blog-preview ul, .blog-preview ol { margin: 6px 0; padding-inline-start: 22px; }
 .blog-preview a { color: var(--accent); }
 .blog-video { margin: 10px 0; padding: 28px 12px; text-align: center; border-radius: 8px; background: var(--surface-3); color: var(--text-2); }
+
+/* Ask Studio answers */
+.ask-answer { white-space: pre-wrap; background: var(--surface-2); border-radius: var(--radius, 8px); padding: 12px 14px; max-height: 480px; overflow: auto; line-height: 1.8; }

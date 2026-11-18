@@ -42,12 +42,12 @@ export function ErrorNotice({ error }: { error: unknown }) {
           {detail}
         </p>
       )}
-      {(auth || ytPermission || (SETUP_CODES.has(code) && location.hash !== '#settings')) && (
+      {(auth || ytPermission || (SETUP_CODES.has(code) && !location.hash.startsWith('#settings'))) && (
         <div className="row">
           {auth && <ReconnectButton channelId={(error as AuthError).channelId} />}
           {ytPermission && <AllowYouTube />}
-          {SETUP_CODES.has(code) && location.hash !== '#settings' && (
-            <Button size="s" variant={auth || ytPermission ? 'ghost' : undefined} onClick={() => void openWorkspace('settings')}>
+          {SETUP_CODES.has(code) && !location.hash.startsWith('#settings') && (
+            <Button size="s" variant={auth || ytPermission ? 'ghost' : undefined} onClick={() => void openWorkspace('settings', 'set-connections')}>
               {t('conn.openSettings')}
             </Button>
           )}

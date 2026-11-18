@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.6.5 — 2026-11-19 — Ask Studio from TubeX, one settings section at a time
+- Ask Studio page (Analyze): 14 ready-made questions (7 channel, 7 per video), a video picker, the answer shown in TubeX, copy, save as idea and a history of answers. The Improve queue can ask Ask Studio and show the answer inline.
+- Settings → Ask Studio chooses the method (D-030): copy and open Studio; through the Studio page (a background Studio tab, the question typed into Ask Studio, the answer read back, the tab closed); or direct request (Studio's own request, learned once from a page run and replayed with the signed-in session, falling back to the page when it fails). Ready-made questions are editable, with restore to TubeX's.
+- Settings shows only the chosen section; links open the right one (#settings/<section>).
+- Settings backups include the Ask Studio method and questions (not the learned request).
+
 ## 0.6.4 — 2026-11-18 — separate Aparat and Blog, your own prompts, "Do it all"
 - Aparat and Blog are separate pages in the menu and separate sections in Settings.
 - Prompt templates (Settings → Aparat / Blog): edit TubeX's prompt, save, reset to TubeX's default, add, duplicate, delete and choose the default; several templates per kind and a template per blog. The default prompts are now in Persian. TubeX always appends the fixed answer format (and Aparat's hard limits) so edited prompts keep working. Drafts let you pick the template per run.

@@ -107,7 +107,7 @@ export function AparatPanel({ draft, update }: { draft: Draft; update: (patch: P
               {aiBusy ? t('common.loading') : aiOut ? t('aparat.ai.again') : t('aparat.ai.run')}
             </Button>
           ) : (
-            <a className="btn btn-s" href="#settings">
+            <a className="btn btn-s" href="#settings/set-connections">
               {t('aparat.ai.setup')}
             </a>
           )}

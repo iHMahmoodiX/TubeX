@@ -136,7 +136,7 @@ export function ProfilesView() {
       <section className="stack" aria-labelledby="g-ch-h">
         <div className="section-title">
           <h2 id="g-ch-h">{t('core.profiles.google')}</h2>
-          <a className="btn btn-ghost btn-s" href="#settings">
+          <a className="btn btn-ghost btn-s" href="#settings/set-connections">
             {t('core.profiles.manageGoogle')}
           </a>
         </div>
@@ -145,7 +145,7 @@ export function ProfilesView() {
         ) : google.channels.length === 0 ? (
           <div className="card row-between">
             <p className="muted small grow">{t('core.profiles.googleEmpty')}</p>
-            <a className="btn btn-s" href="#settings">
+            <a className="btn btn-s" href="#settings/set-connections">
               {t('auth.signIn')}
             </a>
           </div>

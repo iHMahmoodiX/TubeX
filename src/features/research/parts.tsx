@@ -177,7 +177,7 @@ export function NeedsAccess() {
         <p>{t('yt.error.no-key')}</p>
         <p className="small muted">{t('seo.signInEnough')}</p>
         <div>
-          <a className="btn btn-s" href="#settings">
+          <a className="btn btn-s" href="#settings/set-connections">
             {t('conn.openSettings')}
           </a>
         </div>

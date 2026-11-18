@@ -11,6 +11,7 @@ export type WorkspaceRoute =
   | 'reports'
   | 'optimize'
   | 'experiments'
+  | 'askstudio'
   | 'aparat'
   | 'blog'
   | 'bulk'

@@ -117,7 +117,7 @@ function OwnLanguage({ onTranslate }: { onTranslate: (v: VideoMeta) => void }) {
     return (
       <section className="seo-section" aria-labelledby="lang-own">
         <SectionHead id="lang-own" title={t('seo.lang.ownTitle')} />
-        <Empty icon="lock" action={<a className="btn btn-s" href="#settings">{t('shell.signIn')}</a>}>
+        <Empty icon="lock" action={<a className="btn btn-s" href="#settings/set-connections">{t('shell.signIn')}</a>}>
           {t('seo.lang.ownSignIn')}
         </Empty>
       </section>
@@ -256,7 +256,7 @@ function Translate({ source }: { source?: VideoMeta }) {
         <Notice>
           <p>{t('seo.lang.trNoAi')}</p>
           <div>
-            <a className="btn btn-s" href="#settings">
+            <a className="btn btn-s" href="#settings/set-connections">
               {t('conn.openSettings')}
             </a>
           </div>

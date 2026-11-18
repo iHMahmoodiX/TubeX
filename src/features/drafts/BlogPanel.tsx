@@ -275,7 +275,7 @@ export function BlogPanel({ draft, update }: { draft: Draft; update: (patch: Par
             {busy ? t('common.loading') : autoWp ? (p ? t('blog.ai.againWp') : t('blog.ai.runWp')) : p ? t('blog.ai.again') : t('blog.ai.run')}
           </Button>
         ) : (
-          <a className="btn btn-s btn-primary" href="#settings">
+          <a className="btn btn-s btn-primary" href="#settings/set-connections">
             {t('aparat.ai.setup')}
           </a>
         )}
@@ -409,7 +409,7 @@ export function BlogPanel({ draft, update }: { draft: Draft; update: (patch: Par
         ) : (
           <p className="xsmall muted">
             {t('wp.connectFirst')}{' '}
-            <a href="#settings">{t('conn.openSettings')}</a>
+            <a href="#settings/set-blog">{t('conn.openSettings')}</a>
           </p>
         )}
       </div>

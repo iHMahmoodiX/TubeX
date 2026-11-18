@@ -215,7 +215,7 @@ export function PageInsights({ ctx, draftId }: { ctx: PageContext | null; draftI
           <p>{t('insights.needsKey')}</p>
           <p className="xsmall muted">{t('core.insights.signInEnough')}</p>
           <div>
-            <Button size="s" onClick={() => void openWorkspace('settings')}>
+            <Button size="s" onClick={() => void openWorkspace('settings', 'set-connections')}>
               {t('conn.openSettings')}
             </Button>
           </div>

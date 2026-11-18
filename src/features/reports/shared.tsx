@@ -30,7 +30,7 @@ export function SignedOut({ titleKey = 'reports.signedOut.title', bodyKey = 'rep
       )}
       <p className="bold">{t('mc.signInFirst')}</p>
       <div className="row" style={{ justifyContent: 'center' }}>
-        <a className="btn btn-primary" href="#settings">
+        <a className="btn btn-primary" href="#settings/set-connections">
           {t('reports.signIn')}
         </a>
       </div>

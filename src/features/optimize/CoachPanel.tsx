@@ -5,6 +5,8 @@ import { useEffect, useMemo, useState } from 'react';
 import { Icon } from '../../components/icons';
 import { Button, Notice } from '../../components/ui';
 import { useToast } from '../../components/toasts';
+import { AnswerBox, useAskSettings } from '../askstudio/AskStudioView';
+import { askErrorText, askStudio } from '../askstudio/askClient';
 import { ASK_STUDIO_URL, askStudioPrompt, COACH_INSTRUCTIONS, coachEvidence, RULE_ADVICE, validateCoach, type CoachSuggestion } from '../../domain/coach';
 import type { QueueEntry } from '../../domain/optimizeQueue';
 import { useI18n } from '../../i18n';
@@ -48,6 +50,21 @@ export function CoachPanel({ e, medians }: { e: QueueEntry; medians: { ctr: numb
       setBusy(false);
     }
   };
+  const askMode = useAskSettings().mode;
+  const [askBusy, setAskBusy] = useState(false);
+  const [askErr, setAskErr] = useState('');
+  const [askOut, setAskOut] = useState('');
+  const askNow = async () => {
+    setAskBusy(true);
+    setAskErr('');
+    try {
+      setAskOut((await askStudio(askStudioPrompt(ev, lang), { videoId: e.videoId }, e.title)).answer);
+    } catch (err) {
+      setAskErr(askErrorText(t, err));
+    } finally {
+      setAskBusy(false);
+    }
+  };
   const copyPrompt = async () => {
     try {
       await navigator.clipboard.writeText(askStudioPrompt(ev, lang));
@@ -75,7 +92,7 @@ export function CoachPanel({ e, medians }: { e: QueueEntry; medians: { ctr: numb
       {!aiOn ? (
         <p className="small muted">
           {t('coach.noAi')}{' '}
-          <a href="#settings">{t('coach.openSettings')}</a>
+          <a href="#settings/set-connections">{t('coach.openSettings')}</a>
         </p>
       ) : !consentAt ? (
         asking ? (
@@ -155,6 +172,16 @@ export function CoachPanel({ e, medians }: { e: QueueEntry; medians: { ctr: numb
         </div>
       )}
 
+      {askMode !== 'copy' && (
+        <div className="stack-s">
+          <Button size="s" variant="primary" disabled={askBusy} onClick={() => void askNow()} data-testid="coach-ask-run">
+            <Icon name="send" />
+            {askBusy ? t('ask.waiting') : t('ask.coachRun')}
+          </Button>
+          {askErr && <Notice tone="error">{askErr}</Notice>}
+          {askOut && <AnswerBox question={askStudioPrompt(ev, lang)} answer={askOut} />}
+        </div>
+      )}
       <div className="row opt-ask">
         <a className="btn btn-s" href={ASK_STUDIO_URL(e.videoId)} target="_blank" rel="noreferrer noopener" onClick={() => void copyPrompt()}>
           <Icon name="external" />

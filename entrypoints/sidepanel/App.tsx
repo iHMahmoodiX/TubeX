@@ -65,7 +65,7 @@ export function App() {
             <Avatar src={active.thumbnail} name={active.title} />
           </button>
         ) : (
-          google.loaded && <IconButton icon="users" label={t('shell.signIn')} onClick={() => void openWorkspace('settings')} />
+          google.loaded && <IconButton icon="users" label={t('shell.signIn')} onClick={() => void openWorkspace('settings', 'set-connections')} />
         )}
         <IconButton icon="external" label={t('popup.openWorkspace')} onClick={() => void openWorkspace('mychannel')} />
       </header>

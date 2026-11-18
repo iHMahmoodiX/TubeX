@@ -27,7 +27,7 @@ export function Insights({ data, onExplore }: { data?: KeywordData; onExplore: (
 
   if (google.loaded && !active)
     return (
-      <Empty icon="lock" title={t('seo.insights.signInTitle')} action={<a className="btn btn-primary" href="#settings">{t('shell.signIn')}</a>}>
+      <Empty icon="lock" title={t('seo.insights.signInTitle')} action={<a className="btn btn-primary" href="#settings/set-connections">{t('shell.signIn')}</a>}>
         {t('seo.insights.signIn')}
       </Empty>
     );

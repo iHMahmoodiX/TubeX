@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { browser } from 'wxt/browser';
 import { BACKUP_FORMAT, createBackup, countRecords, parseBackup, type ImportPreview } from '../../domain/backup';
 import { COLLECTIONS } from '../../domain/models';
@@ -15,6 +15,7 @@ import { Cover, Section, Segmented } from '../core/CoreUi';
 import { InpageSettings } from './InpageSettings';
 import { WordPressSettings } from './WordPressSettings';
 import { AparatSettings, BlogSettings } from './RepublishSettings';
+import { AskStudioSettings } from '../askstudio/AskStudioSettings';
 import { downloadText } from '../../platform/files';
 import type { ThemePref } from '../../storage/prefs';
 import { deleteAllData, exportAll, hasImportSnapshot, importData, undoLastImport } from '../../storage/db';
@@ -27,35 +28,12 @@ import { collectSettings, restoreSettings } from './settingsBackup';
 const SECTIONS: { id: string; label: MessageKey; icon: IconName }[] = [
   { id: 'set-general', label: 'core.set.general', icon: 'settings' },
   { id: 'set-connections', label: 'settings.connections', icon: 'link' },
+  { id: 'set-askstudio', label: 'nav.askstudio', icon: 'sparkle' },
   { id: 'set-aparat', label: 'nav.aparat', icon: 'globe' },
   { id: 'set-blog', label: 'nav.blog', icon: 'file' },
   { id: 'set-inpage', label: 'core.set.inpage', icon: 'video' },
   { id: 'set-data', label: 'core.set.data', icon: 'shield' },
 ];
-
-/** Highlights the sub-navigation entry of the section in view. */
-function useSectionInView(ids: string[]): [string, (id: string) => void] {
-  const [current, setCurrent] = useState(ids[0]!);
-  // After a jump the smooth scroll passes other sections; keep the chosen one highlighted meanwhile.
-  const lockUntil = useRef(0);
-  useEffect(() => {
-    const els = ids.map((id) => document.getElementById(id)).filter((x): x is HTMLElement => !!x);
-    const io = new IntersectionObserver(
-      (entries) => {
-        const top = entries.filter((e) => e.isIntersecting).sort((a, b) => a.boundingClientRect.top - b.boundingClientRect.top)[0];
-        if (top && Date.now() > lockUntil.current) setCurrent(top.target.id);
-      },
-      { rootMargin: '0px 0px -60% 0px' },
-    );
-    els.forEach((el) => io.observe(el));
-    return () => io.disconnect();
-  }, [ids]);
-  const choose = (id: string) => {
-    lockUntil.current = Date.now() + 1200;
-    setCurrent(id);
-  };
-  return [current, choose];
-}
 
 export function SettingsView({ section }: { section?: string } = {}) {
   const { t, lang } = useI18n();
@@ -69,7 +47,7 @@ export function SettingsView({ section }: { section?: string } = {}) {
   const [withAiKey, setWithAiKey] = useState(false);
   const [withYtKey, setWithYtKey] = useState(false);
   const [restoreSet, setRestoreSet] = useState(true);
-  const [current, setCurrent] = useSectionInView(SECTIONS.map((s) => s.id));
+  const current = section && SECTIONS.some((x) => x.id === section) ? section : SECTIONS[0]!.id;
   const version = browser.runtime.getManifest().version;
 
   useEffect(() => {
@@ -113,16 +91,14 @@ export function SettingsView({ section }: { section?: string } = {}) {
   };
 
   const rejected = preview ? Object.values(preview.rejected).reduce((a, b) => a + b, 0) : 0;
+  // One section at a time; the address keeps the choice (#settings/<section>) so links and reloads land on it.
   const jump = (id: string) => {
-    setCurrent(id);
-    const el = document.getElementById(id);
-    el?.scrollIntoView({ behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth', block: 'start' });
-    (el?.querySelector('h2') as HTMLElement | null)?.focus({ preventScroll: true });
+    location.hash = `settings/${id}`;
+    requestAnimationFrame(() => {
+      document.querySelector('main')?.scrollTo?.({ top: 0 });
+      (document.getElementById(`${id}-h`) as HTMLElement | null)?.focus({ preventScroll: true });
+    });
   };
-  // Opened as #settings/<section> (e.g. "Edit prompts" from a draft): go straight to that section.
-  useEffect(() => {
-    if (section && SECTIONS.some((x) => x.id === section)) setTimeout(() => jump(section), 60);
-  }, [section]); // eslint-disable-line react-hooks/exhaustive-deps
 
   return (
     <section className="stack-l" aria-labelledby="set-h">
@@ -137,7 +113,7 @@ export function SettingsView({ section }: { section?: string } = {}) {
           ))}
         </nav>
         <div className="core-sections">
-          <Section id="set-general" title={t('core.set.general')} desc={t('core.set.generalDesc')} icon="settings">
+          <Section active={current === 'set-general'} id="set-general" title={t('core.set.general')} desc={t('core.set.generalDesc')} icon="settings">
             <Card>
               <div className="core-row-setting">
                 <div className="stack-s" style={{ gap: 2 }}>
@@ -179,11 +155,17 @@ export function SettingsView({ section }: { section?: string } = {}) {
             </Card>
           </Section>
 
-          <Section id="set-connections" title={t('settings.connections')} desc={t('core.set.connectionsDesc')} icon="link">
+          <Section active={current === 'set-connections'} id="set-connections" title={t('settings.connections')} desc={t('core.set.connectionsDesc')} icon="link">
             <ConnectionsSettings />
           </Section>
 
-          <Section id="set-aparat" title={t('nav.aparat')} desc={t('auto.setAparatDesc')} icon="globe">
+          <Section active={current === 'set-askstudio'} id="set-askstudio" title="Ask Studio" desc={t('ask.setDesc')} icon="sparkle">
+            <Card>
+              <AskStudioSettings />
+            </Card>
+          </Section>
+
+          <Section active={current === 'set-aparat'} id="set-aparat" title={t('nav.aparat')} desc={t('auto.setAparatDesc')} icon="globe">
             <Card>
               <AparatSettings />
               <div className="core-row-setting" style={{ marginTop: 12 }}>
@@ -211,7 +193,7 @@ export function SettingsView({ section }: { section?: string } = {}) {
             </Card>
           </Section>
 
-          <Section id="set-blog" title={t('nav.blog')} desc={t('auto.setBlogDesc')} icon="file">
+          <Section active={current === 'set-blog'} id="set-blog" title={t('nav.blog')} desc={t('auto.setBlogDesc')} icon="file">
             <Card>
               <BlogSettings>
                 <p className="small muted">{t('wp.desc')}</p>
@@ -220,13 +202,13 @@ export function SettingsView({ section }: { section?: string } = {}) {
             </Card>
           </Section>
 
-          <Section id="set-inpage" title={t('core.set.inpage')} desc={t('core.set.inpageDesc')} icon="video">
+          <Section active={current === 'set-inpage'} id="set-inpage" title={t('core.set.inpage')} desc={t('core.set.inpageDesc')} icon="video">
             <div className="core-slot" data-empty={t('core.set.inpageEmpty')}>
               <InpageSettings />
             </div>
           </Section>
 
-          <Section id="set-data" title={t('core.set.data')} desc={t('settings.dataHelp')} icon="shield">
+          <Section active={current === 'set-data'} id="set-data" title={t('core.set.data')} desc={t('settings.dataHelp')} icon="shield">
             <Card title={t('settings.backup')} sub={t('settings.exportHelp')}>
               <div className="stack-s">
                 <Switch checked={withSettings} onChange={setWithSettings} label={<strong>{t('backup.includeSettings')}</strong>} />
