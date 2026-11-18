@@ -43,7 +43,7 @@ const isAparatUrl = (u: string) => {
   }
 };
 
-/** A fresh package from the YouTube draft. YouTube-only lines (subscribe/YouTube links) are dropped; all tags are kept so the owner picks which ones stay (the check flags more than 5). */
+/** A fresh package from the YouTube draft: YouTube-only lines (YouTube links) dropped, Aparat's tag rules applied (5 tags, each ≤ 23 characters), description cut at a line within 2000 characters. */
 export function aparatFromDraft(d: Pick<Draft, 'title' | 'description' | 'tags'>, at = new Date().toISOString()): AparatPackage {
   const description = d.description
     .split('\n')
@@ -51,17 +51,76 @@ export function aparatFromDraft(d: Pick<Draft, 'title' | 'description' | 'tags'>
     .join('\n')
     .replace(/\n{3,}/g, '\n\n')
     .trim();
+  const desc = fitLines(description, APARAT_RULES.descriptionChars.value);
   YT_LINK.lastIndex = 0;
   return {
     title: d.title.trim(),
-    description,
-    tags: [...new Set(d.tags.map((t) => t.replace(/^#/, '').trim()).filter(Boolean))],
+    description: desc,
+    tags: pickTags(d.tags),
     category: '',
     playlist: '',
     coverNote: '',
     scheduleNote: '',
     status: 'prepared',
     statusAt: at,
+  };
+}
+
+/** Unique tags that fit Aparat: at most 5, each at most 23 characters, in the YouTube order (most important first). */
+export function pickTags(tags: string[]): string[] {
+  const out: string[] = [];
+  for (const raw of tags) {
+    const t = raw.replace(/^#/, '').replace(/\s+/g, ' ').trim();
+    if (!t || [...t].length > APARAT_RULES.tagChars.value || out.some((x) => x.toLowerCase() === t.toLowerCase())) continue;
+    out.push(t);
+    if (out.length === APARAT_RULES.maxTags.value) break;
+  }
+  return out;
+}
+
+/** Text within `max` characters, cut at the last whole line (or word) that fits. */
+export function fitLines(text: string, max: number): string {
+  if ([...text].length <= max) return text;
+  const cut = [...text].slice(0, max).join('');
+  const nl = cut.lastIndexOf('\n');
+  const sp = cut.lastIndexOf(' ');
+  return cut.slice(0, nl > max * 0.6 ? nl : sp > max * 0.6 ? sp : max).trimEnd();
+}
+
+/** AI instructions for an Aparat-specific rewrite (Persian Aparat search, Aparat's limits). */
+export const APARAT_AI_TASK = 'aparat-optimize-v1';
+export const APARAT_AI_INSTRUCTIONS =
+  'Rewrite this YouTube video\'s metadata for Aparat (the Iranian video platform), to rank in Aparat search and suggestions. ' +
+  'Aparat viewers search in Persian with everyday wording, often mixing in English product names; write for them, not for YouTube. ' +
+  'Title: Persian, main search phrase near the start, specific and honest (no clickbait, no ALL CAPS, no emoji), at most 90 characters. ' +
+  'Description: Persian, at most 1800 characters. First two lines summarise what the viewer gets and contain the main phrase. Then short paragraphs or a bullet list of what the video covers. ' +
+  'Keep timestamps (chapters) exactly as given. Remove YouTube-only parts: YouTube links, "subscribe"/"turn on the bell"/"like" requests, YouTube hashtags, links to other YouTube videos. ' +
+  'Keep the creator\'s own website and course links. End with one line inviting viewers to follow the channel on Aparat. ' +
+  'Tags: exactly 5 Persian search phrases people type on Aparat (an English term is fine when Persians search it that way), each at most 23 characters, no # sign, no duplicates. ' +
+  'Category: one Aparat category name in Persian that fits best (for example آموزشی، علم و تکنولوژی، سرگرمی، ورزشی). ' +
+  'Return {"title": string, "description": string, "tags": string[], "category": string, "why": string} where why is one short Persian sentence on the main change.';
+
+export interface AparatAiResult {
+  title: string;
+  description: string;
+  tags: string[];
+  category: string;
+  why: string;
+}
+
+/** Validates and fits a model answer to Aparat's rules; never trusts the model's lengths. */
+export function parseAparatAi(o: Record<string, unknown>): AparatAiResult | null {
+  const s = (v: unknown) => (typeof v === 'string' ? v.trim() : '');
+  const title = s(o.title);
+  if (!title) return null;
+  const description = fitLines(s(o.description).replace(YT_LINK, '').replace(/\n{3,}/g, '\n\n').trim(), APARAT_RULES.descriptionChars.value);
+  YT_LINK.lastIndex = 0;
+  return {
+    title: [...title].slice(0, 100).join(''),
+    description,
+    tags: pickTags(Array.isArray(o.tags) ? o.tags.filter((x): x is string => typeof x === 'string') : []),
+    category: s(o.category).slice(0, 60),
+    why: s(o.why).slice(0, 300),
   };
 }
 

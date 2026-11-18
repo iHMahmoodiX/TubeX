@@ -73,7 +73,7 @@ export interface Draft extends BaseRecord {
   tags: string[];
   research?: ResearchRef;
   /** Optional per-platform packages; YouTube stays the draft's own fields (A1, #17). */
-  platforms?: { aparat?: AparatPackage };
+  platforms?: { aparat?: AparatPackage; blog?: BlogPackage };
 }
 
 export type PublishStatus = 'prepared' | 'uploaded' | 'published' | 'manual-check';
@@ -91,6 +91,27 @@ export interface AparatPackage {
   scheduleNote: string;
   status: PublishStatus;
   /** Aparat video page, entered by the owner after publishing. */
+  url?: string;
+  statusAt: string;
+}
+
+/** A WordPress blog version of the video (text + embedded videos). Prepared locally; the owner publishes in WordPress. */
+export interface BlogPackage {
+  /** Blog address, e.g. https://example.com/blog (owner's own site). */
+  site: string;
+  title: string;
+  /** Latin URL slug. */
+  slug: string;
+  metaDescription: string;
+  focusKeyword: string;
+  excerpt: string;
+  category: string;
+  tags: string[];
+  /** Article body as WordPress block HTML. */
+  html: string;
+  /** Call-to-action link (course/product) remembered per site. */
+  ctaUrl: string;
+  status: PublishStatus;
   url?: string;
   statusAt: string;
 }

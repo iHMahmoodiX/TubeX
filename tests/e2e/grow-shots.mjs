@@ -19,7 +19,7 @@ const theme = process.env.THEME ?? 'dark';
 const EXT = mkdtempSync(join(tmpdir(), 'tubex-ext-'));
 cpSync(SRC, EXT, { recursive: true });
 const manifest = JSON.parse(readFileSync(join(EXT, 'manifest.json'), 'utf8'));
-manifest.host_permissions = [...new Set([...(manifest.host_permissions ?? []), 'https://www.googleapis.com/*', 'https://youtubeanalytics.googleapis.com/*'])];
+manifest.host_permissions = [...new Set([...(manifest.host_permissions ?? []), 'https://www.googleapis.com/*', 'https://youtubeanalytics.googleapis.com/*', 'https://generativelanguage.googleapis.com/*'])];
 writeFileSync(join(EXT, 'manifest.json'), JSON.stringify(manifest));
 
 const OWN = 'UCownownownownownownown1';
@@ -69,6 +69,13 @@ const img = readFileSync(resolve('public/icon/128.png'));
 await ctx.route('https://i.ytimg.com/**', (r) => r.fulfill({ contentType: 'image/png', body: img }));
 await ctx.route('https://www.googleapis.com/**', (r) => r.fulfill({ contentType: 'application/json', body: JSON.stringify(api(r.request().url())) }));
 await ctx.route('https://youtubeanalytics.googleapis.com/**', (r) => r.fulfill({ contentType: 'application/json', body: JSON.stringify(api(r.request().url())) }));
+const AI_APARAT = { title: 'آموزش Auto Layout فیگما از صفر تا حرفه‌ای', description: 'در این ویدیو Auto Layout فیگما را قدم‌به‌قدم یاد می‌گیرید و طراحی ریسپانسیو می‌سازید.\n\nفصل‌ها:\n00:00 مقدمه\n01:20 شروع\n05:40 جمع‌بندی\n\nhttps://figmafa.ir\nکانال ما را در آپارات دنبال کنید.', tags: ['آموزش فیگما', 'اتولیوت فیگما', 'figma', 'طراحی رابط کاربری', 'آموزش ui'], category: 'آموزشی', why: 'عنوان با عبارت جست‌وجوی فارسی شروع می‌شود و لینک‌های یوتیوب حذف شدند.' };
+const AI_BLOG = { title: 'آموزش Auto Layout در فیگما؛ راهنمای کاربردی', slug: 'figma-auto-layout-guide', metaDescription: 'آموزش Auto Layout در فیگما: فعال کردن، تنظیم فاصله و پدینگ، ریسپانسیو کردن کامپوننت‌ها و اشتباهات رایج، همراه با ویدیوی آموزشی کامل.', focusKeyword: 'Auto Layout در فیگما', excerpt: 'Auto Layout را در فیگما قدم‌به‌قدم یاد بگیرید.', category: 'فیگما', tags: ['فیگما', 'Auto Layout', 'آموزش UI'], intro: ['طراحی دکمه‌ها و کارت‌هایی که با تغییر متن به‌هم می‌ریزند، وقت زیادی می‌گیرد.', 'Auto Layout در فیگما این مشکل را حل می‌کند.'], sections: [{ heading: 'Auto Layout در فیگما چیست؟', summary: 'قابلیتی برای چیدمان خودکار لایه‌ها.', paragraphs: ['با Auto Layout فاصله‌ها و اندازه‌ها خودکار تنظیم می‌شوند.'] }, { heading: 'چگونه Auto Layout را فعال کنیم؟', summary: 'با Shift+A.', paragraphs: ['لایه‌ها را انتخاب کنید.'], steps: ['لایه‌ها را انتخاب کنید', 'Shift+A را بزنید', 'فاصله را تنظیم کنید'] }, { heading: 'اشتباهات رایج', paragraphs: ['استفادهٔ نادرست از Fixed.'], bullets: ['Fixed به‌جای Hug', 'پدینگ ناهماهنگ'] }], faq: [{ q: 'Auto Layout در نسخهٔ رایگان هست؟', a: 'بله، در همهٔ پلن‌ها هست.' }], checklist: ['Hug برای متن', 'فاصلهٔ یکسان'], ctaText: 'برای یادگیری کامل، دورهٔ UI Design Plus را ببینید.' };
+await ctx.route('https://generativelanguage.googleapis.com/**', (r) => {
+  const body = r.request().postData() ?? '';
+  const out = body.includes('Aparat (the Iranian') ? AI_APARAT : AI_BLOG;
+  r.fulfill({ contentType: 'application/json', body: JSON.stringify({ model: 'gemini-3.5-flash-lite', choices: [{ message: { role: 'assistant', content: JSON.stringify(out) } }], usage: { prompt_tokens: 10, completion_tokens: 10 } }) });
+});
 let sw = ctx.serviceWorkers()[0];
 if (!sw) sw = await ctx.waitForEvent('serviceworker');
 const id = new URL(sw.url()).host;
@@ -129,7 +136,20 @@ for (const r of routes) {
     if (r === 'aparat-open') {
       await p.locator('[data-testid="aparat-row-open"]').first().click();
       await p.waitForTimeout(2000);
+      await p.locator('[data-testid="aparat-ai-run"]').click();
+      await p.waitForTimeout(1500);
+      await p.locator('[data-testid="aparat-ai"]').scrollIntoViewIfNeeded();
     }
+  } else if (r === 'blog-open') {
+    await p.goto(`chrome-extension://${id}/workspace.html#aparat`);
+    await p.waitForTimeout(2500);
+    await p.locator('[data-testid="blog-row-open"]').first().click();
+    await p.waitForTimeout(2000);
+    await p.locator('[data-testid="blog-panel"] input').first().fill('https://example.com/blog');
+    await p.locator('[data-testid="blog-ai-run"]').click();
+    await p.waitForTimeout(2000);
+    await p.locator('[data-testid="blog-preview"]').evaluate((d) => (d.open = true));
+    await p.locator('[data-testid="blog-preview"]').scrollIntoViewIfNeeded();
   } else if (r === 'outliers') {
     await p.goto(`chrome-extension://${id}/workspace.html#research`);
     await p.waitForTimeout(1500);

@@ -17,6 +17,8 @@ Unit and fixture tests cannot prove these. Each line says what to do and what co
 | 11 | Aparat package | Manage → Aparat → "Prepare for Aparat" on one video. | Package fills from the draft without YouTube links; checks match Aparat's form; "Open Aparat upload page" opens the real upload page (confirm `https://www.aparat.com/upload`). |
 | 12 | Aparat limits | Compare Aparat's upload form with docs/APARAT_FEASIBILITY.md. | Category names, 3–5 tags, 23-character tags and 2000-character description match; report any difference. |
 | 13 | Aparat tab | Settings → "Read Aparat tabs" (allow aparat.com), open an Aparat video, open the TubeX side panel. | It shows "Aparat page" with the title and can save it as an idea. |
+| 15 | Aparat AI rewrite | Aparat & blog → a video → "Optimize for Aparat" (Gemini set up). | Persian title for Aparat, 5 tags ≤ 23 characters, no YouTube links; nothing changes until "Use this version". |
+| 16 | Blog version | Same video → Blog → enter the blog address → "Write the article" → copy → WordPress new post → ⋮ Code editor → paste. | Headings, lists, FAQ and the YouTube player appear as blocks; after recording the Aparat link and rewriting, the Aparat player shows too (confirm the embed works). |
 | 14 | Bulk find & replace | "Test on 1 video first" on one owned video. | Preview, write and undo work on that one video before any larger run. |
 
 Never part of this test: uploads, publishing, deleting, paid calls or store submission.

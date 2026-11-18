@@ -5,7 +5,10 @@ import { useEffect, useRef, useState } from 'react';
 import { Icon } from '../../components/icons';
 import { useToast } from '../../components/toasts';
 import { Button, ConfirmButton, Field, Notice } from '../../components/ui';
-import { APARAT_UPLOAD_URL, aparatFromDraft, aparatPackageText, checkAparat, parseTags } from '../../domain/aparat';
+import { APARAT_AI_INSTRUCTIONS, APARAT_AI_TASK, APARAT_UPLOAD_URL, aparatFromDraft, aparatPackageText, checkAparat, parseAparatAi, parseTags, type AparatAiResult } from '../../domain/aparat';
+import { dataBlock, runAiJson } from '../../integrations/ai/custom';
+import { ErrorNotice } from '../connections/ErrorNotice';
+import { useIntegrations } from '../connections/useConnections';
 import { PUBLISH_STATUSES, nowIso, type AparatPackage, type Draft, type PublishStatus } from '../../domain/models';
 import { useI18n } from '../../i18n';
 import type { MessageKey } from '../../i18n/en';
@@ -30,6 +33,37 @@ export function AparatPanel({ draft, update }: { draft: Draft; update: (patch: P
     if (el && el.offsetParent) setTimeout(() => el.scrollIntoView({ block: 'start', behavior: 'smooth' }), 50);
   }, [draft.id]);
 
+  const { ai } = useIntegrations();
+  const [aiBusy, setAiBusy] = useState(false);
+  const [aiError, setAiError] = useState<unknown>(null);
+  const [aiOut, setAiOut] = useState<AparatAiResult | null>(null);
+  const optimize = async (fresh = false) => {
+    setAiBusy(true);
+    setAiError(null);
+    try {
+      // The YouTube draft is the source, so a second run never compounds an earlier rewrite.
+      const r = await runAiJson({
+        task: APARAT_AI_TASK,
+        instructions: APARAT_AI_INSTRUCTIONS,
+        data: dataBlock('Focus keyword', draft.focusKeyword, 120) + dataBlock('YouTube title', draft.title, 300) + dataBlock('YouTube description', draft.description, 5000) + dataBlock('YouTube tags', draft.tags.join(', '), 1500),
+        maxTokens: 2500,
+        fresh,
+      });
+      const out = parseAparatAi(r.output);
+      if (!out) throw new Error('bad-output');
+      setAiOut(out);
+    } catch (e) {
+      setAiError(e);
+    } finally {
+      setAiBusy(false);
+    }
+  };
+  const applyAi = () => {
+    if (!aiOut || !p) return;
+    setTagText(aiOut.tags.join('، '));
+    set({ title: aiOut.title, description: aiOut.description, tags: aiOut.tags, ...(aiOut.category && !p.category.trim() && { category: aiOut.category }) });
+    setAiOut(null);
+  };
   const set = (patch: Partial<AparatPackage>) => p && update({ platforms: { ...draft.platforms, aparat: { ...p, ...patch } } });
   const prepare = () => {
     const next = aparatFromDraft(draft);
@@ -59,6 +93,56 @@ export function AparatPanel({ draft, update }: { draft: Draft; update: (patch: P
   return (
     <div className="stack" data-testid="aparat-panel" ref={ref}>
       <p className="small muted">{t('aparat.separate')}</p>
+      <div className="card stack-s" style={{ background: 'var(--surface-2)' }} data-testid="aparat-ai">
+        <div className="row-between" style={{ gap: 8 }}>
+          <div className="stack-s" style={{ gap: 2 }}>
+            <strong>{t('aparat.ai.title')}</strong>
+            <span className="xsmall muted">{t('aparat.ai.help')}</span>
+          </div>
+          {ai.enabled ? (
+            <Button size="s" variant="primary" disabled={aiBusy} onClick={() => void optimize(!!aiOut)} data-testid="aparat-ai-run">
+              <Icon name="sparkle" />
+              {aiBusy ? t('common.loading') : aiOut ? t('aparat.ai.again') : t('aparat.ai.run')}
+            </Button>
+          ) : (
+            <a className="btn btn-s" href="#settings">
+              {t('aparat.ai.setup')}
+            </a>
+          )}
+        </div>
+        <ErrorNotice error={aiError} />
+        {aiOut && (
+          <div className="stack-s small" data-testid="aparat-ai-out">
+            {aiOut.why && <p className="muted">{aiOut.why}</p>}
+            <p>
+              <b>{t('aparat.f.title')}:</b> <bdi>{aiOut.title}</bdi>
+            </p>
+            <p>
+              <b>{t('aparat.f.tags')}:</b> <bdi>{aiOut.tags.join('، ')}</bdi>
+            </p>
+            {aiOut.category && (
+              <p>
+                <b>{t('aparat.f.category')}:</b> <bdi>{aiOut.category}</bdi>
+              </p>
+            )}
+            <details>
+              <summary>{t('aparat.f.description')}</summary>
+              <p dir="auto" style={{ whiteSpace: 'pre-wrap' }}>
+                {aiOut.description}
+              </p>
+            </details>
+            <div className="row" style={{ gap: 8 }}>
+              <Button size="s" variant="primary" onClick={applyAi} data-testid="aparat-ai-apply">
+                <Icon name="check" />
+                {t('aparat.ai.apply')}
+              </Button>
+              <Button size="s" variant="ghost" onClick={() => setAiOut(null)}>
+                {t('aparat.ai.discard')}
+              </Button>
+            </div>
+          </div>
+        )}
+      </div>
       <Field label={labels.title} counter={`${[...p.title].length}`}>
         {({ id }) => <input id={id} className="input" dir="auto" value={p.title} maxLength={300} onChange={(e) => set({ title: e.target.value })} />}
       </Field>

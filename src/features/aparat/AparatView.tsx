@@ -14,7 +14,7 @@ import { useChannel, useOwnVideos } from '../reports/hooks';
 import { SignedOut, TrackSkeleton, VideoTrack } from '../reports/shared';
 import type { RVideo } from '../reports/data';
 import { useFormat } from '../research/shared';
-import { draftsByVideo, openAparatDraft, prepareForAparat } from './aparatActions';
+import { draftForVideo, draftsByVideo, openAparatDraft, openBlogDraft, prepareForAparat } from './aparatActions';
 
 type Filter = 'all' | 'none' | PublishStatus;
 const PAGE = 40;
@@ -50,11 +50,19 @@ export function AparatView() {
       setBusy(null);
     }
   };
+  const openBlog = async (v: RVideo, d?: Draft) => {
+    setBusy(v.id);
+    try {
+      openBlogDraft((await draftForVideo(v, d)).id);
+    } finally {
+      setBusy(null);
+    }
+  };
 
   return (
     <div className="stack-l">
       <PageHeader
-        kicker={active ? `${t('nav.aparat')} · ${active.title}` : t('nav.aparat')}
+        kicker={active ? `${t('nav.republish')} · ${active.title}` : t('nav.republish')}
         title={t('aparat.page.title')}
         desc={t('aparat.page.desc')}
         art={active ? <Avatar src={active.thumbnail} name={active.title} size="l" /> : undefined}
@@ -88,6 +96,7 @@ export function AparatView() {
           ) : (
             <div className="tracks" data-testid="aparat-list">
               {shown.slice(0, limit).map(({ v, d, p }, i) => {
+                const b = d?.platforms?.blog;
                 const errors = p ? checkAparat(p).filter((x) => x.severity === 'error').length : 0;
                 return (
                   <VideoTrack
@@ -114,10 +123,16 @@ export function AparatView() {
                       </>
                     }
                     end={
-                      <Button size="s" variant={p ? 'default' : 'primary'} disabled={busy === v.id} onClick={() => void open(v, d)} data-testid="aparat-row-open">
-                        <Icon name={p ? 'edit' : 'copy'} />
-                        {p ? t('aparat.page.openPkg') : t('aparat.prepare')}
-                      </Button>
+                      <div className="row" style={{ gap: 6, flexWrap: 'nowrap' }}>
+                        <Button size="s" variant={p ? 'default' : 'primary'} disabled={busy === v.id} onClick={() => void open(v, d)} data-testid="aparat-row-open">
+                          <Icon name="globe" />
+                          {p ? t('aparat.page.openPkg') : t('nav.aparat')}
+                        </Button>
+                        <Button size="s" disabled={busy === v.id} onClick={() => void openBlog(v, d)} data-testid="blog-row-open" title={b ? t(`blog.st.${b.status}` as MessageKey) : t('blog.heading')}>
+                          <Icon name="file" />
+                          {b ? `${t('blog.short')} · ${t(`blog.st.${b.status}` as MessageKey)}` : t('blog.short')}
+                        </Button>
+                      </div>
                     }
                   />
                 );

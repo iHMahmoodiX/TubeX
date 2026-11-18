@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.6.2 — 2026-11-18 — Aparat rewrite and WordPress blog version
+- Aparat package follows Aparat's rules by itself: at most 5 tags of up to 23 characters (YouTube order), description cut at a line within 2000 characters.
+- "Optimize for Aparat" (AI): Persian title for Aparat search, description without YouTube-only parts (links, subscribe/bell requests, hashtags) with chapters kept, exactly 5 Aparat search tags and a category. Shown for review; "Use this version" replaces the package. Always rewritten from the YouTube draft, never from an earlier rewrite.
+- Blog version (WordPress) in every draft and on the page, renamed "Aparat & blog": an AI article in the owner's post style (problem-first intro, question H2s with a bold one-line summary, steps and lists, FAQ, final checklist, call-to-action link), with the YouTube video and the Aparat video (once its link is recorded) embedded as WordPress blocks. SEO fields (title, English slug, focus keyword, meta description, excerpt, category, tags) with checks, a read-only preview, copy/download, a link to the WordPress new-post screen, and status/link record. Optional transcript for a fuller article. A plain version without AI from the description. TubeX builds the HTML itself; model text is escaped.
+- Blog address and call-to-action link are remembered for the next video.
+
 ## 0.6.1 — 2026-11-18 — Aparat page
 - New workspace page "Aparat" (Manage group): every YouTube upload with its Aparat state (not prepared, prepared, uploaded, published with link), filters and search. One click prepares a video's Aparat package from its YouTube title, description (YouTube links removed) and tags, reusing the video's draft if there is one, and opens it.
 - The last category you chose is filled in for the next package.

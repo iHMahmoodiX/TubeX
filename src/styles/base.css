@@ -479,3 +479,12 @@ h1[tabindex="-1"]:focus { outline: none; }
 .flow-dl dt { color: var(--text-2); }
 .flow-dl dd { margin: 0; min-width: 0; overflow-wrap: anywhere; }
 .flow-dl .select { max-width: 220px; }
+
+/* Blog article preview (#17): read-only, rebuilt from allowed elements. */
+.blog-preview { padding: 12px 16px; line-height: 1.9; max-height: 520px; overflow: auto; border-radius: 8px; background: var(--surface-2); }
+.blog-preview h2 { font-size: 1.15rem; margin: 18px 0 6px; }
+.blog-preview h3 { font-size: 1rem; margin: 12px 0 4px; }
+.blog-preview p { margin: 6px 0; }
+.blog-preview ul, .blog-preview ol { margin: 6px 0; padding-inline-start: 22px; }
+.blog-preview a { color: var(--accent); }
+.blog-video { margin: 10px 0; padding: 28px 12px; text-align: center; border-radius: 8px; background: var(--surface-3); color: var(--text-2); }

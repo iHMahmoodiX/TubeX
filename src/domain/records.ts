@@ -3,7 +3,7 @@
 // Records from older TubeX versions get defaults for fields added since 0.1.0; only data that cannot be a
 // record (not an object, no usable id, no content) is refused, with a reason for the import report.
 import { COLLECTIONS, EXPERIMENT_STATUSES, IDEA_STATUSES, INTENTS, PUBLISH_STATUSES, QUEUE_STATUSES } from './models';
-import type { AparatPackage, BaseRecord, CollectionName, Collections, Draft, Experiment, Idea, KeywordList, Lang, MetricSnap, OptimizeItem, Profile, QueueLogEntry, Reply, ResearchRef, SourceRef, Template, Variant, WatchedChannel } from './models';
+import type { AparatPackage, BaseRecord, BlogPackage, CollectionName, Collections, Draft, Experiment, Idea, KeywordList, Lang, MetricSnap, OptimizeItem, Profile, QueueLogEntry, Reply, ResearchRef, SourceRef, Template, Variant, WatchedChannel } from './models';
 import type { PageKind } from './pageContext';
 
 const MAX_TEXT = 20_000;
@@ -160,6 +160,28 @@ function aparat(v: unknown, at: string): AparatPackage | undefined {
   };
 }
 
+function blog(v: unknown, at: string): BlogPackage | undefined {
+  if (!isObj(v)) return undefined;
+  const url = httpsUrl(v.url);
+  const site = httpsUrl(v.site);
+  const cta = httpsUrl(v.ctaUrl);
+  return {
+    site: site ?? '',
+    title: str(v.title, MAX_SHORT),
+    slug: str(v.slug, 200).toLowerCase().replace(/[^a-z0-9-]+/g, '-').replace(/^-+|-+$/g, ''),
+    metaDescription: str(v.metaDescription, MAX_SHORT),
+    focusKeyword: str(v.focusKeyword, 200),
+    excerpt: str(v.excerpt, MAX_SHORT),
+    category: str(v.category, 200),
+    tags: tags(v.tags, 30),
+    html: str(v.html, 60_000),
+    ctaUrl: cta ?? '',
+    status: PUBLISH_STATUSES.includes(v.status as never) ? (v.status as BlogPackage['status']) : 'prepared',
+    ...(url && { url }),
+    statusAt: date(v.statusAt) ?? at,
+  };
+}
+
 const num = (v: unknown): number | undefined => (typeof v === 'number' && Number.isFinite(v) && v >= 0 ? v : undefined);
 
 function snap(v: unknown): MetricSnap | undefined {
@@ -228,10 +250,11 @@ function draft(r: Raw, o: SanitizeOptions): Draft {
   const ideaId = optStr(r.ideaId, 100);
   const rs = cleanResearch(r.research);
   const ap = isObj(r.platforms) ? aparat(r.platforms.aparat, b.updatedAt) : undefined;
+  const bl = isObj(r.platforms) ? blog(r.platforms.blog, b.updatedAt) : undefined;
   return {
     ...b,
     ...(rs && { research: rs }),
-    ...(ap && { platforms: { aparat: ap } }),
+    ...((ap || bl) && { platforms: { ...(ap && { aparat: ap }), ...(bl && { blog: bl }) } }),
     title: str(r.title, MAX_SHORT),
     description: str(r.description, MAX_TEXT),
     focusKeyword: str(r.focusKeyword, MAX_SHORT),

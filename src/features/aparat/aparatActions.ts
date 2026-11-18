@@ -51,3 +51,28 @@ export function openAparatDraft(id: string): void {
   }
   location.hash = `drafts/${encodeURIComponent(id)}`;
 }
+
+/** Site and call-to-action link from the most recent blog package, plus every site used before. */
+export async function lastBlogDefaults(): Promise<{ site: string; ctaUrl: string; sites: string[] }> {
+  const { items } = await list('drafts');
+  const withBlog = items.filter((d) => d.platforms?.blog?.site).sort((a, b) => (a.updatedAt < b.updatedAt ? 1 : -1));
+  const last = withBlog[0]?.platforms?.blog;
+  const sites = [...new Set(withBlog.map((d) => d.platforms!.blog!.site))];
+  const ctaUrl = last ? (withBlog.find((d) => d.platforms!.blog!.site === last.site && d.platforms!.blog!.ctaUrl)?.platforms?.blog?.ctaUrl ?? '') : '';
+  return { site: last?.site ?? '', ctaUrl, sites };
+}
+
+/** Reuses or creates the video's draft (no package yet: the blog article is written from the draft's panel). */
+export async function draftForVideo(v: { id: string; title: string; description: string; tags: string[] }, existing?: Draft): Promise<Draft> {
+  return existing ?? (await draftsByVideo()).get(v.id) ?? (await videoToDraft(v));
+}
+
+/** Opens a draft with its blog card in view. */
+export function openBlogDraft(id: string): void {
+  try {
+    sessionStorage.setItem(FOCUS_KEY, 'blog');
+  } catch {
+    // Focus is a convenience only.
+  }
+  location.hash = `drafts/${encodeURIComponent(id)}`;
+}

@@ -73,7 +73,7 @@ const NAV: { group?: MessageKey; items: NavItem[] }[] = [
       { route: 'schedule', label: 'nav.schedule', icon: 'calendar' },
       { route: 'thumbs', label: 'nav.thumbs', icon: 'image' },
       { route: 'kids', label: 'nav.kids', icon: 'shield' },
-      { route: 'aparat', label: 'nav.aparat', icon: 'globe' },
+      { route: 'aparat', label: 'nav.republish', icon: 'globe' },
     ],
   },
   {

@@ -18,6 +18,7 @@ import { Cover, TagInput } from '../core/CoreUi';
 import { Checks } from './Checks';
 import { DraftFlow } from './DraftFlow';
 import { AparatPanel } from './AparatPanel';
+import { BlogPanel } from './BlogPanel';
 import { Preview } from './Preview';
 
 type SaveState = 'saved' | 'dirty' | 'saving' | 'failed' | 'conflict';
@@ -582,6 +583,9 @@ export function DraftEditor({
         <Fold icon="globe" title={t('aparat.heading')} testId="aparat-fold" open={!!draft.platforms?.aparat}>
           <AparatPanel draft={draft} update={update} />
         </Fold>
+        <Fold icon="file" title={t('blog.heading')} testId="blog-fold" open={!!draft.platforms?.blog}>
+          <BlogPanel draft={draft} update={update} />
+        </Fold>
         <div>
           <Button variant="danger" size="s" onClick={() => void deleteDraft()}>
             <Icon name="trash" />
@@ -648,6 +652,10 @@ export function DraftEditor({
           <section className="card" aria-labelledby={`ap-${draft.id}`}>
             <h2 id={`ap-${draft.id}`}>{t('aparat.heading')}</h2>
             <AparatPanel draft={draft} update={update} />
+          </section>
+          <section className="card" aria-labelledby={`bl-${draft.id}`}>
+            <h2 id={`bl-${draft.id}`}>{t('blog.heading')}</h2>
+            <BlogPanel draft={draft} update={update} />
           </section>
           <div>
             <Button variant="danger" size="s" onClick={() => void deleteDraft()}>
