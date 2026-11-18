@@ -6,7 +6,7 @@ import type { CollectionName, Collections } from '../domain/models';
 import { sanitizeRecord } from '../domain/records';
 
 export const DB_NAME = 'tubex';
-export const DB_VERSION = 3;
+export const DB_VERSION = 4;
 const META = 'meta';
 const SNAPSHOT_KEY = 'preImportSnapshot';
 export const CACHE = 'cache';
@@ -38,6 +38,12 @@ const MIGRATIONS: Record<number, (db: Db) => void> = {
     db.createObjectStore('trackers', { keyPath: 'id' }).createIndex('kind', 'kind');
     db.createObjectStore('snapshots', { keyPath: 'id' }).createIndex('ref', 'ref');
     db.createObjectStore('alerts', { keyPath: 'id' }).createIndex('at', 'at');
+  },
+  4: (db) => {
+    // Improve queue (#10) and A/B test assistant (#12). Owner's work: part of backups. Existing stores untouched.
+    for (const name of ['optimize', 'experiments'] as const) {
+      db.createObjectStore(name, { keyPath: 'id' }).createIndex('updatedAt', 'updatedAt');
+    }
   },
 };
 

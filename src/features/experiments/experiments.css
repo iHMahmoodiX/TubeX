@@ -1,0 +1,14 @@
+/* A/B test assistant (#12). Logical properties only. */
+.ab-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: var(--space-2); }
+.ab-row { display: flex; gap: var(--space-3); align-items: center; background: var(--surface); border-radius: var(--radius-m); padding: var(--space-2) var(--space-3); text-decoration: none; color: inherit; }
+.ab-row:hover { background: var(--surface-3); }
+.ab-variants { display: grid; gap: var(--space-3); grid-template-columns: repeat(auto-fit, minmax(min(100%, 260px), 1fr)); align-items: start; }
+.ab-variant { background: var(--surface); border-radius: var(--radius-m); padding: var(--space-3); display: flex; flex-direction: column; gap: var(--space-2); }
+.ab-thumb { aspect-ratio: 16 / 9; border-radius: var(--radius-s); overflow: hidden; background: var(--surface-2); display: grid; place-items: center; }
+.ab-thumb img, .ab-thumb .thumb { inline-size: 100%; block-size: 100%; object-fit: cover; display: block; }
+.ab-issue { color: var(--warning); display: flex; gap: 4px; align-items: center; margin: 0; }
+.ab-issue .icon { width: 14px; height: 14px; }
+.ab-steps { margin: 0; padding-inline-start: 20px; display: flex; flex-direction: column; gap: 4px; }
+.ab-results { display: flex; flex-direction: column; gap: var(--space-2); }
+.ab-result .input:last-child { flex: 1; min-width: 160px; }
+.ab-ai { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: var(--space-2); inline-size: 100%; }

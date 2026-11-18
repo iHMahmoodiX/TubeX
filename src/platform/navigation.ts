@@ -9,6 +9,8 @@ export type WorkspaceRoute =
   | 'ranks'
   | 'competitors'
   | 'reports'
+  | 'optimize'
+  | 'experiments'
   | 'bulk'
   | 'playlists'
   | 'schedule'

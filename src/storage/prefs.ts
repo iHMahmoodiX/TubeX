@@ -13,6 +13,10 @@ export interface Prefs {
   pageAdapterEnabled: boolean;
   /** In-page tools on YouTube/Studio. `all: false` turns every island off; per-feature keys override. */
   inpage?: Record<string, boolean>;
+  /** When the owner agreed to send selected own-channel numbers to the configured AI provider (#15). */
+  aiChannelConsentAt?: string;
+  /** Aparat page helpers (A1): off until the owner turns them on and grants the aparat.com permission. */
+  aparatEnabled?: boolean;
 }
 
 export const DEFAULT_PREFS: Prefs = { uiLanguage: 'fa', theme: 'dark', pageAdapterEnabled: true };
@@ -26,6 +30,8 @@ export function coercePrefs(raw: unknown): Prefs {
     activeProfileId: typeof r.activeProfileId === 'string' ? r.activeProfileId : undefined,
     lastDraftId: typeof r.lastDraftId === 'string' ? r.lastDraftId : undefined,
     pageAdapterEnabled: r.pageAdapterEnabled !== false,
+    aiChannelConsentAt: typeof r.aiChannelConsentAt === 'string' && !Number.isNaN(Date.parse(r.aiChannelConsentAt)) ? r.aiChannelConsentAt : undefined,
+    ...(r.aparatEnabled === true && { aparatEnabled: true }),
     inpage:
       typeof r.inpage === 'object' && r.inpage !== null
         ? Object.fromEntries(Object.entries(r.inpage as Record<string, unknown>).filter(([k, v]) => k.length < 40 && typeof v === 'boolean') as [string, boolean][])

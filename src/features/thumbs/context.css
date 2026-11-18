@@ -1,0 +1,34 @@
+/* Context mockups (#13): YouTube-like surfaces in fixed YouTube colours (not TubeX tokens), so the preview looks
+   like the real feed in either theme. Logical properties only. */
+.ctx { --yt-bg: #0f0f0f; --yt-text: #f1f1f1; --yt-text-2: #aaaaaa; background: var(--yt-bg); color: var(--yt-text); border-radius: var(--radius-m); padding: 16px; display: grid; gap: 16px; font-family: Roboto, 'TubeX Estedad', Arial, sans-serif; overflow: hidden; }
+.ctx[data-dark='false'] { --yt-bg: #ffffff; --yt-text: #0f0f0f; --yt-text-2: #606060; box-shadow: inset 0 0 0 1px var(--border); }
+.ctx:lang(fa) { font-family: 'TubeX Estedad', Roboto, Tahoma, sans-serif; }
+.ctx-card { margin: 0; display: grid; gap: 10px; min-width: 0; }
+.ctx-card[data-own='true'] .ctx-thumb { outline: 2px dashed var(--accent); outline-offset: 3px; }
+.ctx-thumb { position: relative; aspect-ratio: 16 / 9; border-radius: 12px; overflow: hidden; background: #272727; }
+.ctx-thumb img { inline-size: 100%; block-size: 100%; object-fit: cover; display: block; }
+.ctx-nothumb { position: absolute; inset: 0; display: grid; place-items: center; color: #aaa; font-size: 12px; }
+.ctx-time { position: absolute; inset-inline-end: 6px; inset-block-end: 6px; background: rgb(0 0 0 / 0.8); color: #fff; font-size: 12px; font-weight: 500; padding: 1px 4px; border-radius: 4px; direction: ltr; }
+.ctx-label { position: absolute; inset-inline-start: 6px; inset-block-start: 6px; background: var(--accent); color: #000; font-size: 11px; font-weight: 700; padding: 1px 6px; border-radius: 9999px; }
+.ctx figcaption { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+.ctx-title { font-size: 16px; font-weight: 500; line-height: 1.4; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.ctx-channel { font-size: 13px; color: var(--yt-text-2); }
+/* Desktop home: 3-up grid of ~360 px cards */
+.ctx-home { grid-template-columns: repeat(auto-fill, minmax(min(100%, 240px), 1fr)); }
+/* Search: thumbnail 360 px beside the text */
+.ctx-search .ctx-card { grid-template-columns: minmax(0, 360px) 1fr; align-items: start; }
+.ctx-search .ctx-title { font-size: 18px; font-weight: 400; }
+/* Mobile feed: one column at phone width, square-cornered full-bleed thumbs */
+.ctx-mobile { max-inline-size: 390px; margin-inline: auto; padding-inline: 0; gap: 20px; }
+.ctx-mobile .ctx-thumb { border-radius: 0; }
+.ctx-mobile figcaption { padding-inline: 12px; }
+.ctx-mobile .ctx-title { font-size: 14px; }
+/* Up next sidebar: 168 px thumbnails */
+.ctx-sidebar { max-inline-size: 420px; gap: 8px; }
+.ctx-sidebar .ctx-card { grid-template-columns: 168px 1fr; align-items: start; gap: 8px; }
+.ctx-sidebar .ctx-thumb { border-radius: 8px; }
+.ctx-sidebar .ctx-title { font-size: 14px; }
+.ctx-sidebar .ctx-channel { font-size: 12px; }
+@media (max-width: 520px) {
+  .ctx-search .ctx-card { grid-template-columns: 1fr; }
+}

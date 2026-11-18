@@ -42,7 +42,7 @@ export interface BackupFile {
 }
 
 export function emptyData(): BackupData {
-  return { profiles: [], ideas: [], drafts: [], templates: [], keywordLists: [], watchlist: [], replies: [] };
+  return { profiles: [], ideas: [], drafts: [], templates: [], keywordLists: [], watchlist: [], replies: [], optimize: [], experiments: [] };
 }
 
 export function createBackup(data: BackupData, appVersion: string, settings?: BackupSettings): BackupFile {
