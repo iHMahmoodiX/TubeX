@@ -13,6 +13,7 @@ import { signin } from './signin';
 import { grow } from './grow';
 import { abtest } from './abtest';
 import { flow } from './flow';
+import { outliers } from './outliers';
 
-export const partsEn = { ...shell.en, ...reports.en, ...seo.en, ...engage.en, ...inpage.en, ...studioContent.en, ...tagTools.en, ...channelInsights.en, ...launchers.en, ...bulk.en, ...signin.en, ...grow.en, ...abtest.en, ...flow.en } as const;
-export const partsFa = { ...shell.fa, ...reports.fa, ...seo.fa, ...engage.fa, ...inpage.fa, ...studioContent.fa, ...tagTools.fa, ...channelInsights.fa, ...launchers.fa, ...bulk.fa, ...signin.fa, ...grow.fa, ...abtest.fa, ...flow.fa };
+export const partsEn = { ...shell.en, ...reports.en, ...seo.en, ...engage.en, ...inpage.en, ...studioContent.en, ...tagTools.en, ...channelInsights.en, ...launchers.en, ...bulk.en, ...signin.en, ...grow.en, ...abtest.en, ...flow.en, ...outliers.en } as const;
+export const partsFa = { ...shell.fa, ...reports.fa, ...seo.fa, ...engage.fa, ...inpage.fa, ...studioContent.fa, ...tagTools.fa, ...channelInsights.fa, ...launchers.fa, ...bulk.fa, ...signin.fa, ...grow.fa, ...abtest.fa, ...flow.fa, ...outliers.fa };

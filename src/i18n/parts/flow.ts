@@ -37,8 +37,7 @@ export const flow = definePart(
     'flow.sig.publishedAt': 'Published',
     'flow.sig.channel': 'Channel',
     'flow.sig.viewsPerDay': 'Views per day',
-    'flow.sig.channelMedianViews': 'Channel median views',
-    'flow.sig.ratio': 'Times the channel median',
+    'flow.sig.baselinePerDay': 'Baseline median views/day',
     'flow.sampled': 'Public numbers as collected on {date}; they change over time.',
   },
   {
@@ -76,8 +75,7 @@ export const flow = definePart(
     'flow.sig.publishedAt': 'تاریخ انتشار',
     'flow.sig.channel': 'کانال',
     'flow.sig.viewsPerDay': 'بازدید در روز',
-    'flow.sig.channelMedianViews': 'میانهٔ بازدید کانال',
-    'flow.sig.ratio': 'چند برابر میانهٔ کانال',
+    'flow.sig.baselinePerDay': 'میانهٔ بازدید روزانهٔ معیار',
     'flow.sampled': 'اعداد عمومی در تاریخ {date} جمع‌آوری شده‌اند و با گذر زمان تغییر می‌کنند.',
   },
 );

@@ -50,7 +50,7 @@ function api(url) {
   if (path === 'playlistItems') return { items: vids.map((v) => ({ contentDetails: { videoId: v.id } })) };
   if (path === 'videos') {
     const ids = (u.searchParams.get('id') ?? '').split(',');
-    const others = ids.filter((x) => x.startsWith('oth')).map((x, i) => ({ id: x, snippet: { title: ['آموزش فیگما برای مبتدی‌ها', 'Figma auto layout tutorial', 'ده ترفند فیگما', 'Design systems in Figma', 'طراحی اپ موبایل', 'UI design 2026'][i % 6], channelId: `UC${'x'.repeat(22)}`, channelTitle: ['Design Pro', 'UX Lab', 'طراحان', 'Figma Hub', 'اپ‌ساز', 'Pixel'][i % 6], publishedAt: ago(5 + i * 3), thumbnails: { medium: { url: 'https://i.ytimg.com/vi/dQw4w9WgXcQ/mqdefault.jpg' } } }, statistics: { viewCount: String(5000 * (i + 1)) }, contentDetails: { duration: 'PT8M' } }));
+    const others = ids.filter((x) => x.startsWith('oth')).map((x, i) => ({ id: x, snippet: { title: ['آموزش فیگما برای مبتدی‌ها', 'Figma auto layout tutorial', 'ده ترفند فیگما', 'Design systems in Figma', 'طراحی اپ موبایل', 'UI design 2026'][i % 6], channelId: `UC${'x'.repeat(22)}`, channelTitle: ['Design Pro', 'UX Lab', 'طراحان', 'Figma Hub', 'اپ‌ساز', 'Pixel'][i % 6], publishedAt: ago(5 + i * 3), thumbnails: { medium: { url: 'https://i.ytimg.com/vi/dQw4w9WgXcQ/mqdefault.jpg' } } }, statistics: { viewCount: String(i === 2 ? 90000 : 5000 * (i + 1)) }, contentDetails: { duration: 'PT8M' } }));
     return { items: [...vids.filter((v) => ids.includes(v.id)), ...others] };
   }
   if (path === 'channels') return { items: [{ id: OWN, snippet: { title: 'Figma Farsi' }, statistics: { subscriberCount: '12000', viewCount: '900000', videoCount: '8' }, contentDetails: { relatedPlaylists: { uploads: 'UU' + OWN.slice(2) } } }] };
@@ -114,6 +114,13 @@ for (const r of routes) {
     await p.locator('[data-testid="flow-draft"]').first().click();
     await p.waitForTimeout(1500);
     await p.locator('[data-testid="draft-flow"] details').first().evaluate((d) => (d.open = true));
+  } else if (r === 'outliers') {
+    await p.goto(`chrome-extension://${id}/workspace.html#research`);
+    await p.waitForTimeout(1500);
+    await p.getByRole('tab', { name: /استثنایی|Outliers/ }).click();
+    await p.locator('[data-testid="outliers"] input').fill('آموزش فیگما');
+    await p.locator('[data-testid="outl-run"]').click();
+    await p.waitForTimeout(2000);
   } else if (r === 'settings-ai') {
     await p.goto(`chrome-extension://${id}/workspace.html#settings`);
     await p.waitForTimeout(1500);

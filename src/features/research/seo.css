@@ -116,3 +116,7 @@ a.seo-track-title:hover { text-decoration: underline; color: var(--text); }
 
 /* Switches inside .check labels keep their pill size (the generic .check input rule is for checkboxes). */
 .check input.switch { width: 34px; height: 20px; }
+
+/* Outliers (#11): qualitative flags, no score. */
+.badge[data-flag='well-above'] { background: var(--accent-soft, rgba(30, 215, 96, 0.16)); color: var(--accent, #1ed760); }
+.badge[data-flag='above'] { background: var(--surface-3, rgba(255, 255, 255, 0.08)); color: var(--text-1); }

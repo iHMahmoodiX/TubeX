@@ -7,7 +7,7 @@ import { useI18n } from '../../i18n';
 import type { MessageKey } from '../../i18n/en';
 import { useFormat } from '../research/shared';
 
-const SIG_KEYS = ['keywordScore', 'sampleSize', 'medianViews', 'views', 'publishedAt', 'channel', 'viewsPerDay', 'channelMedianViews', 'ratio'];
+const SIG_KEYS = ['keywordScore', 'sampleSize', 'medianViews', 'views', 'publishedAt', 'channel', 'viewsPerDay', 'baselinePerDay'];
 
 export function DraftFlow({ draft, update }: { draft: Draft; update: (patch: Partial<Draft>) => void }) {
   const { t } = useI18n();
