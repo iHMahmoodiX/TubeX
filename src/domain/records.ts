@@ -165,6 +165,9 @@ function blog(v: unknown, at: string): BlogPackage | undefined {
   const url = httpsUrl(v.url);
   const site = httpsUrl(v.site);
   const cta = httpsUrl(v.ctaUrl);
+  const w = isObj(v.wp) ? v.wp : null;
+  const wpOrigin = w ? httpsUrl(w.origin) : null;
+  const wp = w && wpOrigin && typeof w.postId === 'number' && Number.isInteger(w.postId) && w.postId > 0 ? { origin: new URL(wpOrigin).origin, postId: w.postId, savedAt: date(w.savedAt) ?? at } : undefined;
   return {
     site: site ?? '',
     title: str(v.title, MAX_SHORT),
@@ -179,6 +182,7 @@ function blog(v: unknown, at: string): BlogPackage | undefined {
     status: PUBLISH_STATUSES.includes(v.status as never) ? (v.status as BlogPackage['status']) : 'prepared',
     ...(url && { url }),
     statusAt: date(v.statusAt) ?? at,
+    ...(wp && { wp }),
   };
 }
 

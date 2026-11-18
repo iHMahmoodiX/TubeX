@@ -3,13 +3,14 @@
 Updated: 2026-11-18.
 
 ## State
-- Version **0.6.2**. 0.6.1 added the Aparat page (one-click package per YouTube video); 0.6.2 adds the AI rewrite for Aparat, Aparat's tag/length rules applied automatically, and the WordPress blog version (D-027). Page is now "Aparat & blog". on branch `claude/project-thread-2pwd6e` (PR to `main`). Implements the whole plan in [`docs/CLAUDE_IMPLEMENTATION_HANDOFF_2026-11-18.md`](CLAUDE_IMPLEMENTATION_HANDOFF_2026-11-18.md): Y0 (#9 quota/Gemini/CI), Y1 (#10 Improve queue), Y2 (#14 Research → Idea → Draft), Y3 (#12 A/B assistant, #13 context previews), Y4 (#15 coach + Ask Studio), Y5 (#11 Outlier Lite), A0 (#16 [Aparat feasibility](APARAT_FEASIBILITY.md)), A1 (#17 Aparat package). Also: Studio "Upload profile" is a button next to "Reuse details".
-- Checks: 537/537 unit tests, typecheck, build, fixture e2e 16/16, grow screenshots reviewed (fa, dark). Decisions D-021…D-026 in [DECISIONS.md](DECISIONS.md).
+- Version **0.6.3**. 0.6.3 writes the blog article from the video's captions (first person) and sends it to WordPress as a draft via an Application Password (D-028). 0.6.1 added the Aparat page (one-click package per YouTube video); 0.6.2 adds the AI rewrite for Aparat, Aparat's tag/length rules applied automatically, and the WordPress blog version (D-027). Page is now "Aparat & blog". on branch `claude/project-thread-2pwd6e` (PR to `main`). Implements the whole plan in [`docs/CLAUDE_IMPLEMENTATION_HANDOFF_2026-11-18.md`](CLAUDE_IMPLEMENTATION_HANDOFF_2026-11-18.md): Y0 (#9 quota/Gemini/CI), Y1 (#10 Improve queue), Y2 (#14 Research → Idea → Draft), Y3 (#12 A/B assistant, #13 context previews), Y4 (#15 coach + Ask Studio), Y5 (#11 Outlier Lite), A0 (#16 [Aparat feasibility](APARAT_FEASIBILITY.md)), A1 (#17 Aparat package). Also: Studio "Upload profile" is a button next to "Reuse details".
+- Checks: 544/544 unit tests, typecheck, build, fixture e2e 16/16, grow screenshots reviewed (fa, dark). Decisions D-021…D-028 in [DECISIONS.md](DECISIONS.md).
 - **Nothing is live-verified.** Owner runs [LIVE_TEST_MATRIX.md](LIVE_TEST_MATRIX.md); close issues only with that evidence.
 
 ## Owner-only steps still open
 - Supabase secrets for the sign-in server (`GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`) and publishing the OAuth app (see `/mnt/project-files/guides/persistent-sign-in-fa.md`).
 - Gemini key test in Settings; switch to `gemini-3.5-flash-lite` before 2026-12-01 if still on 2.5.
+- Create a WordPress Application Password and connect each blog in Settings → WordPress (matrix line 17).
 - Confirm `https://www.aparat.com/upload` and Aparat's form limits (matrix lines 11–12).
 - Single-video bulk find & replace test before any large run.
 

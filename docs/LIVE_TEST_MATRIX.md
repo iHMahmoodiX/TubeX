@@ -19,6 +19,7 @@ Unit and fixture tests cannot prove these. Each line says what to do and what co
 | 13 | Aparat tab | Settings → "Read Aparat tabs" (allow aparat.com), open an Aparat video, open the TubeX side panel. | It shows "Aparat page" with the title and can save it as an idea. |
 | 15 | Aparat AI rewrite | Aparat & blog → a video → "Optimize for Aparat" (Gemini set up). | Persian title for Aparat, 5 tags ≤ 23 characters, no YouTube links; nothing changes until "Use this version". |
 | 16 | Blog version | Same video → Blog → enter the blog address → "Write the article" → copy → WordPress new post → ⋮ Code editor → paste. | Headings, lists, FAQ and the YouTube player appear as blocks; after recording the Aparat link and rewriting, the Aparat player shows too (confirm the embed works). |
+| 17 | WordPress draft | WordPress → Users → Profile → Application Passwords → add "TubeX"; Settings → WordPress → site, username, password → Connect. Then a video → Blog → "Get captions from YouTube" → "Write the article" → "Send to WordPress". | Connection test passes; a **draft** appears in WordPress with title, content, excerpt, slug, tags, category (if it exists), featured image; sending again updates the same draft; nothing is published. |
 | 14 | Bulk find & replace | "Test on 1 video first" on one owned video. | Preview, write and undo work on that one video before any larger run. |
 
 Never part of this test: uploads, publishing, deleting, paid calls or store submission.

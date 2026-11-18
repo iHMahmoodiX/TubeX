@@ -114,6 +114,8 @@ export interface BlogPackage {
   status: PublishStatus;
   url?: string;
   statusAt: string;
+  /** WordPress draft created from this package (D-028), on the site's origin. */
+  wp?: { origin: string; postId: number; savedAt: string };
 }
 
 // ---------------------------------------------------------------- Optimize queue (#10)

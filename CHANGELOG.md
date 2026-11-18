@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.6.3 — 2026-11-18 — article from captions, WordPress drafts
+- Blog version reads the video's own captions from YouTube (owner's videos, about 250 quota units, on a click; "Write the article" fetches them by itself when the transcript is empty). Caption timing is turned into paragraphs and rolling repeats are removed.
+- Article prompt (blog-article-v2): written in first person as the creator, natural and not transcript-like, in the owner's post structure, with strong on-page SEO.
+- WordPress connection (D-028): Settings → WordPress takes the site address, username and an Application Password, tests it (REST, edit rights) and stores it locally only (never in backups). Disconnect removes it and the site permission.
+- "Send to WordPress" creates a **draft** (title, content, excerpt, slug, tags created if missing, existing category matched, video thumbnail as featured image, Yoast/Rank Math meta description when allowed) and later updates that same draft. It never publishes or deletes, and refuses to touch a post that is no longer a draft.
+
 ## 0.6.2 — 2026-11-18 — Aparat rewrite and WordPress blog version
 - Aparat package follows Aparat's rules by itself: at most 5 tags of up to 23 characters (YouTube order), description cut at a line within 2000 characters.
 - "Optimize for Aparat" (AI): Persian title for Aparat search, description without YouTube-only parts (links, subscribe/bell requests, hashtags) with chapters kept, exactly 5 Aparat search tags and a category. Shown for review; "Use this version" replaces the package. Always rewritten from the YouTube draft, never from an earlier rewrite.

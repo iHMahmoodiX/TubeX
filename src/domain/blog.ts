@@ -2,6 +2,7 @@
 // embedded, in the owner's post style (problem-first intro, question-style H2s, lists, FAQ, final checklist, one CTA).
 // The model returns structure only; TubeX writes the HTML itself with escaping, so no model markup reaches WordPress.
 import type { BlogPackage, Draft } from './models';
+import { parseSubtitles } from './engageShorts';
 
 export const BLOG_RULES = { titleMax: 65, metaMin: 120, metaMax: 160, minSections: 3 } as const;
 
@@ -155,9 +156,32 @@ export function parseBlogOutline(o: Record<string, unknown>): BlogOutline | null
   };
 }
 
-export const BLOG_AI_TASK = 'blog-article-v1';
+/**
+ * Caption file (SRT/VTT) → plain transcript: cue text in order, with the rolling repeats of auto-generated captions
+ * removed and a paragraph break at long pauses (≥ 2.5 s).
+ */
+export function transcriptFromCaptions(text: string): string {
+  const cues = parseSubtitles(text);
+  if (!cues.length) return text.trim();
+  const out: string[] = [];
+  let prevEnd = 0;
+  let last = '';
+  for (const c of cues) {
+    let t = c.text.trim();
+    // Auto captions repeat the previous line at the start of the next cue.
+    if (last && t.startsWith(last)) t = t.slice(last.length).trim();
+    if (!t) continue;
+    out.push(c.start - prevEnd >= 2.5 && out.length ? `\n\n${t}` : t);
+    prevEnd = c.end;
+    last = c.text.trim();
+  }
+  return out.join(' ').replace(/ \n\n/g, '\n\n').replace(/[ \t]+/g, ' ').trim();
+}
+
+export const BLOG_AI_TASK = 'blog-article-v2';
 export const BLOG_AI_INSTRUCTIONS =
-  'Turn this video (title, description, chapters, tags, optional transcript) into a Persian blog article for the creator\'s WordPress site, as the text version of the video. ' +
+  'Turn this video into a Persian blog article for the creator\'s own WordPress site, as the written version of the video. The transcript (when given) is the main source; title, description, chapters and tags add context. ' +
+  'Write it as the creator himself wrote it: first person (من/ما where natural), his own explanations and examples from the video, a warm, direct, expert voice speaking to the reader as شما. It must read like a carefully written human article, not a transcript and not AI text: remove filler, repetition, greetings, "in this video", "subscribe" and on-camera talk; turn spoken explanations into clear sentences; avoid clichés, hype and generic padding. ' +
   'Match this house style: a short problem-first intro (2–3 short paragraphs, speak to the reader as شما), then sections whose H2 headings are the questions readers search (for example "X چیست؟", "چگونه ...؟"), each starting with a one-sentence bold summary, then short paragraphs, numbered steps for procedures and bullets for options. ' +
   'Follow the video\'s chapters for the section order. Only state what the video material supports; never invent numbers, prices, dates or features. Keep English product and UI names in English. ' +
   'Add 3–5 FAQ items (question + one or two sentence answer), a final checklist of 4–8 items, and one closing call-to-action sentence (ctaText) inviting readers to the related course or to watch more, without a URL. ' +

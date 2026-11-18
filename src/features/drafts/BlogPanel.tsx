@@ -5,7 +5,13 @@ import { useEffect, useRef, useState } from 'react';
 import { Icon } from '../../components/icons';
 import { useToast } from '../../components/toasts';
 import { Button, ConfirmButton, Field, Notice } from '../../components/ui';
-import { aparatHashOf, BLOG_AI_INSTRUCTIONS, BLOG_AI_TASK, BLOG_RULES, blogFromDraft, blogHtml, checkBlog, parseBlogOutline, wpNewPostUrl, type BlogVideos } from '../../domain/blog';
+import { downloadCaption, listCaptions } from '../../integrations/google/ownWrites';
+import { useGoogle } from '../connections/useConnections';
+import { browser } from 'wxt/browser';
+import { saveWpDraft } from '../../integrations/wordpress';
+import { loadWpSites, onWpSitesChanged, originOf, type WpSite } from '../../storage/wordpress';
+import { wpErrorText } from '../settings/WordPressSettings';
+import { aparatHashOf, transcriptFromCaptions, BLOG_AI_INSTRUCTIONS, BLOG_AI_TASK, BLOG_RULES, blogFromDraft, blogHtml, checkBlog, parseBlogOutline, wpNewPostUrl, type BlogVideos } from '../../domain/blog';
 import { PUBLISH_STATUSES, nowIso, type BlogPackage, type Draft, type PublishStatus } from '../../domain/models';
 import { useI18n } from '../../i18n';
 import type { MessageKey } from '../../i18n/en';
@@ -69,6 +75,45 @@ export function BlogPanel({ draft, update }: { draft: Draft; update: (patch: Par
   const [transcript, setTranscript] = useState('');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<unknown>(null);
+  const [capNote, setCapNote] = useState('');
+  const [wpSites, setWpSites] = useState<WpSite[]>([]);
+  const [wpBusy, setWpBusy] = useState(false);
+  const [wpMsg, setWpMsg] = useState<{ tone: 'success' | 'error' | 'warning'; text: string } | null>(null);
+  const [featured, setFeatured] = useState(true);
+  useEffect(() => {
+    void loadWpSites().then(setWpSites);
+    return onWpSitesChanged(setWpSites);
+  }, []);
+  const google = useGoogle();
+  const ownChannel = google.channels.find((c) => c.channelId === google.activeChannelId);
+  // Captions can be read only for the owner's own videos (captions.list 50 + captions.download 200 units).
+  const canCaptions = !!draft.source?.videoId && !!ownChannel;
+  const fetchCaptions = async (): Promise<string> => {
+    const videoId = draft.source?.videoId;
+    if (!videoId || !ownChannel) return '';
+    const tracks = (await listCaptions(ownChannel.channelId, videoId)).filter((x) => !x.isDraft);
+    const lang = draft.language;
+    const pick = tracks.find((x) => x.kind !== 'asr' && x.language.startsWith(lang)) ?? tracks.find((x) => x.language.startsWith(lang)) ?? tracks.find((x) => x.kind !== 'asr') ?? tracks[0];
+    if (!pick) {
+      setCapNote(t('blog.noCaptions'));
+      return '';
+    }
+    const text = transcriptFromCaptions(await downloadCaption(ownChannel.channelId, pick.id));
+    setTranscript(text);
+    setCapNote(t('blog.captionsLoaded', { lang: pick.language, kind: pick.kind === 'asr' ? t('blog.capAuto') : t('blog.capManual') }));
+    return text;
+  };
+  const loadCaptions = async () => {
+    setBusy(true);
+    setError(null);
+    try {
+      await fetchCaptions();
+    } catch (e) {
+      setError(e);
+    } finally {
+      setBusy(false);
+    }
+  };
   const [tagText, setTagText] = useState(p?.tags.join('، ') ?? '');
   useEffect(() => void lastBlogDefaults().then(setDefaults).catch(() => undefined), []);
   useEffect(() => setTagText(p?.tags.join('، ') ?? ''), [draft.id, p?.tags.join('|')]); // eslint-disable-line react-hooks/exhaustive-deps
@@ -89,7 +134,7 @@ export function BlogPanel({ draft, update }: { draft: Draft; update: (patch: Par
   const videos = videosOf(draft);
 
   const write = async (withAi: boolean) => {
-    const site = p?.site || defaults.site;
+    const site = p?.site || defaults.site || wpSites[0]?.origin || '';
     const ctaUrl = p?.ctaUrl || defaults.ctaUrl;
     const keep = p && { status: p.status, statusAt: p.statusAt, ...(p.url && { url: p.url }), category: p.category };
     if (!withAi) {
@@ -99,6 +144,9 @@ export function BlogPanel({ draft, update }: { draft: Draft; update: (patch: Par
     setBusy(true);
     setError(null);
     try {
+      // The owner's workflow: the article is written from the video's own captions.
+      let script = transcript;
+      if (!script.trim() && canCaptions) script = await fetchCaptions().catch(() => '');
       const r = await runAiJson({
         task: BLOG_AI_TASK,
         instructions: BLOG_AI_INSTRUCTIONS,
@@ -107,8 +155,8 @@ export function BlogPanel({ draft, update }: { draft: Draft; update: (patch: Par
           dataBlock('Video title', draft.title, 300) +
           dataBlock('Video description', draft.description, 5000) +
           dataBlock('Tags', draft.tags.join(', '), 1000) +
-          dataBlock('Transcript', transcript, 12000),
-        maxTokens: 6000,
+          dataBlock('Transcript', script, 14000),
+        maxTokens: 7000,
         fresh: !!p,
       });
       const o = parseBlogOutline(r.output);
@@ -165,11 +213,11 @@ export function BlogPanel({ draft, update }: { draft: Draft; update: (patch: Par
                 list={`${id}-sites`}
                 inputMode="url"
                 placeholder="https://example.com/blog"
-                value={p ? p.site : defaults.site}
+                value={p ? p.site : defaults.site || wpSites[0]?.origin || ''}
                 onChange={(e) => (p ? set({ site: e.target.value.trim() }) : setDefaults((d) => ({ ...d, site: e.target.value.trim() })))}
               />
               <datalist id={`${id}-sites`}>
-                {defaults.sites.map((s) => (
+                {[...new Set([...defaults.sites, ...wpSites.map((w) => w.origin)])].map((s) => (
                   <option key={s} value={s} />
                 ))}
               </datalist>
@@ -182,9 +230,18 @@ export function BlogPanel({ draft, update }: { draft: Draft; update: (patch: Par
           )}
         </Field>
       </div>
-      <Field label={t('blog.f.transcript')} help={t('blog.transcriptHelp')}>
+      <Field label={t('blog.f.transcript')} help={canCaptions ? t('blog.transcriptAuto') : t('blog.transcriptHelp')} counter={transcript ? `${[...transcript].length}` : undefined}>
         {({ id, describedBy }) => <textarea id={id} aria-describedby={describedBy} className="textarea" dir="auto" rows={3} value={transcript} onChange={(e) => setTranscript(e.target.value)} />}
       </Field>
+      {canCaptions && (
+        <div className="row" style={{ gap: 8, alignItems: 'center' }}>
+          <Button size="s" variant="ghost" disabled={busy} onClick={() => void loadCaptions()} data-testid="blog-captions">
+            <Icon name="download" />
+            {t('blog.getCaptions')}
+          </Button>
+          {capNote && <span className="xsmall muted">{capNote}</span>}
+        </div>
+      )}
       <p className="xsmall faint">{videos.youtubeId ? (videos.aparatHash ? t('blog.videosBoth') : t('blog.videosYt')) : t('blog.videosNone')}</p>
       <div className="row" style={{ gap: 8 }}>
         {ai.enabled ? (
@@ -215,6 +272,35 @@ export function BlogPanel({ draft, update }: { draft: Draft; update: (patch: Par
     );
 
   const issues = checkBlog(p);
+  const wpSite = wpSites.find((s) => s.origin === originOf(p.site));
+  const sendToWp = async () => {
+    if (!wpSite) return;
+    const videoId = draft.source?.videoId;
+    // Permission for the thumbnail host is asked from this click, before anything is awaited.
+    const imgOk = featured && videoId ? await browser.permissions.request({ origins: ['https://i.ytimg.com/*'] }).catch(() => false) : false;
+    setWpBusy(true);
+    setWpMsg(null);
+    try {
+      let image: { blob: Blob; filename: string } | undefined;
+      if (imgOk && videoId) {
+        for (const size of ['maxresdefault', 'hqdefault']) {
+          const r = await fetch(`https://i.ytimg.com/vi/${videoId}/${size}.jpg`).catch(() => null);
+          if (r?.ok) {
+            image = { blob: await r.blob(), filename: `${p.slug || videoId}.jpg` };
+            break;
+          }
+        }
+      }
+      const res = await saveWpDraft(wpSite, p, { postId: p.wp?.origin === wpSite.origin ? p.wp.postId : undefined, image });
+      set({ wp: { origin: wpSite.origin, postId: res.id, savedAt: nowIso() }, status: p.status === 'prepared' ? 'uploaded' : p.status, statusAt: nowIso() });
+      const notes = [!res.categoryFound && t('wp.noCategory', { name: p.category }), image && !res.featured && t('wp.noImage')].filter(Boolean).join(' ');
+      setWpMsg({ tone: notes ? 'warning' : 'success', text: `${t(p.wp ? 'wp.updated' : 'wp.created')} ${notes}`.trim() });
+    } catch (e) {
+      setWpMsg({ tone: 'error', text: wpErrorText(t, e) });
+    } finally {
+      setWpBusy(false);
+    }
+  };
   const newPost = wpNewPostUrl(p.site);
   const len = (x: string) => [...x].length;
   return (
@@ -300,6 +386,36 @@ export function BlogPanel({ draft, update }: { draft: Draft; update: (patch: Par
           </a>
         )}
       </div>
+      <div className="card stack-s" style={{ background: 'var(--surface-2)' }} data-testid="blog-wp">
+        <strong>{t('wp.panelTitle')}</strong>
+        {wpSite ? (
+          <>
+            <p className="xsmall muted">{t('wp.panelHelp', { site: wpSite.origin.replace(/^https:\/\//, '') })}</p>
+            <label className="check">
+              <input type="checkbox" checked={featured} onChange={(e) => setFeatured(e.target.checked)} />
+              <span className="small">{t('wp.featured')}</span>
+            </label>
+            <div className="row" style={{ gap: 8 }}>
+              <Button size="s" variant="primary" disabled={wpBusy || !p.html.trim()} onClick={() => void sendToWp()} data-testid="wp-send">
+                <Icon name="upload" />
+                {wpBusy ? t('common.loading') : p.wp ? t('wp.update') : t('wp.create')}
+              </Button>
+              {p.wp && (
+                <a className="btn btn-s" href={`${p.wp.origin}/wp-admin/post.php?post=${p.wp.postId}&action=edit`} target="_blank" rel="noreferrer noopener">
+                  <Icon name="external" />
+                  {t('wp.openDraft')}
+                </a>
+              )}
+            </div>
+            {wpMsg && <Notice tone={wpMsg.tone}>{wpMsg.text}</Notice>}
+          </>
+        ) : (
+          <p className="xsmall muted">
+            {t('wp.connectFirst')}{' '}
+            <a href="#settings">{t('conn.openSettings')}</a>
+          </p>
+        )}
+      </div>
       <p className="xsmall faint">{t('blog.handoff')}</p>
 
       <hr className="divider" />
@@ -307,7 +423,7 @@ export function BlogPanel({ draft, update }: { draft: Draft; update: (patch: Par
         <Field label={t('blog.status')}>
           {({ id }) => (
             <select id={id} className="select" value={p.status} onChange={(e) => set({ status: e.target.value as PublishStatus, statusAt: nowIso() })}>
-              {PUBLISH_STATUSES.filter((s) => s !== 'uploaded').map((s) => (
+              {PUBLISH_STATUSES.map((s) => (
                 <option key={s} value={s}>
                   {t(`blog.st.${s}` as MessageKey)}
                 </option>

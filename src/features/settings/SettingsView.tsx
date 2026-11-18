@@ -13,6 +13,7 @@ import type { MessageKey } from '../../i18n/en';
 import { ConnectionsSettings } from '../connections/ConnectionsSettings';
 import { Cover, Section, Segmented } from '../core/CoreUi';
 import { InpageSettings } from './InpageSettings';
+import { WordPressSettings } from './WordPressSettings';
 import { downloadText } from '../../platform/files';
 import type { ThemePref } from '../../storage/prefs';
 import { deleteAllData, exportAll, hasImportSnapshot, importData, undoLastImport } from '../../storage/db';
@@ -189,6 +190,10 @@ export function SettingsView() {
 
           <Section id="set-connections" title={t('settings.connections')} desc={t('core.set.connectionsDesc')} icon="link">
             <ConnectionsSettings />
+          </Section>
+
+          <Section id="set-wordpress" title={t('wp.title')} desc={t('wp.desc')} icon="file">
+            <WordPressSettings />
           </Section>
 
           <Section id="set-inpage" title={t('core.set.inpage')} desc={t('core.set.inpageDesc')} icon="video">
