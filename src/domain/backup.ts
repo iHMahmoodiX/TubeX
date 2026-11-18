@@ -3,6 +3,7 @@
 // switches, AI provider and YouTube settings, connected channels). Keys are included only when the owner
 // ticks the matching box at export; sign-in tokens never are.
 import { COLLECTIONS, nowIso } from './models';
+import { coerceRepublish, type RepublishSettings } from './republish';
 import type { CollectionName, Collections, Lang } from './models';
 import { checkRecord, type RejectReason } from './records';
 
@@ -30,6 +31,8 @@ export interface BackupSettings {
   youtube?: { region: string; language: string; dailyUnitCap: number; apiKey?: string };
   channels?: BackupChannel[];
   activeChannelId?: string;
+  /** Aparat/blog settings and prompt templates (no credentials). */
+  republish?: RepublishSettings;
 }
 
 export interface BackupFile {
@@ -141,6 +144,7 @@ export function coerceBackupSettings(raw: unknown): BackupSettings | undefined {
       .filter((c): c is BackupChannel => !!c);
     if (typeof raw.activeChannelId === 'string' && out.channels.some((c) => c.channelId === raw.activeChannelId)) out.activeChannelId = raw.activeChannelId;
   }
+  if (isObj(raw.republish)) out.republish = coerceRepublish(raw.republish);
   return Object.keys(out).length ? out : undefined;
 }
 

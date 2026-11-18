@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { browser } from 'wxt/browser';
 import { BACKUP_FORMAT, createBackup, countRecords, parseBackup, type ImportPreview } from '../../domain/backup';
 import { COLLECTIONS } from '../../domain/models';
@@ -14,6 +14,7 @@ import { ConnectionsSettings } from '../connections/ConnectionsSettings';
 import { Cover, Section, Segmented } from '../core/CoreUi';
 import { InpageSettings } from './InpageSettings';
 import { WordPressSettings } from './WordPressSettings';
+import { AparatSettings, BlogSettings } from './RepublishSettings';
 import { downloadText } from '../../platform/files';
 import type { ThemePref } from '../../storage/prefs';
 import { deleteAllData, exportAll, hasImportSnapshot, importData, undoLastImport } from '../../storage/db';
@@ -26,6 +27,8 @@ import { collectSettings, restoreSettings } from './settingsBackup';
 const SECTIONS: { id: string; label: MessageKey; icon: IconName }[] = [
   { id: 'set-general', label: 'core.set.general', icon: 'settings' },
   { id: 'set-connections', label: 'settings.connections', icon: 'link' },
+  { id: 'set-aparat', label: 'nav.aparat', icon: 'globe' },
+  { id: 'set-blog', label: 'nav.blog', icon: 'file' },
   { id: 'set-inpage', label: 'core.set.inpage', icon: 'video' },
   { id: 'set-data', label: 'core.set.data', icon: 'shield' },
 ];
@@ -33,22 +36,28 @@ const SECTIONS: { id: string; label: MessageKey; icon: IconName }[] = [
 /** Highlights the sub-navigation entry of the section in view. */
 function useSectionInView(ids: string[]): [string, (id: string) => void] {
   const [current, setCurrent] = useState(ids[0]!);
+  // After a jump the smooth scroll passes other sections; keep the chosen one highlighted meanwhile.
+  const lockUntil = useRef(0);
   useEffect(() => {
     const els = ids.map((id) => document.getElementById(id)).filter((x): x is HTMLElement => !!x);
     const io = new IntersectionObserver(
       (entries) => {
         const top = entries.filter((e) => e.isIntersecting).sort((a, b) => a.boundingClientRect.top - b.boundingClientRect.top)[0];
-        if (top) setCurrent(top.target.id);
+        if (top && Date.now() > lockUntil.current) setCurrent(top.target.id);
       },
       { rootMargin: '0px 0px -60% 0px' },
     );
     els.forEach((el) => io.observe(el));
     return () => io.disconnect();
   }, [ids]);
-  return [current, setCurrent];
+  const choose = (id: string) => {
+    lockUntil.current = Date.now() + 1200;
+    setCurrent(id);
+  };
+  return [current, choose];
 }
 
-export function SettingsView() {
+export function SettingsView({ section }: { section?: string } = {}) {
   const { t, lang } = useI18n();
   const sep = lang === 'fa' ? '، ' : ', ';
   const toast = useToast();
@@ -110,6 +119,10 @@ export function SettingsView() {
     el?.scrollIntoView({ behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth', block: 'start' });
     (el?.querySelector('h2') as HTMLElement | null)?.focus({ preventScroll: true });
   };
+  // Opened as #settings/<section> (e.g. "Edit prompts" from a draft): go straight to that section.
+  useEffect(() => {
+    if (section && SECTIONS.some((x) => x.id === section)) setTimeout(() => jump(section), 60);
+  }, [section]); // eslint-disable-line react-hooks/exhaustive-deps
 
   return (
     <section className="stack-l" aria-labelledby="set-h">
@@ -163,7 +176,17 @@ export function SettingsView() {
                   <span className="small muted">{t('settings.pageAdapterHelp')}</span>
                 </div>
               </div>
-              <div className="core-row-setting">
+            </Card>
+          </Section>
+
+          <Section id="set-connections" title={t('settings.connections')} desc={t('core.set.connectionsDesc')} icon="link">
+            <ConnectionsSettings />
+          </Section>
+
+          <Section id="set-aparat" title={t('nav.aparat')} desc={t('auto.setAparatDesc')} icon="globe">
+            <Card>
+              <AparatSettings />
+              <div className="core-row-setting" style={{ marginTop: 12 }}>
                 <div className="stack-s" style={{ gap: 2 }}>
                   <Switch
                     checked={!!prefs.aparatEnabled}
@@ -188,12 +211,13 @@ export function SettingsView() {
             </Card>
           </Section>
 
-          <Section id="set-connections" title={t('settings.connections')} desc={t('core.set.connectionsDesc')} icon="link">
-            <ConnectionsSettings />
-          </Section>
-
-          <Section id="set-wordpress" title={t('wp.title')} desc={t('wp.desc')} icon="file">
-            <WordPressSettings />
+          <Section id="set-blog" title={t('nav.blog')} desc={t('auto.setBlogDesc')} icon="file">
+            <Card>
+              <BlogSettings>
+                <p className="small muted">{t('wp.desc')}</p>
+                <WordPressSettings />
+              </BlogSettings>
+            </Card>
           </Section>
 
           <Section id="set-inpage" title={t('core.set.inpage')} desc={t('core.set.inpageDesc')} icon="video">

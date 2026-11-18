@@ -73,7 +73,8 @@ const NAV: { group?: MessageKey; items: NavItem[] }[] = [
       { route: 'schedule', label: 'nav.schedule', icon: 'calendar' },
       { route: 'thumbs', label: 'nav.thumbs', icon: 'image' },
       { route: 'kids', label: 'nav.kids', icon: 'shield' },
-      { route: 'aparat', label: 'nav.republish', icon: 'globe' },
+      { route: 'aparat', label: 'nav.aparat', icon: 'globe' },
+      { route: 'blog', label: 'nav.blog', icon: 'file' },
     ],
   },
   {
@@ -144,7 +145,8 @@ export function App() {
     case 'reports': view = <ReportsView tab={loc.id} />; break;
     case 'optimize': view = <OptimizeView videoId={loc.id} />; break;
     case 'experiments': view = <ExperimentsView id={loc.id} />; break;
-    case 'aparat': view = <AparatView />; break;
+    case 'aparat': view = <AparatView platform="aparat" />; break;
+    case 'blog': view = <AparatView platform="blog" />; break;
     case 'bulk': view = <BulkView />; break;
     case 'playlists': view = <PlaylistsView tab={loc.id} />; break;
     case 'schedule': view = <ScheduleView tab={loc.id} />; break;
@@ -153,7 +155,7 @@ export function App() {
     case 'comments': view = <CommentsView tab={loc.id} />; break;
     case 'alerts': view = <AlertsView tab={loc.id} />; break;
     case 'channels': view = <ProfilesView />; break;
-    case 'settings': view = <SettingsView />; break;
+    case 'settings': view = <SettingsView section={loc.id} />; break;
     default: view = <MyChannelView />;
   }
 

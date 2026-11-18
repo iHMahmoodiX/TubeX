@@ -178,15 +178,35 @@ export function transcriptFromCaptions(text: string): string {
   return out.join(' ').replace(/ \n\n/g, '\n\n').replace(/[ \t]+/g, ' ').trim();
 }
 
-export const BLOG_AI_TASK = 'blog-article-v2';
-export const BLOG_AI_INSTRUCTIONS =
-  'Turn this video into a Persian blog article for the creator\'s own WordPress site, as the written version of the video. The transcript (when given) is the main source; title, description, chapters and tags add context. ' +
-  'Write it as the creator himself wrote it: first person (من/ما where natural), his own explanations and examples from the video, a warm, direct, expert voice speaking to the reader as شما. It must read like a carefully written human article, not a transcript and not AI text: remove filler, repetition, greetings, "in this video", "subscribe" and on-camera talk; turn spoken explanations into clear sentences; avoid clichés, hype and generic padding. ' +
-  'Match this house style: a short problem-first intro (2–3 short paragraphs, speak to the reader as شما), then sections whose H2 headings are the questions readers search (for example "X چیست؟", "چگونه ...؟"), each starting with a one-sentence bold summary, then short paragraphs, numbered steps for procedures and bullets for options. ' +
-  'Follow the video\'s chapters for the section order. Only state what the video material supports; never invent numbers, prices, dates or features. Keep English product and UI names in English. ' +
-  'Add 3–5 FAQ items (question + one or two sentence answer), a final checklist of 4–8 items, and one closing call-to-action sentence (ctaText) inviting readers to the related course or to watch more, without a URL. ' +
-  'SEO: title at most 60 characters with the focus keyword near the start; metaDescription 120–155 characters with the keyword; slug in short English words with hyphens; excerpt one or two sentences; 3–8 tags; a category name. ' +
+export const BLOG_AI_TASK = 'blog-article-v3';
+/** The owner-editable part of the article prompt (Settings → Blog → prompt templates). */
+export const BLOG_DEFAULT_PROMPT = `این ویدیو را به یک مقالهٔ فارسی برای وبلاگ وردپرسی خودم تبدیل کن؛ نسخهٔ نوشتاری همین ویدیو. متن کپشن (اگر هست) منبع اصلی است و عنوان، توضیحات، فصل‌ها و برچسب‌ها فقط زمینه را کامل می‌کنند.
+
+لحن و صدا:
+- طوری بنویس که انگار خودم نوشته‌ام: اول‌شخص (من/ما هر جا طبیعی است)، با توضیح‌ها و مثال‌های خود ویدیو، لحن گرم، مستقیم و متخصص، و خواننده را «شما» خطاب کن.
+- باید مثل یک مقالهٔ انسانیِ دقیق خوانده شود، نه متن پیاده‌شده و نه متن هوش مصنوعی: حشو، تکرار، سلام و خداحافظی، «در این ویدیو»، «سابسکرایب کنید» و حرف‌های جلوی دوربین را حذف کن؛ جمله‌های گفتاری را نوشتاری و روشن کن؛ از کلیشه، اغراق و پرکردن بی‌مورد پرهیز کن.
+
+ساختار (سبک پست‌های من):
+- مقدمهٔ کوتاه که با مسئلهٔ خواننده شروع می‌شود (۲ تا ۳ پاراگراف کوتاه).
+- بخش‌هایی که تیتر H2 آن‌ها همان سؤال‌هایی است که مردم جستجو می‌کنند (مثل «X چیست؟»، «چگونه ...؟»)؛ هر بخش با یک جملهٔ خلاصهٔ پررنگ شروع شود، بعد پاراگراف‌های کوتاه، مراحل شماره‌دار برای روش‌ها و فهرست نقطه‌ای برای گزینه‌ها.
+- ترتیب بخش‌ها از فصل‌های ویدیو پیروی کند.
+- ۳ تا ۵ سؤال متداول (سؤال + جواب یک یا دو جمله‌ای)، یک چک‌لیست پایانی ۴ تا ۸ موردی و یک جملهٔ دعوت به اقدام در پایان (دعوت به دوره یا دیدن ویدیوهای بیشتر، بدون لینک).
+
+دقت:
+- فقط چیزی را بگو که محتوای ویدیو پشتیبانی می‌کند؛ هیچ عدد، قیمت، تاریخ یا قابلیتی از خودت نساز.
+- نام محصولات و بخش‌های رابط کاربری انگلیسی را انگلیسی بنویس.
+
+سئو:
+- عنوان حداکثر ۶۰ کاراکتر با کلمهٔ کلیدی اصلی نزدیک ابتدای آن.
+- توضیحات متا ۱۲۰ تا ۱۵۵ کاراکتر و شامل کلمهٔ کلیدی.
+- نامک (slug) با چند کلمهٔ کوتاه انگلیسی و خط تیره.
+- خلاصه (excerpt) یک یا دو جمله، ۳ تا ۸ برچسب و یک نام دسته.`;
+
+/** Fixed output contract TubeX parses; always appended after the (possibly edited) prompt. */
+export const BLOG_OUTPUT_FORMAT =
   'Return {"title","slug","metaDescription","focusKeyword","excerpt","category","tags":[],"intro":[],"sections":[{"heading","summary","paragraphs":[],"steps":[],"bullets":[]}],"faq":[{"q","a"}],"checklist":[],"ctaText"}. Plain text only inside strings (you may use **bold**), no HTML.';
+
+export const BLOG_AI_INSTRUCTIONS = `${BLOG_DEFAULT_PROMPT}\n\n${BLOG_OUTPUT_FORMAT}`;
 
 export type BlogIssueId = 'site-missing' | 'title-long' | 'meta-length' | 'slug-missing' | 'keyword-missing' | 'keyword-not-in-title' | 'keyword-not-in-meta' | 'no-video' | 'few-sections' | 'body-empty';
 export interface BlogIssue {

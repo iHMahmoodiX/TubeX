@@ -5,17 +5,17 @@ import { useEffect, useRef, useState } from 'react';
 import { Icon } from '../../components/icons';
 import { useToast } from '../../components/toasts';
 import { Button, ConfirmButton, Field, Notice } from '../../components/ui';
-import { downloadCaption, listCaptions } from '../../integrations/google/ownWrites';
 import { useGoogle } from '../connections/useConnections';
 import { browser } from 'wxt/browser';
-import { saveWpDraft } from '../../integrations/wordpress';
 import { loadWpSites, onWpSitesChanged, originOf, type WpSite } from '../../storage/wordpress';
 import { wpErrorText } from '../settings/WordPressSettings';
-import { aparatHashOf, transcriptFromCaptions, BLOG_AI_INSTRUCTIONS, BLOG_AI_TASK, BLOG_RULES, blogFromDraft, blogHtml, checkBlog, parseBlogOutline, wpNewPostUrl, type BlogVideos } from '../../domain/blog';
+import { BLOG_RULES, checkBlog, wpNewPostUrl } from '../../domain/blog';
+import { emptyRepublish, pickTemplate, siteDefaults, templatesOf, type RepublishSettings } from '../../domain/republish';
+import { loadRepublish, onRepublishChanged } from '../../storage/republish';
+import { captionsFor, plainBlogPackage, sendBlogToWp, videosOf, writeBlogPackage } from '../republish/pipeline';
 import { PUBLISH_STATUSES, nowIso, type BlogPackage, type Draft, type PublishStatus } from '../../domain/models';
 import { useI18n } from '../../i18n';
 import type { MessageKey } from '../../i18n/en';
-import { dataBlock, runAiJson } from '../../integrations/ai/custom';
 import { copyText, downloadText, fileSlug } from '../../platform/files';
 import { lastBlogDefaults } from '../aparat/aparatActions';
 import { parseTags } from '../../domain/aparat';
@@ -62,9 +62,7 @@ function Preview({ html, videoLabel }: { html: string; videoLabel: string }) {
   return <div ref={ref} className="blog-preview" dir="rtl" />;
 }
 
-export function videosOf(d: Draft): BlogVideos {
-  return { youtubeId: d.source?.videoId, aparatHash: aparatHashOf(d.platforms?.aparat?.url) };
-}
+export { videosOf };
 
 export function BlogPanel({ draft, update }: { draft: Draft; update: (patch: Partial<Draft>) => void }) {
   const { t } = useI18n();
@@ -80,28 +78,35 @@ export function BlogPanel({ draft, update }: { draft: Draft; update: (patch: Par
   const [wpBusy, setWpBusy] = useState(false);
   const [wpMsg, setWpMsg] = useState<{ tone: 'success' | 'error' | 'warning'; text: string } | null>(null);
   const [featured, setFeatured] = useState(true);
+  const [rs, setRs] = useState<RepublishSettings>(emptyRepublish);
+  const [tplId, setTplId] = useState('');
   useEffect(() => {
     void loadWpSites().then(setWpSites);
-    return onWpSitesChanged(setWpSites);
+    void loadRepublish().then((x) => {
+      setRs(x);
+      setFeatured(x.blog.featuredImage);
+    });
+    const a = onWpSitesChanged(setWpSites);
+    const b = onRepublishChanged(setRs);
+    return () => {
+      a();
+      b();
+    };
   }, []);
   const google = useGoogle();
   const ownChannel = google.channels.find((c) => c.channelId === google.activeChannelId);
   // Captions can be read only for the owner's own videos (captions.list 50 + captions.download 200 units).
   const canCaptions = !!draft.source?.videoId && !!ownChannel;
   const fetchCaptions = async (): Promise<string> => {
-    const videoId = draft.source?.videoId;
-    if (!videoId || !ownChannel) return '';
-    const tracks = (await listCaptions(ownChannel.channelId, videoId)).filter((x) => !x.isDraft);
-    const lang = draft.language;
-    const pick = tracks.find((x) => x.kind !== 'asr' && x.language.startsWith(lang)) ?? tracks.find((x) => x.language.startsWith(lang)) ?? tracks.find((x) => x.kind !== 'asr') ?? tracks[0];
-    if (!pick) {
+    if (!ownChannel) return '';
+    const c = await captionsFor(draft, ownChannel.channelId);
+    if (!c) {
       setCapNote(t('blog.noCaptions'));
       return '';
     }
-    const text = transcriptFromCaptions(await downloadCaption(ownChannel.channelId, pick.id));
-    setTranscript(text);
-    setCapNote(t('blog.captionsLoaded', { lang: pick.language, kind: pick.kind === 'asr' ? t('blog.capAuto') : t('blog.capManual') }));
-    return text;
+    setTranscript(c.text);
+    setCapNote(t('blog.captionsLoaded', { lang: c.language, kind: c.auto ? t('blog.capAuto') : t('blog.capManual') }));
+    return c.text;
   };
   const loadCaptions = async () => {
     setBusy(true);
@@ -133,53 +138,55 @@ export function BlogPanel({ draft, update }: { draft: Draft; update: (patch: Par
   const set = (patch: Partial<BlogPackage>) => p && put({ ...p, ...patch });
   const videos = videosOf(draft);
 
+  const currentSite = p?.site || defaults.site || rs.blog.defaultSite || wpSites[0]?.origin || '';
+  const templates = templatesOf(rs, 'blog');
+  const template = templates.find((x) => x.id === tplId) ?? pickTemplate(rs, 'blog', currentSite);
+  const autoWp = rs.blog.autoWpDraft && !!wpSites.find((s) => s.origin === originOf(currentSite));
+
   const write = async (withAi: boolean) => {
-    const site = p?.site || defaults.site || wpSites[0]?.origin || '';
-    const ctaUrl = p?.ctaUrl || defaults.ctaUrl;
-    const keep = p && { status: p.status, statusAt: p.statusAt, ...(p.url && { url: p.url }), category: p.category };
+    const site = currentSite;
+    const sd = siteDefaults(rs, site);
+    const ctaUrl = p?.ctaUrl || defaults.ctaUrl || sd?.ctaUrl || '';
     if (!withAi) {
-      put({ ...blogFromDraft(draft, videos, { site, ctaUrl }), ...keep });
+      put(plainBlogPackage(draft, site, ctaUrl));
       return;
     }
+    // Asked from the click itself (before any await) so the featured image can be attached afterwards.
+    const imgOk = autoWp && featured && draft.source?.videoId ? await browser.permissions.request({ origins: ['https://i.ytimg.com/*'] }).catch(() => false) : false;
     setBusy(true);
     setError(null);
+    setWpMsg(null);
     try {
       // The owner's workflow: the article is written from the video's own captions.
       let script = transcript;
       if (!script.trim() && canCaptions) script = await fetchCaptions().catch(() => '');
-      const r = await runAiJson({
-        task: BLOG_AI_TASK,
-        instructions: BLOG_AI_INSTRUCTIONS,
-        data:
-          dataBlock('Focus keyword', draft.focusKeyword, 120) +
-          dataBlock('Video title', draft.title, 300) +
-          dataBlock('Video description', draft.description, 5000) +
-          dataBlock('Tags', draft.tags.join(', '), 1000) +
-          dataBlock('Transcript', script, 14000),
-        maxTokens: 7000,
-        fresh: !!p,
-      });
-      const o = parseBlogOutline(r.output);
-      if (!o) throw new Error('bad-output');
-      put({
-        site,
-        ctaUrl,
-        title: o.title,
-        slug: o.slug,
-        metaDescription: o.metaDescription,
-        focusKeyword: o.focusKeyword || draft.focusKeyword,
-        excerpt: o.excerpt,
-        category: p?.category || o.category,
-        tags: o.tags,
-        html: blogHtml(o, videos, ctaUrl),
-        status: p?.status ?? 'prepared',
-        statusAt: p?.statusAt ?? nowIso(),
-        ...(p?.url && { url: p.url }),
-      });
+      const next = await writeBlogPackage(draft, { site, ctaUrl, template, transcript: script, category: p?.category || sd?.category, fresh: !!p });
+      put(next);
+      if (autoWp) await sendToWp(next, imgOk);
     } catch (e) {
       setError(e);
     } finally {
       setBusy(false);
+    }
+  };
+
+  const sendToWp = async (pkg: BlogPackage, imageAllowed?: boolean) => {
+    const site = wpSites.find((x) => x.origin === originOf(pkg.site));
+    if (!site) return;
+    const videoId = draft.source?.videoId;
+    // Permission for the thumbnail host is asked from the click, before anything is awaited.
+    const imgOk = imageAllowed ?? (featured && videoId ? await browser.permissions.request({ origins: ['https://i.ytimg.com/*'] }).catch(() => false) : false);
+    setWpBusy(true);
+    setWpMsg(null);
+    try {
+      const r = await sendBlogToWp(pkg, site, videoId, featured && imgOk);
+      put(r.pkg);
+      const notes = [!r.categoryFound && t('wp.noCategory', { name: pkg.category }), r.imageMissing && t('wp.noImage')].filter(Boolean).join(' ');
+      setWpMsg({ tone: notes ? 'warning' : 'success', text: `${t(r.updated ? 'wp.updated' : 'wp.created')} ${notes}`.trim() });
+    } catch (e) {
+      setWpMsg({ tone: 'error', text: wpErrorText(t, e) });
+    } finally {
+      setWpBusy(false);
     }
   };
 
@@ -213,11 +220,11 @@ export function BlogPanel({ draft, update }: { draft: Draft; update: (patch: Par
                 list={`${id}-sites`}
                 inputMode="url"
                 placeholder="https://example.com/blog"
-                value={p ? p.site : defaults.site || wpSites[0]?.origin || ''}
+                value={p ? p.site : currentSite}
                 onChange={(e) => (p ? set({ site: e.target.value.trim() }) : setDefaults((d) => ({ ...d, site: e.target.value.trim() })))}
               />
               <datalist id={`${id}-sites`}>
-                {[...new Set([...defaults.sites, ...wpSites.map((w) => w.origin)])].map((s) => (
+                {[...new Set([...defaults.sites, ...rs.blog.sites.map((x) => x.site), ...wpSites.map((w) => w.origin)])].map((s) => (
                   <option key={s} value={s} />
                 ))}
               </datalist>
@@ -226,7 +233,7 @@ export function BlogPanel({ draft, update }: { draft: Draft; update: (patch: Par
         </Field>
         <Field label={t('blog.f.cta')} help={t('blog.ctaHelp')}>
           {({ id, describedBy }) => (
-            <input id={id} aria-describedby={describedBy} className="input" dir="ltr" inputMode="url" placeholder="https://…" value={p ? p.ctaUrl : defaults.ctaUrl} onChange={(e) => (p ? set({ ctaUrl: e.target.value.trim() }) : setDefaults((d) => ({ ...d, ctaUrl: e.target.value.trim() })))} />
+            <input id={id} aria-describedby={describedBy} className="input" dir="ltr" inputMode="url" placeholder="https://…" value={p ? p.ctaUrl : defaults.ctaUrl || siteDefaults(rs, currentSite)?.ctaUrl || ''} onChange={(e) => (p ? set({ ctaUrl: e.target.value.trim() }) : setDefaults((d) => ({ ...d, ctaUrl: e.target.value.trim() })))} />
           )}
         </Field>
       </div>
@@ -242,12 +249,30 @@ export function BlogPanel({ draft, update }: { draft: Draft; update: (patch: Par
           {capNote && <span className="xsmall muted">{capNote}</span>}
         </div>
       )}
+      {ai.enabled && (
+        <Field label={t('prompt.use')} help={t('prompt.useHelp')}>
+          {({ id, describedBy }) => (
+            <div className="row" style={{ gap: 8, alignItems: 'center', flexWrap: 'nowrap' }}>
+              <select id={id} aria-describedby={describedBy} className="select" value={template.id} onChange={(e) => setTplId(e.target.value)} data-testid="blog-template">
+                {templates.map((x) => (
+                  <option key={x.id} value={x.id}>
+                    {x.name || t('prompt.builtinName')}
+                  </option>
+                ))}
+              </select>
+              <a className="btn btn-s btn-ghost" href="#settings/set-blog" style={{ whiteSpace: 'nowrap' }}>
+                {t('prompt.edit')}
+              </a>
+            </div>
+          )}
+        </Field>
+      )}
       <p className="xsmall faint">{videos.youtubeId ? (videos.aparatHash ? t('blog.videosBoth') : t('blog.videosYt')) : t('blog.videosNone')}</p>
       <div className="row" style={{ gap: 8 }}>
         {ai.enabled ? (
           <Button size="s" variant="primary" disabled={busy} onClick={() => void write(true)} data-testid="blog-ai-run">
             <Icon name="sparkle" />
-            {busy ? t('common.loading') : p ? t('blog.ai.again') : t('blog.ai.run')}
+            {busy ? t('common.loading') : autoWp ? (p ? t('blog.ai.againWp') : t('blog.ai.runWp')) : p ? t('blog.ai.again') : t('blog.ai.run')}
           </Button>
         ) : (
           <a className="btn btn-s btn-primary" href="#settings">
@@ -273,34 +298,6 @@ export function BlogPanel({ draft, update }: { draft: Draft; update: (patch: Par
 
   const issues = checkBlog(p);
   const wpSite = wpSites.find((s) => s.origin === originOf(p.site));
-  const sendToWp = async () => {
-    if (!wpSite) return;
-    const videoId = draft.source?.videoId;
-    // Permission for the thumbnail host is asked from this click, before anything is awaited.
-    const imgOk = featured && videoId ? await browser.permissions.request({ origins: ['https://i.ytimg.com/*'] }).catch(() => false) : false;
-    setWpBusy(true);
-    setWpMsg(null);
-    try {
-      let image: { blob: Blob; filename: string } | undefined;
-      if (imgOk && videoId) {
-        for (const size of ['maxresdefault', 'hqdefault']) {
-          const r = await fetch(`https://i.ytimg.com/vi/${videoId}/${size}.jpg`).catch(() => null);
-          if (r?.ok) {
-            image = { blob: await r.blob(), filename: `${p.slug || videoId}.jpg` };
-            break;
-          }
-        }
-      }
-      const res = await saveWpDraft(wpSite, p, { postId: p.wp?.origin === wpSite.origin ? p.wp.postId : undefined, image });
-      set({ wp: { origin: wpSite.origin, postId: res.id, savedAt: nowIso() }, status: p.status === 'prepared' ? 'uploaded' : p.status, statusAt: nowIso() });
-      const notes = [!res.categoryFound && t('wp.noCategory', { name: p.category }), image && !res.featured && t('wp.noImage')].filter(Boolean).join(' ');
-      setWpMsg({ tone: notes ? 'warning' : 'success', text: `${t(p.wp ? 'wp.updated' : 'wp.created')} ${notes}`.trim() });
-    } catch (e) {
-      setWpMsg({ tone: 'error', text: wpErrorText(t, e) });
-    } finally {
-      setWpBusy(false);
-    }
-  };
   const newPost = wpNewPostUrl(p.site);
   const len = (x: string) => [...x].length;
   return (
@@ -396,7 +393,7 @@ export function BlogPanel({ draft, update }: { draft: Draft; update: (patch: Par
               <span className="small">{t('wp.featured')}</span>
             </label>
             <div className="row" style={{ gap: 8 }}>
-              <Button size="s" variant="primary" disabled={wpBusy || !p.html.trim()} onClick={() => void sendToWp()} data-testid="wp-send">
+              <Button size="s" variant="primary" disabled={wpBusy || !p.html.trim()} onClick={() => void sendToWp(p)} data-testid="wp-send">
                 <Icon name="upload" />
                 {wpBusy ? t('common.loading') : p.wp ? t('wp.update') : t('wp.create')}
               </Button>

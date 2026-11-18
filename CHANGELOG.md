@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.6.4 — 2026-11-18 — separate Aparat and Blog, your own prompts, "Do it all"
+- Aparat and Blog are separate pages in the menu and separate sections in Settings.
+- Prompt templates (Settings → Aparat / Blog): edit TubeX's prompt, save, reset to TubeX's default, add, duplicate, delete and choose the default; several templates per kind and a template per blog. The default prompts are now in Persian. TubeX always appends the fixed answer format (and Aparat's hard limits) so edited prompts keep working. Drafts let you pick the template per run.
+- Per-blog defaults: default blog, call-to-action link, category and prompt for each blog; default Aparat category.
+- "Do it all" per video and for selected videos: Blog = captions → article in your voice → WordPress draft (when connected); Aparat = package → AI rewrite applied. Progress per video, stop after the current one. "Write the article" in a draft also sends the WordPress draft when the blog is connected (switchable).
+- Settings backups include these settings and prompts (never WordPress passwords).
+
 ## 0.6.3 — 2026-11-18 — article from captions, WordPress drafts
 - Blog version reads the video's own captions from YouTube (owner's videos, about 250 quota units, on a click; "Write the article" fetches them by itself when the transcript is empty). Caption timing is turned into paragraphs and rolling repeats are removed.
 - Article prompt (blog-article-v2): written in first person as the creator, natural and not transcript-like, in the owner's post structure, with strong on-page SEO.

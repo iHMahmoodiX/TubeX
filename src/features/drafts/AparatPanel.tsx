@@ -5,8 +5,10 @@ import { useEffect, useRef, useState } from 'react';
 import { Icon } from '../../components/icons';
 import { useToast } from '../../components/toasts';
 import { Button, ConfirmButton, Field, Notice } from '../../components/ui';
-import { APARAT_AI_INSTRUCTIONS, APARAT_AI_TASK, APARAT_UPLOAD_URL, aparatFromDraft, aparatPackageText, checkAparat, parseAparatAi, parseTags, type AparatAiResult } from '../../domain/aparat';
-import { dataBlock, runAiJson } from '../../integrations/ai/custom';
+import { APARAT_UPLOAD_URL, aparatFromDraft, aparatPackageText, checkAparat, parseAparatAi, parseTags, type AparatAiResult } from '../../domain/aparat';
+import { emptyRepublish, pickTemplate, templatesOf, type RepublishSettings } from '../../domain/republish';
+import { loadRepublish, onRepublishChanged } from '../../storage/republish';
+import { rewriteForAparat } from '../republish/pipeline';
 import { ErrorNotice } from '../connections/ErrorNotice';
 import { useIntegrations } from '../connections/useConnections';
 import { PUBLISH_STATUSES, nowIso, type AparatPackage, type Draft, type PublishStatus } from '../../domain/models';
@@ -37,20 +39,20 @@ export function AparatPanel({ draft, update }: { draft: Draft; update: (patch: P
   const [aiBusy, setAiBusy] = useState(false);
   const [aiError, setAiError] = useState<unknown>(null);
   const [aiOut, setAiOut] = useState<AparatAiResult | null>(null);
+  const [rs, setRs] = useState<RepublishSettings>(emptyRepublish);
+  const [tplId, setTplId] = useState('');
+  useEffect(() => {
+    void loadRepublish().then(setRs);
+    return onRepublishChanged(setRs);
+  }, []);
+  const templates = templatesOf(rs, 'aparat');
+  const template = templates.find((x) => x.id === tplId) ?? pickTemplate(rs, 'aparat');
   const optimize = async (fresh = false) => {
     setAiBusy(true);
     setAiError(null);
     try {
       // The YouTube draft is the source, so a second run never compounds an earlier rewrite.
-      const r = await runAiJson({
-        task: APARAT_AI_TASK,
-        instructions: APARAT_AI_INSTRUCTIONS,
-        data: dataBlock('Focus keyword', draft.focusKeyword, 120) + dataBlock('YouTube title', draft.title, 300) + dataBlock('YouTube description', draft.description, 5000) + dataBlock('YouTube tags', draft.tags.join(', '), 1500),
-        maxTokens: 2500,
-        fresh,
-      });
-      const out = parseAparatAi(r.output);
-      if (!out) throw new Error('bad-output');
+      const out = await rewriteForAparat(draft, template, fresh);
       setAiOut(out);
     } catch (e) {
       setAiError(e);
@@ -66,7 +68,7 @@ export function AparatPanel({ draft, update }: { draft: Draft; update: (patch: P
   };
   const set = (patch: Partial<AparatPackage>) => p && update({ platforms: { ...draft.platforms, aparat: { ...p, ...patch } } });
   const prepare = () => {
-    const next = aparatFromDraft(draft);
+    const next = { ...aparatFromDraft(draft), category: rs.aparat.defaultCategory };
     setTagText(next.tags.join('، '));
     // A refill only replaces the text taken from the YouTube draft; Aparat-only fields and the status stay.
     const keep = p && { category: p.category, playlist: p.playlist, coverNote: p.coverNote, scheduleNote: p.scheduleNote, status: p.status, statusAt: p.statusAt, ...(p.url && { url: p.url }) };
@@ -110,6 +112,23 @@ export function AparatPanel({ draft, update }: { draft: Draft; update: (patch: P
             </a>
           )}
         </div>
+        {ai.enabled && templates.length > 1 && (
+          <div className="row" style={{ gap: 8, alignItems: 'center', flexWrap: 'nowrap' }}>
+            <label className="xsmall muted" htmlFor="aparat-tpl" style={{ whiteSpace: 'nowrap' }}>
+              {t('prompt.use')}
+            </label>
+            <select id="aparat-tpl" className="select" value={template.id} onChange={(e) => setTplId(e.target.value)} data-testid="aparat-template">
+              {templates.map((x) => (
+                <option key={x.id} value={x.id}>
+                  {x.name || t('prompt.builtinName')}
+                </option>
+              ))}
+            </select>
+          </div>
+        )}
+        <a className="xsmall" href="#settings/set-aparat">
+          {t('prompt.edit')}
+        </a>
         <ErrorNotice error={aiError} />
         {aiOut && (
           <div className="stack-s small" data-testid="aparat-ai-out">

@@ -4,6 +4,7 @@ import { aparatFromDraft } from '../../domain/aparat';
 import type { Draft } from '../../domain/models';
 import { list, save } from '../../storage/db';
 import { videoToDraft } from '../reports/data';
+import { loadRepublish } from '../../storage/republish';
 
 export const FOCUS_KEY = 'tubex.focus';
 
@@ -23,7 +24,7 @@ export async function draftsByVideo(): Promise<Map<string, Draft>> {
 export async function prepareForAparat(v: { id: string; title: string; description: string; tags: string[] }, existing?: Draft): Promise<Draft> {
   const d = existing ?? (await draftsByVideo()).get(v.id) ?? (await videoToDraft(v));
   if (d.platforms?.aparat) return d;
-  const category = await lastCategory();
+  const category = (await loadRepublish()).aparat.defaultCategory || (await lastCategory());
   const next: Draft = { ...d, platforms: { ...d.platforms, aparat: { ...aparatFromDraft(d), category } } };
   const r = await save('drafts', next);
   if (r.ok) return r.record;

@@ -12,6 +12,7 @@ export type WorkspaceRoute =
   | 'optimize'
   | 'experiments'
   | 'aparat'
+  | 'blog'
   | 'bulk'
   | 'playlists'
   | 'schedule'

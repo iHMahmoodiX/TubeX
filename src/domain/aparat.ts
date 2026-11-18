@@ -88,17 +88,24 @@ export function fitLines(text: string, max: number): string {
 }
 
 /** AI instructions for an Aparat-specific rewrite (Persian Aparat search, Aparat's limits). */
-export const APARAT_AI_TASK = 'aparat-optimize-v1';
-export const APARAT_AI_INSTRUCTIONS =
-  'Rewrite this YouTube video\'s metadata for Aparat (the Iranian video platform), to rank in Aparat search and suggestions. ' +
-  'Aparat viewers search in Persian with everyday wording, often mixing in English product names; write for them, not for YouTube. ' +
-  'Title: Persian, main search phrase near the start, specific and honest (no clickbait, no ALL CAPS, no emoji), at most 90 characters. ' +
-  'Description: Persian, at most 1800 characters. First two lines summarise what the viewer gets and contain the main phrase. Then short paragraphs or a bullet list of what the video covers. ' +
-  'Keep timestamps (chapters) exactly as given. Remove YouTube-only parts: YouTube links, "subscribe"/"turn on the bell"/"like" requests, YouTube hashtags, links to other YouTube videos. ' +
-  'Keep the creator\'s own website and course links. End with one line inviting viewers to follow the channel on Aparat. ' +
-  'Tags: exactly 5 Persian search phrases people type on Aparat (an English term is fine when Persians search it that way), each at most 23 characters, no # sign, no duplicates. ' +
-  'Category: one Aparat category name in Persian that fits best (for example آموزشی، علم و تکنولوژی، سرگرمی، ورزشی). ' +
-  'Return {"title": string, "description": string, "tags": string[], "category": string, "why": string} where why is one short Persian sentence on the main change.';
+export const APARAT_AI_TASK = 'aparat-optimize-v2';
+/** The owner-editable part of the Aparat prompt (Settings → Aparat → prompt templates). */
+export const APARAT_DEFAULT_PROMPT = `اطلاعات این ویدیوی یوتیوب را برای آپارات بازنویسی کن تا در جستجو و پیشنهادهای آپارات بهتر دیده شود.
+
+- مخاطب آپارات به فارسی و با کلمه‌های روزمره جستجو می‌کند و گاهی نام محصولات را انگلیسی می‌نویسد؛ برای او بنویس، نه برای یوتیوب.
+- عنوان: فارسی، عبارت اصلی جستجو نزدیک ابتدای آن، دقیق و صادقانه (بدون کلیک‌بیت، بدون حروف بزرگ و ایموجی)، حداکثر ۹۰ کاراکتر.
+- توضیحات: فارسی، حداکثر ۱۸۰۰ کاراکتر. دو خط اول بگوید بیننده چه چیزی می‌گیرد و عبارت اصلی را داشته باشد. بعد پاراگراف‌های کوتاه یا فهرستی از مطالب ویدیو.
+- زمان‌بندی فصل‌ها را دقیقاً همان‌طور نگه دار. بخش‌های مخصوص یوتیوب را حذف کن: لینک‌های یوتیوب، «سابسکرایب کنید/زنگوله را بزنید/لایک کنید»، هشتگ‌های یوتیوب و لینک ویدیوهای دیگر یوتیوب.
+- لینک سایت و دوره‌های خودم را نگه دار. در پایان یک خط برای دنبال کردن کانال در آپارات بنویس.
+- برچسب‌ها: دقیقاً ۵ عبارتی که مردم در آپارات جستجو می‌کنند (اگر فارسی‌زبان‌ها اصطلاح انگلیسی را جستجو می‌کنند همان خوب است)، هرکدام حداکثر ۲۳ کاراکتر، بدون # و بدون تکرار.
+- دسته: نام یکی از دسته‌های آپارات به فارسی که بهترین تطابق را دارد (مثل آموزشی، علم و تکنولوژی، سرگرمی، ورزشی).`;
+
+/** Fixed output contract and Aparat's hard limits; always appended, whatever the prompt says. */
+export const APARAT_OUTPUT_FORMAT =
+  'Hard limits that always apply: at most 5 tags, each at most 23 characters; description at most 2000 characters. ' +
+  'Return {"title": string, "description": string, "tags": string[], "category": string, "why": string} where why is one short Persian sentence on the main change. Write title, description and tags in Persian unless the instructions above say otherwise.';
+
+export const APARAT_AI_INSTRUCTIONS = `${APARAT_DEFAULT_PROMPT}\n\n${APARAT_OUTPUT_FORMAT}`;
 
 export interface AparatAiResult {
   title: string;

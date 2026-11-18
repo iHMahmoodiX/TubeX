@@ -140,8 +140,19 @@ for (const r of routes) {
       await p.waitForTimeout(1500);
       await p.locator('[data-testid="aparat-ai"]').scrollIntoViewIfNeeded();
     }
+  } else if (r === 'blog-page' || r === 'aparat-auto' || r === 'blog-auto') {
+    await p.goto(`chrome-extension://${id}/workspace.html#${r.startsWith('blog') ? 'blog' : 'aparat'}`);
+    await p.waitForTimeout(2500);
+    if (r !== 'blog-page') {
+      await p.locator('[data-testid="auto-pick-all"]').check();
+      await p.locator('[data-testid="auto-run-selected"]').click();
+      await p.waitForTimeout(4000);
+    }
+  } else if (r === 'settings-blog' || r === 'settings-aparat') {
+    await p.goto(`chrome-extension://${id}/workspace.html#settings/set-${r.slice(9)}`);
+    await p.waitForTimeout(2000);
   } else if (r === 'blog-open') {
-    await p.goto(`chrome-extension://${id}/workspace.html#aparat`);
+    await p.goto(`chrome-extension://${id}/workspace.html#blog`);
     await p.waitForTimeout(2500);
     await p.locator('[data-testid="blog-row-open"]').first().click();
     await p.waitForTimeout(2000);
