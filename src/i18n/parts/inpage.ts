@@ -240,6 +240,7 @@ export const inpage = definePart(
 
     'inpage.upload.label': 'TubeX upload profile',
     'inpage.upload.title': 'Apply upload profile',
+    'inpage.upload.button': 'Upload profile',
     'inpage.upload.desc': 'Fill the new video’s description and tags from a TubeX template. Nothing is published until you continue in Studio.',
 
     'inpage.reply.button': 'Canned reply',
@@ -518,6 +519,7 @@ export const inpage = definePart(
 
     'inpage.upload.label': 'پروفایل آپلود TubeX',
     'inpage.upload.title': 'اعمال پروفایل آپلود',
+    'inpage.upload.button': 'پروفایل آپلود',
     'inpage.upload.desc': 'توضیحات و تگ‌های ویدیوی تازه را از یک قالب TubeX پر کنید. تا در استودیو ادامه ندهید چیزی منتشر نمی‌شود.',
 
     'inpage.reply.button': 'پاسخ آماده',

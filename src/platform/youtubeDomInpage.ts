@@ -322,16 +322,36 @@ export function uploadDialogRoot(doc: Document): Element | null {
   return d;
 }
 
-/** In the upload dialog's details step only (title field present). */
-export function uploadDialogSpot(doc: Document): AnchorSpot | null {
+const REUSE_SEL = ['ytcp-button#reuse-details-button', '#reuse-details-button', 'ytcp-button[id*="reuse"]', '[id*="reuse-details"]'];
+const REUSE_TEXT = /reuse\s+details|استفاده.{0,3}مجدد/i;
+
+/** Studio's own "Reuse details" button in the upload dialog's details step, if present (Inferred selectors + label text). */
+export function reuseDetailsButton(d: ParentNode): Element | null {
+  for (const sel of REUSE_SEL) {
+    const el = d.querySelector(sel);
+    if (el) return el.closest('ytcp-button') ?? el;
+  }
+  for (const el of Array.from(d.querySelectorAll('ytcp-button, button'))) {
+    if (el.closest('tubex-studio-upload')) continue;
+    if (REUSE_TEXT.test(el.textContent ?? '') || REUSE_TEXT.test(el.getAttribute('aria-label') ?? '')) return el.closest('ytcp-button') ?? el;
+  }
+  return null;
+}
+
+/**
+ * Where the compact "Upload profile" button goes: right after Studio's "Reuse details" button; without that button,
+ * just above the title field (inside the fields column, so Studio's two-column layout is never split).
+ */
+export function uploadButtonSpot(doc: Document): AnchorSpot | null {
   const d = uploadDialogRoot(doc);
   if (!d) return null;
-  if (!studioFields(d).title) return null;
+  const f = studioFields(d);
+  if (!f.title) return null;
+  const reuse = reuseDetailsButton(d);
+  if (reuse) return { el: reuse, append: 'after' };
   return firstSpot(d, [
-    ['ytcp-uploads-details ytcp-video-metadata-editor', 'first'],
-    ['ytcp-uploads-details', 'first'],
-    ['ytcp-video-metadata-editor', 'first'],
-    ['#scrollable-content', 'first'],
+    ['ytcp-video-title', 'before'],
+    ['#title-textarea', 'before'],
   ]);
 }
 
